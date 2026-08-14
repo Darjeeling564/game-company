@@ -15,7 +15,13 @@ games/<game-name>/
     sim.ts         バランスシミュレーション。`npm run sim` から呼ばれる
 ```
 
-ディレクトリを追加すれば、以下は設定変更なしで有効になる。
+CLAUDE.md 7章に従い **SPEC.md を先に書いて承認を得てから実装に入る**ため、
+`SPEC.md` だけが置かれた状態は正常な中間状態である。この段階では
+
+- `index.html` が無いのでビルド対象に含まれない
+- `tools/sim.ts` が無いので `npm run sim` からスキップされる（`npm run sim -- <name>` と明示した場合はエラー）
+
+ファイルが揃った時点で、設定変更なしに以下が有効になる。
 
 - `npm run build` — `games/<name>/index.html` がビルド対象に加わり、ランディングにリンクが並ぶ
 - `npm run test` — `games/<name>/tests/**/*.test.ts` が実行される

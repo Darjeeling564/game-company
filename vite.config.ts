@@ -1,9 +1,10 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import { resolve } from 'node:path'
-import { listGames } from './tools/games.ts'
+import { listBuildableGames } from './tools/games.ts'
 
-const games = listGames()
+// index.html を持つゲームだけがビルド対象。SPEC のみのディレクトリは実装前として除外する
+const games = listBuildableGames()
 
 // ランディング（index.html）と games/<name>/index.html をまとめてビルドする。
 // ゲームを追加しても設定を触る必要はない。

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { isGameName, listGames, pickGameNames, simEntry } from '../tools/games.ts'
+import {
+  isGameName,
+  listBuildableGames,
+  listGames,
+  listSimulatableGames,
+  pickGameNames,
+  simEntry,
+} from '../tools/games.ts'
 
 describe('isGameName', () => {
   it('小文字・数字・ハイフンのみ許可する', () => {
@@ -39,5 +46,26 @@ describe('listGames', () => {
 describe('simEntry', () => {
   it('games/<name>/tools/sim.ts を指す', () => {
     expect(simEntry('rail-tycoon', '/repo')).toBe('/repo/games/rail-tycoon/tools/sim.ts')
+  })
+})
+
+describe('実装状況によるふるい分け', () => {
+  it('ビルド対象は games/ 全体の部分集合になる', () => {
+    const all = listGames()
+    for (const name of listBuildableGames()) {
+      expect(all).toContain(name)
+    }
+  })
+
+  it('シミュレーション対象は games/ 全体の部分集合になる', () => {
+    const all = listGames()
+    for (const name of listSimulatableGames()) {
+      expect(all).toContain(name)
+    }
+  })
+
+  it('games/ が存在しないルートでは空配列を返す', () => {
+    expect(listBuildableGames('/nonexistent-root-for-test')).toEqual([])
+    expect(listSimulatableGames('/nonexistent-root-for-test')).toEqual([])
   })
 })
