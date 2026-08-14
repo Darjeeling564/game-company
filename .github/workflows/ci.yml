@@ -1,12 +1,13 @@
 name: CI
 
 on:
+  # push は main のみ。feature ブランチは pull_request トリガーで検証されるため、
+  # 両方を無条件に有効にすると PR 中に同じ内容が二重に走ってしまう。
   push:
+    branches: [main]
   pull_request:
 
-# 同じ ref で新しい実行が始まったら、進行中の古い実行を打ち切る。
-# push と pull_request は ref が異なる（refs/heads/... と refs/pull/N/merge）ため、
-# PR 中は両方が走る。これは意図した動作。
+# 同じ ref で新しい実行が始まったら、進行中の古い実行を打ち切る
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
