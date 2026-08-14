@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# 同じ ref で新しい実行が始まったら、進行中の古い実行を打ち切る。
+# push と pull_request は ref が異なる（refs/heads/... と refs/pull/N/merge）ため、
+# PR 中は両方が走る。これは意図した動作。
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 検証（CLAUDE.md 5章）
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v5
+
+      - name: Node のセットアップ（.nvmrc に従う）
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: 依存関係のインストール
+        run: npm ci
+
+      - name: 型検査
+        run: npm run typecheck
+
+      - name: テスト
+        run: npm run test
+
+      - name: バランスシミュレーション
+        run: npm run sim
+
+      - name: 本番ビルド
+        run: npm run build
