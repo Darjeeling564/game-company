@@ -135,6 +135,8 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
     row.append(el('span', 'detail__attackText', describeAttack(attack)))
     box.append(row)
   }
+
+  box.append(el('div', 'detail__flavor', card.flavor))
   return box
 }
 

@@ -86,6 +86,8 @@ export interface AttackDef {
 export interface CardDef {
   readonly id: CardId
   readonly name: string
+  /** モチーフになった神格・霊獣の説明。必須にして、カード追加時の書き忘れを型で防ぐ */
+  readonly flavor: string
   readonly kind: 'creature'
   readonly type: EnergyType
   readonly hp: number

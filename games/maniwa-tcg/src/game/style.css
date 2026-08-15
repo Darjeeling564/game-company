@@ -368,3 +368,13 @@ body {
   opacity: 0.8;
   line-height: 1.35;
 }
+
+/* モチーフの解説。ステータスと混ざらないよう区切って落ち着かせる */
+.detail__flavor {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(245, 240, 225, 0.25);
+  font-size: 12px;
+  opacity: 0.7;
+  line-height: 1.6;
+}

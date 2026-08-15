@@ -271,6 +271,7 @@ export interface Deck {
 export interface CardDef {
   readonly id: CardId
   readonly name: string
+  readonly flavor: string                    // モチーフの解説。詳細画面に出す
   readonly kind: 'creature'                  // v2 で 'item' | 'supporter' を追加
   readonly type: EnergyType
   readonly hp: number
@@ -346,7 +347,9 @@ export type Effect =
 ```ts
 export const CARDS: readonly CardDef[] = [
   {
-    id: 'g001', name: 'デメテル', kind: 'creature',
+    id: 'g001', name: 'デメテル',
+    flavor: '穀物を育てる大地の女神。娘を奪われ嘆いた季節が、冬になったという。',
+    kind: 'creature',
     type: 'grass', hp: 60, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'みのりのつち', cost: ['grass'],
@@ -354,7 +357,9 @@ export const CARDS: readonly CardDef[] = [
     ],
   },
   {
-    id: 'f005', name: 'カグツチ', kind: 'creature',
+    id: 'f005', name: 'カグツチ',
+    flavor: '火の神。生まれ落ちる際に母イザナミを焼き、父イザナギに斬られた。',
+    kind: 'creature',
     type: 'fire', hp: 90, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'ひのつめ', cost: ['fire', 'colorless'],
@@ -367,7 +372,9 @@ export const CARDS: readonly CardDef[] = [
     ],
   },
   {
-    id: 'f006', name: 'カグツチEX', kind: 'creature',
+    id: 'f006', name: 'カグツチEX',
+    flavor: '斬られた血と亡骸から、さらに多くの神が生まれたという。火は滅ぼすと同時に生む。',
+    kind: 'creature',
     type: 'fire', hp: 140, ex: true, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'ほむらのつるぎ', cost: ['fire', 'fire'],
