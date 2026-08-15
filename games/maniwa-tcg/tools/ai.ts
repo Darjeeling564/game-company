@@ -68,7 +68,7 @@ export const greedyPolicy: Policy = (state, rng) => {
   const legal = legalActions(state)
   if (legal.length === 0) return randomPolicy(state, rng)
 
-  // --- 初期配置: HP の高い順に場を埋める ---
+  // --- 初期配置 ---
   if (state.phase.kind === 'setup') {
     for (const id of [0, 1] as const) {
       if (state.setupDone[id]) continue
@@ -76,11 +76,17 @@ export const greedyPolicy: Policy = (state, rng) => {
       const places = legal.filter((a) => a.type === 'setupPlace' && a.player === id)
       const wantsMore = player.active === null || player.bench.length < BENCH_SIZE
       if (wantsMore && places.length > 0) {
-        const best = places.reduce((a, b) => {
-          const hpOf = (x: typeof a) =>
-            x.type === 'setupPlace' ? (requireCard(player.hand[x.handIndex] as string).hp ?? 0) : 0
-          return hpOf(b) > hpOf(a) ? b : a
-        })
+        // 先発は初撃の速さを優先する。HP だけで選ぶと最安ワザが重いカードが先発になり、
+        // 序盤に殴れないターンが生まれてしまう。ベンチは素直に HP の高い順。
+        const forActive = player.active === null
+        const scoreOf = (action: (typeof places)[number]): number => {
+          if (action.type !== 'setupPlace') return -Infinity
+          const card = requireCard(player.hand[action.handIndex] as string)
+          if (!forActive) return card.hp
+          const minCost = Math.min(...card.attacks.map((a) => a.cost.length))
+          return -minCost * 1000 + card.hp
+        }
+        const best = places.reduce((a, b) => (scoreOf(b) > scoreOf(a) ? b : a))
         return { rng, action: best }
       }
       const done = legal.find((a) => a.type === 'setupDone' && a.player === id)
