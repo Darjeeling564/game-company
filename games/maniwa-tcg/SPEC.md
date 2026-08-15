@@ -346,20 +346,20 @@ export type Effect =
 ```ts
 export const CARDS: readonly CardDef[] = [
   {
-    id: 'c001', name: 'モリネズミ', kind: 'creature',
+    id: 'g001', name: 'ハニヤス', kind: 'creature',
     type: 'grass', hp: 60, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'たいあたり', cost: ['grass'],
+      { name: 'つちくれ', cost: ['grass'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
     ],
   },
   {
-    id: 'c002', name: 'カガリグマ', kind: 'creature',
+    id: 'f005', name: 'カグツチ', kind: 'creature',
     type: 'fire', hp: 90, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'ひっかく', cost: ['fire', 'colorless'],
+      { name: 'ひのつめ', cost: ['fire', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
-      { name: 'ほのおのいぶき', cost: ['fire', 'fire', 'colorless'],
+      { name: 'ほむらのいぶき', cost: ['fire', 'fire', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 70 },
           { type: 'discardEnergy', target: 'self', value: 1 },   // 撃つたびに自分が細る
@@ -367,12 +367,12 @@ export const CARDS: readonly CardDef[] = [
     ],
   },
   {
-    id: 'c003', name: 'カガリグマEX', kind: 'creature',
+    id: 'f006', name: 'カグツチEX', kind: 'creature',
     type: 'fire', hp: 140, ex: true, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'バーンラッシュ', cost: ['fire', 'fire'],
+      { name: 'ほむらのつるぎ', cost: ['fire', 'fire'],
         effects: [{ type: 'damagePerHeads', target: 'opponentActive', count: 2, value: 40 }] },
-      { name: 'フレアバースト', cost: ['fire', 'fire', 'colorless'],
+      { name: 'あまのおはばり', cost: ['fire', 'fire', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 90 },
           { type: 'damage', target: 'opponentBenchAll', value: 10 },
@@ -385,7 +385,7 @@ export const CARDS: readonly CardDef[] = [
 
 この3枚で `damage` / `damagePerHeads` / `discardEnergy` / `selfDamage` / ベンチ範囲 / EX / 弱点 / にげるコストがすべて登場する。
 
-**「カガリグマ」と「カガリグマEX」は `name` が異なるため、それぞれ2枚ずつ計4枚をデッキに入れられる**（3.1 の同名制限）。
+**「カグツチ」と「カグツチEX」は `name` が異なるため、それぞれ2枚ずつ計4枚をデッキに入れられる**（3.1 の同名制限）。
 
 ### 8.1 v1 に必要なカード枚数の下限
 
@@ -395,11 +395,11 @@ export const CARDS: readonly CardDef[] = [
 そこで v1 では、**遊べる最小のカードプールとして16種**を用意する。これは「量産」ではなく、
 ルールを成立させるための下限である。本格的な量産（60種以上）は、core とテストが安定した後に行う（CLAUDE.md 7章5項）。
 
-| 区分 | 種類数 | 用途 |
-|---|---|---|
-| 無色 | 4 | 両デッキ共通のコア |
-| 炎 | 6 | 「ほのお」デッキ専用 |
-| 草 | 6 | 「くさ」デッキ専用 |
+| 区分 | モチーフ | 種類数 | 用途 |
+|---|---|---|---|
+| 無色 | 眷属（八咫烏・白兎など） | 4 | 両デッキ共通のコア |
+| 炎 | 火と鍛冶の神 | 6 | 「ほのお」デッキ専用 |
+| 草 | 大地と木の神 | 6 | 「くさ」デッキ専用 |
 
 プリセットデッキは2つ。いずれも `専用6種 × 2枚 + 共通4種 × 2枚 = 20枚`。
 
@@ -591,7 +591,7 @@ games/maniwa-tcg/
 | **Q3** | 初期配置でベンチに出せる数 | **最大3体まで同時に出せる** |
 | **Q4** | 「平均試合時間」の定義 | **推定プレイ時間を主指標**とし、実行時間も併記。目標は1試合3〜5分 |
 | **Q5** | v1 の対戦相手 | **CPU のみ** |
-| **Q6** | 題材の扱い | **ルールの骨格のみ原作に倣い、カード名・キャラクターは独自** |
+| **Q6** | 題材の扱い | **ルールの骨格のみ原作に倣い、カード名・キャラクターは日本神話・伝承をモチーフにする** |
 
 Q1 の帰結として、先攻はエネルギー1個ぶん先行する。先手勝率が55%を超えた場合、
 **最初の調整候補は「先攻1ターン目はエネルギーを供給しない」へのルール変更**とする。
@@ -634,7 +634,9 @@ Q1 の帰結として、先攻はエネルギー1個ぶん先行する。先手�
 - ゲームのルールやシステムそのものは著作権の保護対象ではないため、骨格を原作に倣うことに問題はない
 - 一方でポケモンの名称・キャラクターデザイン・イラストは権利物であり、静的ビルドに含めて配布・公開するとリスクになる
 - 独自名なら配布・公開・スクリーンショット共有を制約なく行える
-- `maniwa-tcg` という名前に沿って森・自然を基調にした世界観で統一すれば、カード量産時のネーミング指針にもなる（8章の3枚はこの方針で作成済み）
+- モチーフは**日本神話・伝承**で統一する。神名・伝承上の名はいずれも権利の対象ではなく、
+  炎＝火と鍛冶の神、草＝大地と木の神、無色＝眷属という対応が型ごとの性格づけとそのまま噛み合う。
+  カード量産時のネーミング指針としても機能する（8章の3枚はこの方針で作成済み）
 
 ## 15. v2 以降の候補
 

@@ -4,25 +4,28 @@
  *
  * v1 は「遊べる最小プール」の16種（無色4・炎6・草6）。本格的な量産は
  * core とテストが安定してから行う（SPEC 8.1）。
+ *
+ * モチーフは日本神話・伝承で統一する。炎は火と鍛冶の神、草は大地と木の神、
+ * 無色は両デッキ共通の眷属にあたる（SPEC 14章 Q6）。
  */
 import type { CardDef, CardId, CardIndex } from '../core/types.ts'
 
-// ------------------------------------------------ 無色（両デッキ共通のコア）
+// ------------------------------------------------ 無色: 眷属（両デッキ共通のコア）
 
 const COLORLESS: readonly CardDef[] = [
   {
-    id: 'n001', name: 'ノラガラス', kind: 'creature',
+    id: 'n001', name: 'ヤタガラス', kind: 'creature',
     type: 'colorless', hp: 60, ex: false, retreatCost: 1, weakness: 'lightning', stage: 0,
     attacks: [
-      { name: 'つつく', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'みちびき', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
     ],
   },
   {
-    id: 'n002', name: 'ハネネズミ', kind: 'creature',
+    id: 'n002', name: 'シロウサギ', kind: 'creature',
     type: 'colorless', hp: 50, ex: false, retreatCost: 1, weakness: 'fighting', stage: 0,
     attacks: [
-      { name: 'ひっかき', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 10 }] },
-      { name: 'とっしん', cost: ['colorless', 'colorless'],
+      { name: 'しろのつめ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 10 }] },
+      { name: 'かけぬけ', cost: ['colorless', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 40 },
           { type: 'selfDamage', value: 10 },
@@ -30,16 +33,16 @@ const COLORLESS: readonly CardDef[] = [
     ],
   },
   {
-    id: 'n003', name: 'イシコロベエ', kind: 'creature',
+    id: 'n003', name: 'イワナガヒメ', kind: 'creature',
     type: 'colorless', hp: 90, ex: false, retreatCost: 3, weakness: 'fighting', stage: 0,
     attacks: [
-      { name: 'ころがる', cost: ['colorless', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
-      { name: 'のしかかり', cost: ['colorless', 'colorless', 'colorless'],
+      { name: 'いわおとし', cost: ['colorless', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: 'とこしえのおもみ', cost: ['colorless', 'colorless', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 70 }] },
     ],
   },
   {
-    id: 'n004', name: 'カゼキリ', kind: 'creature',
+    id: 'n004', name: 'シナツヒコ', kind: 'creature',
     type: 'colorless', hp: 70, ex: false, retreatCost: 1, weakness: 'lightning', stage: 0,
     attacks: [
       { name: 'かまいたち', cost: ['colorless', 'colorless'],
@@ -48,29 +51,29 @@ const COLORLESS: readonly CardDef[] = [
   },
 ]
 
-// ------------------------------------------------ 炎
+// ------------------------------------------------ 炎: 火と鍛冶
 
 const FIRE: readonly CardDef[] = [
   {
-    id: 'f001', name: 'ホムラトカゲ', kind: 'creature',
+    id: 'f001', name: 'ホノアカリ', kind: 'creature',
     type: 'fire', hp: 60, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'ひのこ', cost: ['fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'ほのあかり', cost: ['fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
     ],
   },
   {
-    id: 'f002', name: 'スミビドリ', kind: 'creature',
+    id: 'f002', name: 'キンシ', kind: 'creature',
     type: 'fire', hp: 70, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'つばさでうつ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
-      { name: 'かえんばね', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
+      { name: 'こがねのつばさ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'きんしのせんこう', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
     ],
   },
   {
-    id: 'f003', name: 'ヒノコウモリ', kind: 'creature',
+    id: 'f003', name: 'ヨモツシコメ', kind: 'creature',
     type: 'fire', hp: 60, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'どくのキバ', cost: ['fire'],
+      { name: 'よもつのいぶき', cost: ['fire'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 10 },
           { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
@@ -78,18 +81,18 @@ const FIRE: readonly CardDef[] = [
     ],
   },
   {
-    id: 'f004', name: 'カエンウシ', kind: 'creature',
+    id: 'f004', name: 'アマツマラ', kind: 'creature',
     type: 'fire', hp: 100, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'ほのおのつの', cost: ['fire', 'fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+      { name: 'ふいごのほのお', cost: ['fire', 'fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
     ],
   },
   {
-    id: 'f005', name: 'カガリグマ', kind: 'creature',
+    id: 'f005', name: 'カグツチ', kind: 'creature',
     type: 'fire', hp: 90, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'ひっかく', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
-      { name: 'ほのおのいぶき', cost: ['fire', 'fire', 'colorless'],
+      { name: 'ひのつめ', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: 'ほむらのいぶき', cost: ['fire', 'fire', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 70 },
           { type: 'discardEnergy', target: 'self', value: 1 },
@@ -97,12 +100,12 @@ const FIRE: readonly CardDef[] = [
     ],
   },
   {
-    id: 'f006', name: 'カガリグマEX', kind: 'creature',
+    id: 'f006', name: 'カグツチEX', kind: 'creature',
     type: 'fire', hp: 140, ex: true, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'バーンラッシュ', cost: ['fire', 'fire'],
+      { name: 'ほむらのつるぎ', cost: ['fire', 'fire'],
         effects: [{ type: 'damagePerHeads', target: 'opponentActive', count: 2, value: 40 }] },
-      { name: 'フレアバースト', cost: ['fire', 'fire', 'colorless'],
+      { name: 'あまのおはばり', cost: ['fire', 'fire', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 90 },
           { type: 'damage', target: 'opponentBenchAll', value: 10 },
@@ -112,36 +115,36 @@ const FIRE: readonly CardDef[] = [
   },
 ]
 
-// ------------------------------------------------ 草
+// ------------------------------------------------ 草: 大地と木
 
 const GRASS: readonly CardDef[] = [
   {
-    id: 'g001', name: 'モリネズミ', kind: 'creature',
+    id: 'g001', name: 'ハニヤス', kind: 'creature',
     type: 'grass', hp: 60, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'たいあたり', cost: ['grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'つちくれ', cost: ['grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
     ],
   },
   {
-    id: 'g002', name: 'コケカブト', kind: 'creature',
+    id: 'g002', name: 'ククノチ', kind: 'creature',
     type: 'grass', hp: 80, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'からではさむ', cost: ['grass', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: 'こずえうち', cost: ['grass', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
     ],
   },
   {
-    id: 'g003', name: 'ツタヘビ', kind: 'creature',
+    id: 'g003', name: 'ノヅチ', kind: 'creature',
     type: 'grass', hp: 70, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'まきつく', cost: ['grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
-      { name: 'つたのムチ', cost: ['grass', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
+      { name: 'のづちのむち', cost: ['grass', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
     ],
   },
   {
-    id: 'g004', name: 'ハナグモ', kind: 'creature',
+    id: 'g004', name: 'ツチグモ', kind: 'creature',
     type: 'grass', hp: 60, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'しびれあみ', cost: ['grass'],
+      { name: 'しびれのいと', cost: ['grass'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 10 },
           { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
@@ -149,10 +152,10 @@ const GRASS: readonly CardDef[] = [
     ],
   },
   {
-    id: 'g005', name: 'ワタスギ', kind: 'creature',
+    id: 'g005', name: 'ワカムスヒ', kind: 'creature',
     type: 'grass', hp: 90, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'わたほうし', cost: ['grass', 'colorless'],
+      { name: 'みのりのめぐみ', cost: ['grass', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 30 },
           { type: 'heal', target: 'self', value: 20 },
@@ -160,10 +163,10 @@ const GRASS: readonly CardDef[] = [
     ],
   },
   {
-    id: 'g006', name: 'モリオウEX', kind: 'creature',
+    id: 'g006', name: 'オオヤマツミEX', kind: 'creature',
     type: 'grass', hp: 130, ex: true, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'もりのいかり', cost: ['grass', 'grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
+      { name: 'やまのいかり', cost: ['grass', 'grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
       { name: 'だいちのうねり', cost: ['grass', 'grass', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 80 },
