@@ -159,6 +159,9 @@ body {
 }
 
 .card {
+  /* 長押しでiOSの吹き出しや文字選択が出ないようにする */
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
   flex: 1 1 0;
   min-width: 0;
   min-height: var(--tap);
@@ -240,6 +243,9 @@ body {
 
 /* 手札は枚数ぶんだけ細くなるので、320px 幅でも中身が収まるよう余白と字を詰める */
 .hand > .card {
+  /* 長押しでiOSの吹き出しや文字選択が出ないようにする */
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
   flex: 1 1 0;
   font-size: 11px;
   padding: 6px 4px;
@@ -258,6 +264,11 @@ body {
   align-items: center;
   gap: 8px;
   font-size: 14px;
+}
+
+.hint {
+  font-size: 11px;
+  opacity: 0.55;
 }
 
 /* 何がいくつ起きたかを追えるように、複数行で残す */

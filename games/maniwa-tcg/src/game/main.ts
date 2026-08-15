@@ -132,10 +132,15 @@ function startBattle(deck: Deck): void {
   render()
 }
 
-function apply(action: Action): void {
-  overlay = null // 行動を選んだらモーダルは閉じる
+function commit(action: Action): void {
   state = reduce(state, action)
   render()
+}
+
+/** 人間の操作。自分で選んだときだけモーダルを閉じる */
+function apply(action: Action): void {
+  overlay = null
+  commit(action)
 }
 
 /** CPU の手番・CPU の初期配置・CPU の入れ替えを1手ずつ進める */
@@ -172,9 +177,12 @@ function render(): void {
 
   if (cpuShouldMove()) {
     cpuTimer = window.setTimeout(() => {
-      const chosen = greedyPolicy(state, cpuRng)
+      // 初期配置は両者が同時に動けるので、CPU の手だけを選ばせる
+      const chosen = greedyPolicy(state, cpuRng, CPU)
       cpuRng = chosen.rng
-      apply(chosen.action)
+      if (chosen.action.type !== 'start' && chosen.action.player !== CPU) return
+      // CPU の行動でプレイヤーが開いているカード詳細を閉じない
+      commit(chosen.action)
     }, CPU_DELAY_MS)
   }
 }

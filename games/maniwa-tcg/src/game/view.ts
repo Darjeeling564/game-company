@@ -148,6 +148,75 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
   return box
 }
 
+const LONG_PRESS_MS = 450
+
+/**
+ * タップと長押しを振り分ける。
+ * ハイライト中のカードはタップでそのまま行動し、長押しで内容を確認できるようにする。
+ * ホバーは使わない（CLAUDE.md 6章）。
+ */
+/**
+ * 長押しが成立したら、指を離したときのクリックを1回だけ捨てる。
+ *
+ * 長押しで詳細を開くと盤面が描き直され、モーダルが指の位置に重なる。そのまま
+ * 離すと、新しく生えたカードやモーダルのボタンが押されてしまう。時間で止めると
+ * 直後の正当なタップまで飲み込むため、「次の1クリックだけ」を対象にする。
+ */
+let suppressNextClick = false
+
+document.addEventListener(
+  'click',
+  (event) => {
+    if (!suppressNextClick) return
+    suppressNextClick = false
+    event.stopPropagation()
+    event.preventDefault()
+  },
+  true,
+)
+
+// 離してもクリックが発生しない場合があるため、次に押し始めた時点で必ず解除する。
+// 残したままだと、そのあとの正当なタップを1回食べてしまう。
+document.addEventListener('pointerdown', () => {
+  suppressNextClick = false
+}, true)
+
+function bindTap(node: HTMLElement, onTap: () => void, onLongPress: () => void): void {
+  let timer: number | null = null
+  let longPressed = false
+
+  const clear = (): void => {
+    if (timer !== null) {
+      clearTimeout(timer)
+      timer = null
+    }
+  }
+
+  node.addEventListener('pointerdown', () => {
+    longPressed = false
+    suppressNextClick = false
+    clear()
+    timer = window.setTimeout(() => {
+      timer = null
+      longPressed = true
+      suppressNextClick = true
+      onLongPress()
+    }, LONG_PRESS_MS)
+  })
+  for (const event of ['pointerup', 'pointerleave', 'pointercancel']) {
+    node.addEventListener(event, clear)
+  }
+  // 長押し中の選択メニューや文字選択を抑える
+  node.addEventListener('contextmenu', (e) => e.preventDefault())
+  node.addEventListener('click', () => {
+    if (longPressed) {
+      longPressed = false
+      return
+    }
+    onTap()
+  })
+}
+
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className?: string,
@@ -176,7 +245,8 @@ function creatureCard(
   creature: Creature,
   isActive: boolean,
   selectable: boolean,
-  onSelect: () => void,
+  onTap: () => void,
+  onDetail: () => void,
 ): HTMLElement {
   const card = requireCard(creature.cardId)
   const remaining = Math.max(0, card.hp - creature.damage)
@@ -197,7 +267,7 @@ function creatureCard(
   if (creature.status.includes('poisoned')) tags.push('どく')
   if (tags.length > 0) node.append(el('span', 'card__tags', tags.join(' ')))
 
-  node.addEventListener('click', onSelect)
+  bindTap(node, onTap, onDetail)
   return node
 }
 
@@ -229,10 +299,13 @@ function sideView(
       bench.append(emptySlot('ベンチ'))
       continue
     }
+    const canAttach = attachTargets.has(creature.instanceId)
+    const detail = (): void => handlers.onCreatureTap(id, creature.instanceId)
     bench.append(
-      creatureCard(creature, false, attachTargets.has(creature.instanceId), () =>
-        handlers.onCreatureTap(id, creature.instanceId),
-      ),
+      creatureCard(creature, false, canAttach, canAttach
+        ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId })
+        : detail,
+      detail),
     )
   }
 
@@ -240,10 +313,13 @@ function sideView(
   if (player.active === null) active.append(emptySlot('バトル場'))
   else {
     const creature = player.active
+    const canAttach = attachTargets.has(creature.instanceId)
+    const detail = (): void => handlers.onCreatureTap(id, creature.instanceId)
     active.append(
-      creatureCard(creature, true, attachTargets.has(creature.instanceId), () =>
-        handlers.onCreatureTap(id, creature.instanceId),
-      ),
+      creatureCard(creature, true, canAttach, canAttach
+        ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId })
+        : detail,
+      detail),
     )
   }
 
@@ -275,7 +351,8 @@ function handView(state: GameState, handlers: Handlers): HTMLElement {
     node.type = 'button'
     node.append(el('span', 'card__name', displayName(card.name, card.ex)))
     node.append(el('span', 'card__hp', `HP${card.hp}`))
-    node.addEventListener('click', () => handlers.onHandTap(index))
+    const detail = (): void => handlers.onHandTap(index)
+    bindTap(node, action === undefined ? detail : () => handlers.onAction(action), detail)
     hand.append(node)
   })
   return hand
@@ -347,6 +424,8 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   }
   board.append(controls)
   board.append(handView(state, handlers))
+
+  board.append(el('div', 'hint', 'カードを長押しすると、ワザや弱点を見られます'))
 
   const logBox = el('div', 'log')
   for (const line of recentLog(state, 4)) logBox.append(el('div', undefined, line))
