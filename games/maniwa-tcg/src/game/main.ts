@@ -8,7 +8,7 @@ import type { Rng } from '../core/rng.ts'
 import { createRng } from '../core/rng.ts'
 import type { Deck, GameState, PlayerId } from '../core/types.ts'
 import { requireCard } from '../data/cards.ts'
-import { DECKS, FIRE_DECK } from '../data/decks.ts'
+import { DECKS } from '../data/decks.ts'
 // 方策はシミュレータと共有する。CPU の打ち筋とバランス測定を一致させるため
 import { greedyPolicy } from '../../tools/ai.ts'
 import { CPU, HUMAN, el, renderBattle, renderChoices } from './view.ts'
@@ -100,7 +100,9 @@ function startBattle(deck: Deck): void {
   const seed = Date.now() >>> 0
   cpuRng = createRng(seed ^ 0x5bf03635)
   const firstPlayer: PlayerId = (seed % 2) as PlayerId
-  state = reduce(EMPTY_STATE, { type: 'start', seed, decks: [deck, FIRE_DECK], firstPlayer })
+  // タイプ相性が3すくみなので、CPU のデッキを固定すると特定の選択だけが常に有利になる
+  const cpuDeck = DECKS[seed % DECKS.length] as Deck
+  state = reduce(EMPTY_STATE, { type: 'start', seed, decks: [deck, cpuDeck], firstPlayer })
   render()
 }
 

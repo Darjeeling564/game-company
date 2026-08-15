@@ -11,7 +11,7 @@ import { createRng } from '../src/core/rng.ts'
 import type { Deck, EndReason, GameState, PlayerId } from '../src/core/types.ts'
 import { MAX_TURNS } from '../src/core/types.ts'
 import { CARDS } from '../src/data/cards.ts'
-import { FIRE_DECK, GRASS_DECK } from '../src/data/decks.ts'
+import { DECKS } from '../src/data/decks.ts'
 import type { Policy } from './ai.ts'
 import { POLICIES, greedyPolicy } from './ai.ts'
 
@@ -143,15 +143,38 @@ interface CardStat {
 
 const options = parseOptions(process.argv.slice(2))
 
-const mirrorFire = Math.floor(options.games * 0.4)
-const mirrorGrass = Math.floor(options.games * 0.4)
-const cross = options.games - mirrorFire - mirrorGrass
+/**
+ * ミラーマッチ（先手勝率の測定用）と、デッキの全組み合わせ（相性の測定用）を作る。
+ * デッキを増やしても、ここを触らずに対戦表が広がる。
+ */
+function buildGroups(total: number): readonly { label: string; decks: readonly [Deck, Deck]; count: number; mirror: boolean }[] {
+  const mirrors = DECKS.map((deck) => ({
+    label: `${deck.name} vs ${deck.name}`,
+    decks: [deck, deck] as readonly [Deck, Deck],
+    mirror: true,
+  }))
+  const crosses = DECKS.flatMap((a, i) =>
+    DECKS.slice(i + 1).map((b) => ({
+      label: `${a.name} vs ${b.name}`,
+      decks: [a, b] as readonly [Deck, Deck],
+      mirror: false,
+    })),
+  )
 
-const groups: readonly { label: string; decks: readonly [Deck, Deck]; count: number; mirror: boolean }[] = [
-  { label: 'ほのお vs ほのお', decks: [FIRE_DECK, FIRE_DECK], count: mirrorFire, mirror: true },
-  { label: 'くさ vs くさ', decks: [GRASS_DECK, GRASS_DECK], count: mirrorGrass, mirror: true },
-  { label: 'ほのお vs くさ', decks: [FIRE_DECK, GRASS_DECK], count: cross, mirror: false },
-]
+  // 先手勝率はミラーでしか測れないので、試合数の6割をミラーに割り当てる
+  const mirrorBudget = Math.floor(total * 0.6)
+  const perMirror = Math.floor(mirrorBudget / Math.max(1, mirrors.length))
+  const crossBudget = total - perMirror * mirrors.length
+  const perCross = Math.floor(crossBudget / Math.max(1, crosses.length))
+  const remainder = crossBudget - perCross * crosses.length
+
+  return [
+    ...mirrors.map((g) => ({ ...g, count: perMirror })),
+    ...crosses.map((g, i) => ({ ...g, count: perCross + (i === 0 ? remainder : 0) })),
+  ]
+}
+
+const groups = buildGroups(options.games)
 
 const stats = new Map<string, CardStat>(
   CARDS.map((c) => [c.id, { id: c.id, name: c.name, inDeck: 0, usedIn: 0, winsWhenUsed: 0 }]),

@@ -1,26 +1,23 @@
 /**
  * プリセットデッキ。
  *
- * デッキは20枚ちょうど・同名2枚まで（SPEC 3.1）。この制約から1デッキには
- * 最低10種が必要になるため、専用6種 + 共通4種をそれぞれ2枚ずつ入れて20枚にする。
+ * デッキは20枚ちょうど・同名2枚まで（SPEC 3.1）。
+ * 専用12種を1枚ずつ + 共通の無色4種を2枚ずつで20枚とし、
+ * プールのすべてのカードがいずれかのデッキで使われる形にしている。
  */
 import type { Deck } from '../core/types.ts'
-import { COLORLESS_IDS, FIRE_IDS, GRASS_IDS } from './cards.ts'
+import { COLORLESS_IDS, FIRE_IDS, GRASS_IDS, WATER_IDS } from './cards.ts'
 
 function twoOfEach(ids: readonly string[]): readonly string[] {
   return ids.flatMap((id) => [id, id])
 }
 
-export const FIRE_DECK: Deck = {
-  name: 'ほのお',
-  cards: [...twoOfEach(FIRE_IDS), ...twoOfEach(COLORLESS_IDS)],
-  energy: ['fire'],
+function buildDeck(name: string, energy: Deck['energy'], mainIds: readonly string[]): Deck {
+  return { name, cards: [...mainIds, ...twoOfEach(COLORLESS_IDS)], energy }
 }
 
-export const GRASS_DECK: Deck = {
-  name: 'くさ',
-  cards: [...twoOfEach(GRASS_IDS), ...twoOfEach(COLORLESS_IDS)],
-  energy: ['grass'],
-}
+export const FIRE_DECK: Deck = buildDeck('ほのお', ['fire'], FIRE_IDS)
+export const GRASS_DECK: Deck = buildDeck('くさ', ['grass'], GRASS_IDS)
+export const WATER_DECK: Deck = buildDeck('みず', ['water'], WATER_IDS)
 
-export const DECKS: readonly Deck[] = [FIRE_DECK, GRASS_DECK]
+export const DECKS: readonly Deck[] = [FIRE_DECK, GRASS_DECK, WATER_DECK]
