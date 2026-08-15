@@ -5,8 +5,10 @@
  * v1 は「遊べる最小プール」の16種（無色4・炎6・草6）。本格的な量産は
  * core とテストが安定してから行う（SPEC 8.1）。
  *
- * モチーフは日本神話・伝承で統一する。炎は火と鍛冶の神、草は大地と木の神、
- * 無色は両デッキ共通の眷属にあたる（SPEC 14章 Q6）。
+ * モチーフは世界の神話から8系統（日本・エジプト・北欧・インド・中東・クトゥルフ・
+ * ギリシア・中国）を取り、各系統2枚ずつ配分する。炎は火と鍛冶と破壊、草は大地と
+ * 豊穣と蛇、無色は眷属という対応で、タイプごとの性格づけと噛み合わせている
+ * （SPEC 14章 Q6）。各カードの由来はコメントに残す。
  */
 import type { CardDef, CardId, CardIndex } from '../core/types.ts'
 
@@ -14,18 +16,18 @@ import type { CardDef, CardId, CardIndex } from '../core/types.ts'
 
 const COLORLESS: readonly CardDef[] = [
   {
-    id: 'n001', name: 'ヤタガラス', kind: 'creature',
+    id: 'n001', name: 'ガルダ', kind: 'creature',  // インド（迦楼羅）
     type: 'colorless', hp: 60, ex: false, retreatCost: 1, weakness: 'lightning', stage: 0,
     attacks: [
-      { name: 'みちびき', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'へびとりのつめ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
     ],
   },
   {
-    id: 'n002', name: 'シロウサギ', kind: 'creature',
+    id: 'n002', name: 'ペガソス', kind: 'creature',  // ギリシア（天馬）
     type: 'colorless', hp: 50, ex: false, retreatCost: 1, weakness: 'fighting', stage: 0,
     attacks: [
-      { name: 'しろのつめ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 10 }] },
-      { name: 'かけぬけ', cost: ['colorless', 'colorless'],
+      { name: 'ひづめうち', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 10 }] },
+      { name: 'てんがけ', cost: ['colorless', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 40 },
           { type: 'selfDamage', value: 10 },
@@ -33,19 +35,19 @@ const COLORLESS: readonly CardDef[] = [
     ],
   },
   {
-    id: 'n003', name: 'イワナガヒメ', kind: 'creature',
+    id: 'n003', name: 'タオテツ', kind: 'creature',  // 中国（饕餮）
     type: 'colorless', hp: 90, ex: false, retreatCost: 3, weakness: 'fighting', stage: 0,
     attacks: [
-      { name: 'いわおとし', cost: ['colorless', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
-      { name: 'とこしえのおもみ', cost: ['colorless', 'colorless', 'colorless'],
+      { name: 'くらいつく', cost: ['colorless', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: 'むさぼりぐい', cost: ['colorless', 'colorless', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 70 }] },
     ],
   },
   {
-    id: 'n004', name: 'シナツヒコ', kind: 'creature',
+    id: 'n004', name: 'パズズ', kind: 'creature',  // 中東（風の魔神）
     type: 'colorless', hp: 70, ex: false, retreatCost: 1, weakness: 'lightning', stage: 0,
     attacks: [
-      { name: 'かまいたち', cost: ['colorless', 'colorless'],
+      { name: 'あくふうのやいば', cost: ['colorless', 'colorless'],
         effects: [{ type: 'damagePerHeads', target: 'opponentActive', count: 2, value: 30 }] },
     ],
   },
@@ -55,25 +57,25 @@ const COLORLESS: readonly CardDef[] = [
 
 const FIRE: readonly CardDef[] = [
   {
-    id: 'f001', name: 'ホノアカリ', kind: 'creature',
+    id: 'f001', name: 'シュクユウ', kind: 'creature',  // 中国（祝融・火の神）
     type: 'fire', hp: 60, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'ほのあかり', cost: ['fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'なんぽうのほのお', cost: ['fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
     ],
   },
   {
-    id: 'f002', name: 'キンシ', kind: 'creature',
+    id: 'f002', name: 'ラー', kind: 'creature',  // エジプト（太陽神）
     type: 'fire', hp: 70, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'こがねのつばさ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
-      { name: 'きんしのせんこう', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
+      { name: 'たいようのつばさ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'にちりんのこうき', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
     ],
   },
   {
-    id: 'f003', name: 'ヨモツシコメ', kind: 'creature',
+    id: 'f003', name: 'ハスター', kind: 'creature',  // クトゥルフ（黄衣の王）
     type: 'fire', hp: 60, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'よもつのいぶき', cost: ['fire'],
+      { name: 'きいろのいぶき', cost: ['fire'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 10 },
           { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
@@ -81,14 +83,14 @@ const FIRE: readonly CardDef[] = [
     ],
   },
   {
-    id: 'f004', name: 'アマツマラ', kind: 'creature',
+    id: 'f004', name: 'スルト', kind: 'creature',  // 北欧（炎の巨人）
     type: 'fire', hp: 100, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
-      { name: 'ふいごのほのお', cost: ['fire', 'fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+      { name: 'レーヴァテイン', cost: ['fire', 'fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
     ],
   },
   {
-    id: 'f005', name: 'カグツチ', kind: 'creature',
+    id: 'f005', name: 'カグツチ', kind: 'creature',  // 日本（迦具土）
     type: 'fire', hp: 90, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'ひのつめ', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
@@ -100,7 +102,7 @@ const FIRE: readonly CardDef[] = [
     ],
   },
   {
-    id: 'f006', name: 'カグツチEX', kind: 'creature',
+    id: 'f006', name: 'カグツチEX', kind: 'creature',  // 日本（迦具土）
     type: 'fire', hp: 140, ex: true, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'ほむらのつるぎ', cost: ['fire', 'fire'],
@@ -119,32 +121,32 @@ const FIRE: readonly CardDef[] = [
 
 const GRASS: readonly CardDef[] = [
   {
-    id: 'g001', name: 'ハニヤス', kind: 'creature',
+    id: 'g001', name: 'デメテル', kind: 'creature',  // ギリシア（豊穣の女神）
     type: 'grass', hp: 60, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'つちくれ', cost: ['grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'みのりのつち', cost: ['grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
     ],
   },
   {
-    id: 'g002', name: 'ククノチ', kind: 'creature',
+    id: 'g002', name: 'ドゥムジ', kind: 'creature',  // 中東（牧羊と植物の神）
     type: 'grass', hp: 80, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'こずえうち', cost: ['grass', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: 'わかばのむち', cost: ['grass', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
     ],
   },
   {
-    id: 'g003', name: 'ノヅチ', kind: 'creature',
+    id: 'g003', name: 'ヴァースキ', kind: 'creature',  // インド（蛇王）
     type: 'grass', hp: 70, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'まきつく', cost: ['grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
-      { name: 'のづちのむち', cost: ['grass', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
+      { name: 'じゃおうのむち', cost: ['grass', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
     ],
   },
   {
-    id: 'g004', name: 'ツチグモ', kind: 'creature',
+    id: 'g004', name: 'シュブニグラス', kind: 'creature',  // クトゥルフ（黒山羊）
     type: 'grass', hp: 60, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'しびれのいと', cost: ['grass'],
+      { name: 'せんびきのこやぎ', cost: ['grass'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 10 },
           { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
@@ -152,10 +154,10 @@ const GRASS: readonly CardDef[] = [
     ],
   },
   {
-    id: 'g005', name: 'ワカムスヒ', kind: 'creature',
+    id: 'g005', name: 'オシリス', kind: 'creature',  // エジプト（再生の神）
     type: 'grass', hp: 90, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'みのりのめぐみ', cost: ['grass', 'colorless'],
+      { name: 'よみがえりのめぐみ', cost: ['grass', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 30 },
           { type: 'heal', target: 'self', value: 20 },
@@ -163,10 +165,10 @@ const GRASS: readonly CardDef[] = [
     ],
   },
   {
-    id: 'g006', name: 'オオヤマツミEX', kind: 'creature',
+    id: 'g006', name: 'ユグドラシルEX', kind: 'creature',  // 北欧（世界樹）
     type: 'grass', hp: 130, ex: true, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
-      { name: 'やまのいかり', cost: ['grass', 'grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
+      { name: 'せかいじゅのいかり', cost: ['grass', 'grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
       { name: 'だいちのうねり', cost: ['grass', 'grass', 'colorless'],
         effects: [
           { type: 'damage', target: 'opponentActive', value: 80 },
