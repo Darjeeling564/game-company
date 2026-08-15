@@ -4,7 +4,16 @@
  */
 import type { Action } from '../core/actions.ts'
 import { legalActions } from '../core/reduce.ts'
-import type { Creature, GameState, PlayerId, PlayerState } from '../core/types.ts'
+import type {
+  AttackDef,
+  CardDef,
+  Creature,
+  Effect,
+  EnergyType,
+  GameState,
+  PlayerId,
+  PlayerState,
+} from '../core/types.ts'
 import { BENCH_SIZE } from '../core/types.ts'
 import { requireCard } from '../data/cards.ts'
 
@@ -18,6 +27,41 @@ const ENERGY_LABEL: Readonly<Record<string, string>> = {
 
 export function energyLabel(type: string | null): string {
   return type === null ? '—' : (ENERGY_LABEL[type] ?? type)
+}
+
+/** コストを「炎炎無」の形にする */
+export function formatCost(cost: readonly EnergyType[]): string {
+  return cost.length === 0 ? 'なし' : cost.map((e) => energyLabel(e)).join('')
+}
+
+/** 効果を日本語1行にする。ワザの威力を読めるようにするのが目的 */
+export function describeEffect(effect: Effect): string {
+  switch (effect.type) {
+    case 'damage':
+      if (effect.target === 'opponentBenchAll') return `相手ベンチ全体に${effect.value}`
+      if (effect.target === 'opponentBenchRandom') return `相手ベンチの1体に${effect.value}`
+      return `${effect.value}ダメージ`
+    case 'damagePerHeads':
+      return `コイン${effect.count}回・表1つにつき${effect.value}`
+    case 'coinFlip':
+      return `コイン${effect.count}回・表${effect.min}つ以上で「${effect.then.map(describeEffect).join('・')}」`
+    case 'heal':
+      return `自分を${effect.value}かいふく`
+    case 'selfDamage':
+      return `自分に${effect.value}のはんどう`
+    case 'discardEnergy':
+      return effect.target === 'self'
+        ? `自分のエネルギーを${effect.value}つトラッシュ`
+        : `相手のエネルギーを${effect.value}つトラッシュ`
+    case 'applyStatus':
+      return effect.status === 'poisoned' ? '相手をどくにする' : String(effect.status)
+    case 'draw':
+      return `${effect.value}枚ひく`
+  }
+}
+
+export function describeAttack(attack: AttackDef): string {
+  return attack.effects.map(describeEffect).join(' / ')
 }
 
 /** EX はカード名に含める運用なので、名前に無いときだけ印を足す */
@@ -36,6 +80,74 @@ export function logLabel(kind: string): string | null {
   return LOG_LABEL[kind] ?? null
 }
 
+/** ログ1件を「誰が / 何を / いくつ」の形にする。数が出ないと何が起きたか追えない */
+function formatLogEntry(kind: string, detail: string): string | null {
+  const amount = detail.match(/\+(\d+)/)?.[1]
+  switch (kind) {
+    case 'attack':
+      return `こうげき「${detail}」`
+    case 'damage':
+      return amount === undefined ? null : `${amount}ダメージをうけた`
+    case 'selfDamage':
+      return amount === undefined ? null : `はんどうで${amount}うけた`
+    case 'poison':
+      return amount === undefined ? null : `どくで${amount}うけた`
+    case 'ko':
+      return `きぜつ（あいてに+${detail.match(/\+(\d+)$/)?.[1] ?? '?'}ポイント）`
+    case 'coin':
+      return `コイン ${detail}`
+    case 'status':
+      return detail === 'poisoned' ? 'どくになった' : detail
+    case 'promote':
+      return 'バトル場にだした'
+    case 'attachEnergy':
+      return `エネルギーをつけた（${energyLabel(detail.split(' ')[0] ?? null)}）`
+    case 'retreat':
+      return 'にげた'
+    default:
+      return null
+  }
+}
+
+export function recentLog(state: GameState, count: number): readonly string[] {
+  const lines: string[] = []
+  for (const entry of state.log) {
+    const text = formatLogEntry(entry.kind, entry.detail)
+    if (text === null) continue
+    lines.push(`${entry.player === HUMAN ? 'じぶん' : 'あいて'}: ${text}`)
+  }
+  return lines.slice(-count)
+}
+
+/** カード1枚の詳細。ワザのコストと効果まで見せる */
+export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLElement {
+  const box = el('div', 'detail')
+  box.append(el('div', 'detail__name', displayName(card.name, card.ex)))
+
+  const remaining = creature === null ? card.hp : Math.max(0, card.hp - creature.damage)
+  const facts = [
+    `タイプ ${energyLabel(card.type)}`,
+    `HP ${remaining}/${card.hp}`,
+    `弱点 ${card.weakness === null ? 'なし' : energyLabel(card.weakness)}（+20）`,
+    `にげる エネ${card.retreatCost}`,
+  ]
+  if (creature !== null && creature.attached.length > 0) {
+    facts.push(`ついているエネルギー ${creature.attached.map((e) => energyLabel(e)).join('')}`)
+  }
+  if (creature !== null && creature.status.includes('poisoned')) facts.push('どく')
+  const factRow = el('div', 'detail__facts')
+  for (const fact of facts) factRow.append(el('span', undefined, fact))
+  box.append(factRow)
+
+  for (const attack of card.attacks) {
+    const row = el('div', 'detail__attack')
+    row.append(el('span', 'detail__attackName', `${attack.name}  [${formatCost(attack.cost)}]`))
+    row.append(el('span', 'detail__attackText', describeAttack(attack)))
+    box.append(row)
+  }
+  return box
+}
+
 export function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
   className?: string,
@@ -47,18 +159,24 @@ export function el<K extends keyof HTMLElementTagNameMap>(
   return node
 }
 
-/** 選択できる Action を個体に結びつけて渡すためのハンドラ */
+/**
+ * 入力のハンドラ。
+ * カードのタップは「詳細を開く」に統一し、そこから行動を選ばせる。
+ * こうしないと、相手のカードや手札の性能を確認する手段が無くなる。
+ */
 export interface Handlers {
   readonly onAction: (action: Action) => void
   readonly onAttackMenu: () => void
   readonly onRetreatMenu: () => void
+  readonly onCreatureTap: (owner: PlayerId, instanceId: number) => void
+  readonly onHandTap: (handIndex: number) => void
 }
 
 function creatureCard(
   creature: Creature,
   isActive: boolean,
   selectable: boolean,
-  onSelect?: () => void,
+  onSelect: () => void,
 ): HTMLElement {
   const card = requireCard(creature.cardId)
   const remaining = Math.max(0, card.hp - creature.damage)
@@ -79,8 +197,7 @@ function creatureCard(
   if (creature.status.includes('poisoned')) tags.push('どく')
   if (tags.length > 0) node.append(el('span', 'card__tags', tags.join(' ')))
 
-  if (onSelect !== undefined) node.addEventListener('click', onSelect)
-  else node.disabled = true
+  node.addEventListener('click', onSelect)
   return node
 }
 
@@ -112,21 +229,21 @@ function sideView(
       bench.append(emptySlot('ベンチ'))
       continue
     }
-    const selectable = attachTargets.has(creature.instanceId)
     bench.append(
-      creatureCard(creature, false, selectable,
-        selectable ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId }) : undefined),
+      creatureCard(creature, false, attachTargets.has(creature.instanceId), () =>
+        handlers.onCreatureTap(id, creature.instanceId),
+      ),
     )
   }
 
   const active = el('div', 'slots')
   if (player.active === null) active.append(emptySlot('バトル場'))
   else {
-    const selectable = attachTargets.has(player.active.instanceId)
     const creature = player.active
     active.append(
-      creatureCard(creature, true, selectable,
-        selectable ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId }) : undefined),
+      creatureCard(creature, true, attachTargets.has(creature.instanceId), () =>
+        handlers.onCreatureTap(id, creature.instanceId),
+      ),
     )
   }
 
@@ -158,8 +275,7 @@ function handView(state: GameState, handlers: Handlers): HTMLElement {
     node.type = 'button'
     node.append(el('span', 'card__name', displayName(card.name, card.ex)))
     node.append(el('span', 'card__hp', `HP${card.hp}`))
-    if (action === undefined) node.disabled = true
-    else node.addEventListener('click', () => handlers.onAction(action))
+    node.addEventListener('click', () => handlers.onHandTap(index))
     hand.append(node)
   })
   return hand
@@ -197,6 +313,7 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   energy.append(el('span', undefined, `エネルギー: ${energyLabel(zone.current)}（次: ${energyLabel(zone.next)}）`))
   board.append(energy)
 
+  const player = state.players[HUMAN]
   const controls = el('div', 'row')
   const canAttack = mine.some((a) => a.type === 'attack')
   const canRetreat = mine.some((a) => a.type === 'retreat')
@@ -209,7 +326,8 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   attackBtn.addEventListener('click', handlers.onAttackMenu)
   controls.append(attackBtn)
 
-  const retreatBtn = el('button', 'btn btn--ghost', 'にげる')
+  const retreatCost = player.active === null ? 0 : requireCard(player.active.cardId).retreatCost
+  const retreatBtn = el('button', 'btn btn--ghost', `にげる（エネ${retreatCost}）`)
   retreatBtn.type = 'button'
   retreatBtn.disabled = !canRetreat
   retreatBtn.addEventListener('click', handlers.onRetreatMenu)
@@ -230,15 +348,9 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   board.append(controls)
   board.append(handView(state, handlers))
 
-  const recent = state.log
-    .slice(-8)
-    .map((e) => {
-      const label = logLabel(e.kind)
-      return label === null ? null : `${e.player === HUMAN ? 'じぶん' : 'あいて'}: ${label}`
-    })
-    .filter((line): line is string => line !== null)
-    .slice(-3)
-  board.append(el('div', 'log', recent.join(' / ')))
+  const logBox = el('div', 'log')
+  for (const line of recentLog(state, 4)) logBox.append(el('div', undefined, line))
+  board.append(logBox)
 
   root.append(board)
 }
@@ -247,16 +359,20 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
 export function renderChoices(
   root: HTMLElement,
   title: string,
-  choices: readonly { readonly label: string; readonly action: Action }[],
+  choices: readonly { readonly label: string; readonly sub?: string; readonly action: Action }[],
   onPick: (action: Action) => void,
   onCancel: (() => void) | null,
+  detail: HTMLElement | null = null,
 ): void {
   const modal = el('div', 'modal')
   const panel = el('div', 'modal__panel')
   panel.append(el('div', 'title', title))
+  if (detail !== null) panel.append(detail)
   for (const choice of choices) {
-    const btn = el('button', 'btn', choice.label)
+    const btn = el('button', choice.sub === undefined ? 'btn' : 'btn btn--stack')
     btn.type = 'button'
+    btn.append(el('span', undefined, choice.label))
+    if (choice.sub !== undefined) btn.append(el('span', 'btn__sub', choice.sub))
     btn.addEventListener('click', () => onPick(choice.action))
     panel.append(btn)
   }
