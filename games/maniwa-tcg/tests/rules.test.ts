@@ -64,7 +64,7 @@ describe('canPayCost', () => {
 
 describe('弱点', () => {
   it('炎の攻撃は草（弱点:炎）に +20 される', () => {
-    // f001 ホムラトカゲ「なんぽうのほのお」20ダメージ → g001 デメテル（弱点 fire）
+    // f001 シュクユウ「なんぽうのほのお」20ダメージ → g001 デメテル（弱点 fire）
     const state = battleState(
       player(creature(1, 'f001', ['fire'])),
       player(creature(2, 'g001')),
@@ -75,7 +75,7 @@ describe('弱点', () => {
   })
 
   it('弱点が一致しなければ素通し', () => {
-    // 炎 → 炎（弱点 water）は加算されない
+    // 炎 → 炎（弱点 grass）は加算されない
     const state = battleState(
       player(creature(1, 'f001', ['fire'])),
       player(creature(2, 'f001')),
@@ -85,7 +85,7 @@ describe('弱点', () => {
   })
 
   it('ベンチへのダメージには弱点を適用しない', () => {
-    // f006 カガリグマEX「あまのおはばり」: バトル場90 + ベンチ全体10
+    // f006 カグツチEX「あまのおはばり」: バトル場90 + ベンチ全体10
     const state = battleState(
       player(creature(1, 'f006', ['fire', 'fire', 'fire'])),
       player(creature(2, 'g002'), [creature(3, 'g001')]),
@@ -98,8 +98,8 @@ describe('弱点', () => {
 describe('きぜつとポイント', () => {
   it('通常のクリーチャーは1ポイント', () => {
     const state = battleState(
-      player(creature(1, 'f004', ['fire', 'fire'])), // ほのおのつの 50
-      player(creature(2, 'g001', [], 40), [creature(3, 'g001')]), // 残り20
+      player(creature(1, 'f004', ['fire', 'fire'])), // レーヴァテイン 50 + 弱点20
+      player(creature(2, 'g001', [], 40), [creature(3, 'g001')]), // hp80、残り40
     )
     const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
     expect(after.players[0].points).toBe(1)
@@ -108,7 +108,7 @@ describe('きぜつとポイント', () => {
   it('EX級は2ポイント', () => {
     const state = battleState(
       player(creature(1, 'f004', ['fire', 'fire'])),
-      player(creature(2, 'g006', [], 100), [creature(3, 'g001')]), // モリオウEX hp130、残り30
+      player(creature(2, 'g006', [], 100), [creature(3, 'g001')]), // ユグドラシルEX hp170、残り70
     )
     const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
     expect(after.players[0].points).toBe(2)
@@ -148,13 +148,13 @@ describe('きぜつとポイント', () => {
   })
 
   it('同時に3ポイントへ達した場合は手番プレイヤーの勝ち（Q2）', () => {
-    // n002 ハネネズミ「てんがけ」: 相手40 + 自分10。両者を同時にきぜつさせる
+    // n002 ペガソス「てんがけ」: 相手40 + 自分10。両者を同時にきぜつさせる
     const attacker: PlayerState = {
-      ...player(creature(1, 'n002', ['fire', 'fire'], 40), [creature(4, 'g001')]), // hp50、残り10
+      ...player(creature(1, 'n002', ['fire', 'fire'], 50), [creature(4, 'g001')]), // hp60、残り10
       points: 2,
     }
     const defender: PlayerState = {
-      ...player(creature(2, 'g001', [], 40), [creature(3, 'g001')]), // hp60、残り20
+      ...player(creature(2, 'g001', [], 40), [creature(3, 'g001')]), // hp80、残り40
       points: 2,
     }
     const after = reduce(battleState(attacker, defender), { type: 'attack', player: 0, attackIndex: 1 })
@@ -167,7 +167,7 @@ describe('きぜつとポイント', () => {
 
 describe('どく', () => {
   it('ターン終了時に10ダメージを受ける', () => {
-    // f003 ヒノコウモリ「きいろのいぶき」: 10ダメージ + どく
+    // f003 ハスター「きいろのいぶき」: 10ダメージ + どく
     const state = battleState(
       player(creature(1, 'f003', ['fire'])),
       player(creature(2, 'f001')), // 炎なので弱点は乗らない
