@@ -108,6 +108,25 @@ body {
 
 /* ---------------- 対戦画面 ---------------- */
 
+/*
+ * grid / flex の子は min-width が auto なので、中身の最小幅より縮まない。
+ * body の overflow-x: hidden と組み合わさると、はみ出しがスクロールバーではなく
+ * 「見切れ」として現れ、気付けなくなる。明示的に 0 を指定して縮めるようにする。
+ */
+.board,
+.board > *,
+.side,
+.side > *,
+.side__head,
+.slots,
+.slots > *,
+.hand,
+.hand > *,
+.row,
+.row > * {
+  min-width: 0;
+}
+
 .board {
   display: grid;
   gap: 10px;
@@ -182,8 +201,13 @@ body {
   text-overflow: ellipsis;
 }
 
+/* 数値も名前と同じく、収まらないときは親を広げずに切り詰める */
 .card__hp {
+  display: block;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card__bar {
@@ -201,7 +225,11 @@ body {
 }
 
 .card__tags {
+  display: block;
   color: var(--danger);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 手札は横スクロールさせず、枚数に応じて縮める */
@@ -210,9 +238,19 @@ body {
   gap: 4px;
 }
 
+/* 手札は枚数ぶんだけ細くなるので、320px 幅でも中身が収まるよう余白と字を詰める */
 .hand > .card {
   flex: 1 1 0;
   font-size: 11px;
+  padding: 6px 4px;
+}
+
+.hand .card__name {
+  font-size: 11px;
+}
+
+.hand .card__hp {
+  font-size: 10px;
 }
 
 .energy {
