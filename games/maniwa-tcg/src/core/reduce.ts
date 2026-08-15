@@ -9,24 +9,15 @@
 import type { Action } from './actions.ts'
 import { describeAction } from './actions.ts'
 import { createRng, pick, shuffle } from './rng.ts'
-import type {
-  CardId,
-  Creature,
-  Deck,
-  EnergyType,
-  GameState,
-  LogEntry,
-  PlayerId,
-  PlayerState,
-} from './types.ts'
+import { allCreatures, log, playerAt, updateCreature, withPlayer } from './state.ts'
+import { attackError, beginTurn, canPayCost, finishTurn, performAttack, afterPromote } from './rules.ts'
+import type { CardId, Creature, Deck, EnergyType, GameState, PlayerId, PlayerState } from './types.ts'
 import {
   BENCH_SIZE,
   DECK_SIZE,
   HAND_SIZE_AT_START,
   MAX_MULLIGAN,
   MAX_SAME_NAME,
-  MAX_TURNS,
-  opponentOf,
 } from './types.ts'
 import { findCard, requireCard } from '../data/cards.ts'
 
@@ -60,29 +51,9 @@ export const EMPTY_STATE: GameState = {
 
 // ---------------------------------------------------------------- 小道具
 
-function log(state: GameState, player: PlayerId, kind: string, detail: string): GameState {
-  const entry: LogEntry = { turn: state.turn, player, kind, detail }
-  return { ...state, log: [...state.log, entry] }
-}
-
 function reject(state: GameState, action: Action, reason: string): GameState {
   const player = action.type === 'start' ? state.current : action.player
   return log(state, player, 'rejected', `${describeAction(action)}: ${reason}`)
-}
-
-export function playerAt(state: GameState, id: PlayerId): PlayerState {
-  return state.players[id]
-}
-
-export function withPlayer(state: GameState, id: PlayerId, player: PlayerState): GameState {
-  const players: readonly [PlayerState, PlayerState] =
-    id === 0 ? [player, state.players[1]] : [state.players[0], player]
-  return { ...state, players }
-}
-
-/** バトル場・ベンチを通した全個体 */
-export function allCreatures(player: PlayerState): readonly Creature[] {
-  return player.active === null ? player.bench : [player.active, ...player.bench]
 }
 
 // ---------------------------------------------------------------- デッキ検証
@@ -139,7 +110,7 @@ function drawOpeningHand(
   }
 }
 
-function rollEnergy(
+function pickEnergy(
   rng: GameState['rng'],
   pool: readonly EnergyType[],
 ): { readonly rng: GameState['rng']; readonly energy: EnergyType | null } {
@@ -157,7 +128,7 @@ function startGame(state: GameState, action: Extract<Action, { type: 'start' }>)
   for (const deck of action.decks) {
     const opening = drawOpeningHand(rng, deck.cards)
     rng = opening.rng
-    const rolled = rollEnergy(rng, deck.energy)
+    const rolled = pickEnergy(rng, deck.energy)
     rng = rolled.rng
     players.push({
       ...EMPTY_PLAYER,
@@ -177,56 +148,6 @@ function startGame(state: GameState, action: Extract<Action, { type: 'start' }>)
     players: [players[0] as PlayerState, players[1] as PlayerState],
     log: [{ turn: 0, player: action.firstPlayer, kind: 'start', detail: describeAction(action) }],
   }
-}
-
-// ---------------------------------------------------------------- ターン境界
-
-function drawOne(player: PlayerState): PlayerState {
-  const top = player.deck[0]
-  if (top === undefined) return player // 山札切れでも敗北しない（SPEC 3.3）
-  return { ...player, deck: player.deck.slice(1), hand: [...player.hand, top] }
-}
-
-/** 手番開始時の自動処理: エネルギー供給 → ドロー → フラグのリセット */
-function beginTurn(state: GameState): GameState {
-  if (state.turn > MAX_TURNS) return finishByTurnLimit(state)
-
-  const id = state.current
-  const player = playerAt(state, id)
-
-  const rolled = rollEnergy(state.rng, player.energy.pool)
-  const supplied: PlayerState = {
-    ...player,
-    energy: { ...player.energy, current: player.energy.next, next: rolled.energy },
-    attachedThisTurn: false,
-    retreatedThisTurn: false,
-  }
-
-  const next = withPlayer({ ...state, rng: rolled.rng }, id, drawOne(supplied))
-  return log(next, id, 'beginTurn', `turn=${next.turn}`)
-}
-
-export function finishByTurnLimit(state: GameState): GameState {
-  const [a, b] = [playerAt(state, 0).points, playerAt(state, 1).points]
-  const winner: PlayerId | null = a === b ? null : a > b ? 0 : 1
-  return log(
-    { ...state, phase: { kind: 'ended' }, winner, endReason: 'turnLimit' },
-    state.current,
-    'end',
-    `turnLimit points=${a}:${b}`,
-  )
-}
-
-/** 手番を相手に渡す。きぜつ処理は stage4 の rules 側で先に済ませておく */
-export function passTurn(state: GameState): GameState {
-  const id = state.current
-  const ended: PlayerState = {
-    ...playerAt(state, id),
-    energy: { ...playerAt(state, id).energy, current: null }, // 未使用エネルギーは持ち越さない
-  }
-  const cleared = withPlayer(state, id, ended)
-  const next: GameState = { ...cleared, current: opponentOf(id), turn: cleared.turn + 1 }
-  return beginTurn(next)
 }
 
 // ---------------------------------------------------------------- 配置系
@@ -328,7 +249,7 @@ function reducePromote(state: GameState, action: PlayerAction): GameState {
   const next = log(promoted, action.player, 'promote', `#${chosen.instanceId}`)
 
   if (queue.length > 0) return { ...next, phase: { kind: 'promote', queue } }
-  return passTurn({ ...next, phase: { kind: 'main' } })
+  return afterPromote({ ...next, phase: { kind: 'main' } })
 }
 
 function reduceMain(state: GameState, action: PlayerAction): GameState {
@@ -351,12 +272,12 @@ function reduceMain(state: GameState, action: PlayerAction): GameState {
       const target = allCreatures(player).find((c) => c.instanceId === action.target)
       if (target === undefined) return reject(state, action, '対象がいない')
 
-      const attach = (c: Creature): Creature =>
-        c.instanceId === action.target ? { ...c, attached: [...c.attached, energy] } : c
+      const attached = updateCreature(player, action.target, (c) => ({
+        ...c,
+        attached: [...c.attached, energy],
+      }))
       const updated: PlayerState = {
-        ...player,
-        active: player.active === null ? null : attach(player.active),
-        bench: player.bench.map(attach),
+        ...attached,
         energy: { ...player.energy, current: null },
         attachedThisTurn: true,
       }
@@ -389,10 +310,13 @@ function reduceMain(state: GameState, action: PlayerAction): GameState {
     }
 
     case 'endTurn':
-      return passTurn(log(state, id, 'endTurn', ''))
+      return finishTurn(log(state, id, 'endTurn', ''), id)
 
-    case 'attack':
-      return reject(state, action, '攻撃は未実装')
+    case 'attack': {
+      const error = attackError(state, id, action.attackIndex)
+      if (error !== null) return reject(state, action, error)
+      return performAttack(state, id, action.attackIndex)
+    }
 
     default:
       return reject(state, action, 'この局面では使えない')
@@ -505,6 +429,13 @@ export function legalActions(state: GameState): readonly Action[] {
         if (active.attached.length >= cost) {
           player.bench.forEach((_, benchIndex) => out.push({ type: 'retreat', player: id, benchIndex }))
         }
+      }
+
+      // 先攻1ターン目は攻撃できない（SPEC 3.3）
+      if (active !== null && !(state.turn === 1 && id === state.firstPlayer)) {
+        requireCard(active.cardId).attacks.forEach((attack, attackIndex) => {
+          if (canPayCost(active.attached, attack.cost)) out.push({ type: 'attack', player: id, attackIndex })
+        })
       }
 
       out.push({ type: 'endTurn', player: id })
