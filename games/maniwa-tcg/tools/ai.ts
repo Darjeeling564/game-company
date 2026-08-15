@@ -24,7 +24,7 @@ export interface Choice {
  * 初期配置は両プレイヤーが同時に動けるため、指定が無いと相手の分まで
  * 打ってしまう。CPU 対戦では CPU を指定し、シミュレーションでは省略する。
  */
-export type Policy = (state: GameState, rng: Rng, only?: PlayerId) => Choice
+export type Policy = (state: GameState, rng: Rng, only?: PlayerId) => Choice | null
 
 /** コイン依存は期待値で見積もる。順序付けにしか使わないので粗くてよい */
 export function expectedDamage(effects: readonly Effect[]): number {
@@ -60,7 +60,10 @@ function firstOf(actions: readonly Action[], type: Action['type']): Action | und
 export const randomPolicy: Policy = (state, rng, only) => {
   const all = legalActions(state)
   const legal = only === undefined ? all : all.filter((a) => a.type !== 'start' && a.player === only)
-  const chosen = pick(rng, legal.length > 0 ? legal : all)
+  // 対象プレイヤーに手が無いときに相手の手を返すと、代わりに打ってしまう。
+  // 手が無いことを null で返し、呼び出し側に判断させる
+  if (legal.length === 0) return null
+  const chosen = pick(rng, legal)
   return { rng: chosen.rng, action: chosen.item as Action }
 }
 
@@ -71,8 +74,9 @@ export const randomPolicy: Policy = (state, rng, only) => {
  * 人がひととおり考えて打つ手に近く、バランス測定の基準として使う。
  */
 export const greedyPolicy: Policy = (state, rng, only) => {
-  const legal = legalActions(state)
-  if (legal.length === 0) return randomPolicy(state, rng, only)
+  const all = legalActions(state)
+  const legal = only === undefined ? all : all.filter((a) => a.type !== 'start' && a.player === only)
+  if (legal.length === 0) return null
 
   // --- 初期配置 ---
   if (state.phase.kind === 'setup') {

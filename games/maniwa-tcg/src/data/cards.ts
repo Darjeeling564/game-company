@@ -7,7 +7,7 @@
  * 草は大地と豊穣、水は海と河、無色は眷属という対応（SPEC 14章 Q6）。
  * 各カードの由来はコメントに残す。
  *
- * 弱点は 草→炎→水→草 の3すくみ（SPEC 8.2）。
+ * 弱点は 草→炎→水→草 の3すくみ（SPEC 8.2）。無色は3すくみの外側なので弱点を持たない。
  */
 import type { CardDef, CardId, CardIndex } from '../core/types.ts'
 
@@ -16,14 +16,14 @@ import type { CardDef, CardId, CardIndex } from '../core/types.ts'
 const COLORLESS: readonly CardDef[] = [
   {
     id: 'n001', name: 'ガルダ', kind: 'creature',  // インド（迦楼羅）
-    type: 'colorless', hp: 80, ex: false, retreatCost: 1, weakness: 'lightning', stage: 0,
+    type: 'colorless', hp: 80, ex: false, retreatCost: 1, weakness: null, stage: 0,
     attacks: [
       { name: 'へびとりのつめ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
     ],
   },
   {
     id: 'n002', name: 'ペガソス', kind: 'creature',  // ギリシア（天馬）
-    type: 'colorless', hp: 60, ex: false, retreatCost: 1, weakness: 'fighting', stage: 0,
+    type: 'colorless', hp: 60, ex: false, retreatCost: 1, weakness: null, stage: 0,
     attacks: [
       { name: 'ひづめうち', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 10 }] },
       { name: 'てんがけ', cost: ['colorless', 'colorless'],
@@ -35,7 +35,7 @@ const COLORLESS: readonly CardDef[] = [
   },
   {
     id: 'n003', name: 'タオテツ', kind: 'creature',  // 中国（饕餮）
-    type: 'colorless', hp: 120, ex: false, retreatCost: 3, weakness: 'fighting', stage: 0,
+    type: 'colorless', hp: 120, ex: false, retreatCost: 3, weakness: null, stage: 0,
     attacks: [
       { name: 'くらいつく', cost: ['colorless', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
       { name: 'むさぼりぐい', cost: ['colorless', 'colorless', 'colorless'],
@@ -44,7 +44,7 @@ const COLORLESS: readonly CardDef[] = [
   },
   {
     id: 'n004', name: 'パズズ', kind: 'creature',  // 中東（風の魔神）
-    type: 'colorless', hp: 90, ex: false, retreatCost: 1, weakness: 'lightning', stage: 0,
+    type: 'colorless', hp: 90, ex: false, retreatCost: 1, weakness: null, stage: 0,
     attacks: [
       { name: 'あくふうのやいば', cost: ['colorless', 'colorless'],
         effects: [{ type: 'damagePerHeads', target: 'opponentActive', count: 2, value: 30 }] },

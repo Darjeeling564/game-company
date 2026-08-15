@@ -415,6 +415,11 @@ EX 級は各タイプに1枚ずつ（カグツチEX / ユグドラシルEX / ク
 | 草 | 炎 |
 | 炎 | 水 |
 | 水 | 草 |
+| 無色 | **なし**（3すくみの外側） |
+
+無色は全デッキ共通のコアなので、弱点を持たせるとどのデッキでも同じだけ不利になり、
+相性の設計に寄与しない。存在しないタイプを弱点に書くとデータが嘘をつくため、
+`weakness: null` として「弱点を持たない」ことを明示する。
 
 各デッキは1つに強く1つに弱いため、**組み合わせの勝率は大きく偏るが、全体では均衡する**。
 これは設計どおりで、是正の対象ではない。ミラーマッチの勝率が50%近辺にあり、かつ
@@ -495,7 +500,8 @@ CLAUDE.md 6章に従う。DotGothic16 / 森緑 `#2d5a3d` / クリーム `#f5f0e1
 ## 10. セーブデータ
 
 - `localStorage` キー: `maniwa-tcg_v1`
-- 保存する内容: 選択中デッキ、通算成績（勝敗数）、設定（アニメ有無）
+- 保存する内容: 最後に選んだデッキ名、通算成績（勝敗数）
+- 設定項目（アニメ有無・CPUの速さ等）は v1 では持たない。追加するときはキーを `_v2` に上げる
 - **対戦中の `GameState` は保存しない**（v1）。中断復帰は v2
 - スキーマ変更時はキーのバージョンを上げ、旧データのマイグレーションを書く
 
@@ -579,15 +585,18 @@ games/maniwa-tcg/
       rng.ts                xorshift32（純粋）
       effects.ts            7章の効果解釈（一元化）
       rules.ts              コスト判定・ダメージ計算・きぜつ・勝敗
+      state.ts              GameState を組み替える純粋ヘルパ（相互 import の循環を避ける）
       reduce.ts             reduce / legalActions / hashState
     game/
-      view.ts               描画（core を呼ぶだけ）
-      input.ts              タップ処理
+      main.ts               画面遷移と入力。core を呼ぶだけ
+      view.ts               描画とカード表示の整形
+      style.css             6章のUI規約
       storage.ts            localStorage（maniwa-tcg_v1）
     data/
       cards.ts              8章のカード定義
       decks.ts              プリセットデッキ
   tests/
+    rng.test.ts             PRNG の決定論と分布
     determinism.test.ts     決定論リプレイ
     invariants.test.ts      ルール不変条件
     termination.test.ts     終局保証（1万回）

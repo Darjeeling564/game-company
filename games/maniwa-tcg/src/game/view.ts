@@ -69,16 +69,6 @@ function displayName(name: string, ex: boolean): string {
   return ex && !name.includes('EX') ? `${name}(EX)` : name
 }
 
-const LOG_LABEL: Readonly<Record<string, string>> = {
-  beginTurn: 'ターンかいし', setupPlace: 'じゅんび', playCreature: 'ベンチにだす',
-  attachEnergy: 'エネルギー', retreat: 'にげる', attack: 'こうげき', damage: 'ダメージ',
-  ko: 'きぜつ', poison: 'どく', coin: 'コイン', promote: 'いれかえ', status: 'じょうたい',
-  selfDamage: 'はんどう', endTurn: 'ターンおわり', end: 'しゅうりょう',
-}
-
-export function logLabel(kind: string): string | null {
-  return LOG_LABEL[kind] ?? null
-}
 
 /** ログ1件を「誰が / 何を / いくつ」の形にする。数が出ないと何が起きたか追えない */
 function formatLogEntry(kind: string, detail: string): string | null {

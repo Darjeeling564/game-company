@@ -35,6 +35,7 @@ function play(seed: number, decks: readonly [Deck, Deck], policy: Policy): Outco
 
   while (steps < STEP_LIMIT && !isOver(state)) {
     const chosen = policy(state, rng)
+    if (chosen === null) break
     rng = chosen.rng
     state = reduce(state, chosen.action)
     steps += 1

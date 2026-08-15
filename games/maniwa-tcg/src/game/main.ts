@@ -21,7 +21,7 @@ import {
   renderBattle,
   renderChoices,
 } from './view.ts'
-import { load, recordResult } from './storage.ts'
+import { load, recordResult, save } from './storage.ts'
 
 const root = document.getElementById('app') as HTMLElement
 const CPU_DELAY_MS = 450
@@ -63,8 +63,9 @@ function showTitle(): void {
   screen.append(el('h1', 'title', 'maniwa-tcg'))
   screen.append(el('p', 'muted', '2人対戦カードバトル / 3ポイント先取'))
 
-  const record = load().record
-  screen.append(el('p', 'muted', `${record.wins}勝 ${record.losses}敗 ${record.draws}分`))
+  const saved = load()
+  screen.append(el('p', 'muted', `${saved.record.wins}勝 ${saved.record.losses}敗 ${saved.record.draws}分`))
+  if (saved.deckName !== null) screen.append(el('p', 'muted', `まえかいのデッキ: ${saved.deckName}`))
 
   const start = el('button', 'btn', 'たいせん')
   start.type = 'button'
@@ -122,6 +123,7 @@ function showResult(): void {
 // ---------------------------------------------------------------- 対戦
 
 function startBattle(deck: Deck): void {
+  save({ ...load(), deckName: deck.name })
   // 起動時刻をシードにする。core は純粋なままで、乱数の入口はここだけ
   const seed = Date.now() >>> 0
   cpuRng = createRng(seed ^ 0x5bf03635)
@@ -179,6 +181,7 @@ function render(): void {
     cpuTimer = window.setTimeout(() => {
       // 初期配置は両者が同時に動けるので、CPU の手だけを選ばせる
       const chosen = greedyPolicy(state, cpuRng, CPU)
+      if (chosen === null) return // CPU に打つ手が無い局面
       cpuRng = chosen.rng
       if (chosen.action.type !== 'start' && chosen.action.player !== CPU) return
       // CPU の行動でプレイヤーが開いているカード詳細を閉じない
@@ -229,7 +232,12 @@ function showRetreatMenu(): void {
 function showCreatureDetail(owner: PlayerId, instanceId: number): void {
   const player = state.players[owner]
   const creature = [player.active, ...player.bench].find((c) => c !== null && c.instanceId === instanceId)
-  if (creature === undefined || creature === null) return
+  if (creature === undefined || creature === null) {
+    // きぜつなどで対象が消えた。overlay を残すと無効な状態が居座るので閉じる。
+    // この関数は render の中から呼ばれるため、ここで再描画はしない
+    overlay = null
+    return
+  }
 
   const detail = cardDetailPanel(requireCard(creature.cardId), creature)
   const choices = legalActions(state)
@@ -242,7 +250,10 @@ function showCreatureDetail(owner: PlayerId, instanceId: number): void {
 /** 手札をタップしたとき。出す前に性能を確認できるようにする */
 function showHandDetail(handIndex: number): void {
   const cardId = state.players[HUMAN].hand[handIndex]
-  if (cardId === undefined) return
+  if (cardId === undefined) {
+    overlay = null
+    return
+  }
 
   const detail = cardDetailPanel(requireCard(cardId), null)
   const choices = legalActions(state)
