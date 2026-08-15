@@ -84,6 +84,8 @@ npm run sim          # tools/ のバランスシミュレーション
 npm run build        # 本番ビルド成功
 ```
 
+これら4つは push / pull request のたびに GitHub Actions（`.github/workflows/ci.yml`）でも自動実行される。
+
 ### 必須テスト
 - **決定論リプレイ**: 同一シード＋同一入力列 → 最終状態ハッシュが完全一致
 - **ルール不変条件**: 手札枚数・リソース・HP等が負値やNaNにならない

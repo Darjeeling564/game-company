@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  # push は main のみ。feature ブランチは pull_request トリガーで検証されるため、
+  # 両方を無条件に有効にすると PR 中に同じ内容が二重に走ってしまう。
+  push:
+    branches: [main]
+  pull_request:
+
+# 同じ ref で新しい実行が始まったら、進行中の古い実行を打ち切る
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 検証（CLAUDE.md 5章）
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: チェックアウト
+        uses: actions/checkout@v5
+
+      - name: Node のセットアップ（.nvmrc に従う）
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: 依存関係のインストール
+        run: npm ci
+
+      - name: 型検査
+        run: npm run typecheck
+
+      - name: テスト
+        run: npm run test
+
+      - name: バランスシミュレーション
+        run: npm run sim
+
+      - name: 本番ビルド
+        run: npm run build
