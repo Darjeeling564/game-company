@@ -19,7 +19,12 @@ export interface Choice {
   readonly action: Action
 }
 
-export type Policy = (state: GameState, rng: Rng) => Choice
+/**
+ * only を渡すと、そのプレイヤーの手だけを選ぶ。
+ * 初期配置は両プレイヤーが同時に動けるため、指定が無いと相手の分まで
+ * 打ってしまう。CPU 対戦では CPU を指定し、シミュレーションでは省略する。
+ */
+export type Policy = (state: GameState, rng: Rng, only?: PlayerId) => Choice | null
 
 /** コイン依存は期待値で見積もる。順序付けにしか使わないので粗くてよい */
 export function expectedDamage(effects: readonly Effect[]): number {
@@ -52,8 +57,12 @@ function firstOf(actions: readonly Action[], type: Action['type']): Action | und
 // ---------------------------------------------------------------- ランダム
 
 /** 合法手から一様に選ぶ。無限ループ検出のストレス用 */
-export const randomPolicy: Policy = (state, rng) => {
-  const legal = legalActions(state)
+export const randomPolicy: Policy = (state, rng, only) => {
+  const all = legalActions(state)
+  const legal = only === undefined ? all : all.filter((a) => a.type !== 'start' && a.player === only)
+  // 対象プレイヤーに手が無いときに相手の手を返すと、代わりに打ってしまう。
+  // 手が無いことを null で返し、呼び出し側に判断させる
+  if (legal.length === 0) return null
   const chosen = pick(rng, legal)
   return { rng: chosen.rng, action: chosen.item as Action }
 }
@@ -64,13 +73,15 @@ export const randomPolicy: Policy = (state, rng) => {
  * 素直な方策。ベンチを埋め、バトル場にエネルギーを乗せ、最大ダメージで殴る。
  * 人がひととおり考えて打つ手に近く、バランス測定の基準として使う。
  */
-export const greedyPolicy: Policy = (state, rng) => {
-  const legal = legalActions(state)
-  if (legal.length === 0) return randomPolicy(state, rng)
+export const greedyPolicy: Policy = (state, rng, only) => {
+  const all = legalActions(state)
+  const legal = only === undefined ? all : all.filter((a) => a.type !== 'start' && a.player === only)
+  if (legal.length === 0) return null
 
   // --- 初期配置 ---
   if (state.phase.kind === 'setup') {
     for (const id of [0, 1] as const) {
+      if (only !== undefined && id !== only) continue
       if (state.setupDone[id]) continue
       const player = state.players[id]
       const places = legal.filter((a) => a.type === 'setupPlace' && a.player === id)
@@ -163,7 +174,7 @@ export const greedyPolicy: Policy = (state, rng) => {
 
   const end = firstOf(legal, 'endTurn')
   if (end !== undefined) return { rng, action: end }
-  return randomPolicy(state, rng)
+  return randomPolicy(state, rng, only)
 }
 
 export const POLICIES: Readonly<Record<string, Policy>> = {

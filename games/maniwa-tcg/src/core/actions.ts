@@ -26,8 +26,6 @@ export type Action =
   // --- きぜつ後 ---
   | { readonly type: 'promote'; readonly player: PlayerId; readonly benchIndex: number }
 
-export type ActionType = Action['type']
-
 /** ログ・デバッグ用の短い表現 */
 export function describeAction(action: Action): string {
   switch (action.type) {

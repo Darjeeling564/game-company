@@ -71,6 +71,7 @@ function runMatch(seed: number, decks: readonly [Deck, Deck], firstPlayer: Playe
   for (let step = 0; step < MAX_STEPS && !isOver(state); step += 1) {
     const before = state
     const chosen = policy(state, rng)
+    if (chosen === null) break
     rng = chosen.rng
     const action = chosen.action
 
@@ -93,14 +94,17 @@ function runMatch(seed: number, decks: readonly [Deck, Deck], firstPlayer: Playe
       case 'attachEnergy':
         attaches[action.player] += 1
         break
-      case 'endTurn':
-        if (before.players[action.player].energy.current !== null) wastedEnergy += 1
-        break
       default:
         break
     }
 
     state = reduce(state, action)
+
+    // 手番が移った瞬間に在庫が残っていたら余剰。攻撃でもターンは終わるため、
+    // endTurn だけを見ていると取りこぼす（random AI で約25%の過小計上になっていた）
+    if (before.current !== state.current && before.players[before.current].energy.current !== null) {
+      wastedEnergy += 1
+    }
   }
 
   return {

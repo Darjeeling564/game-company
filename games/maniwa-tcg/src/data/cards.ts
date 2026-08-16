@@ -7,7 +7,7 @@
  * 草は大地と豊穣、水は海と河、無色は眷属という対応（SPEC 14章 Q6）。
  * 各カードの由来はコメントに残す。
  *
- * 弱点は 草→炎→水→草 の3すくみ（SPEC 8.2）。
+ * 弱点は 草→炎→水→草 の3すくみ（SPEC 8.2）。無色は3すくみの外側なので弱点を持たない。
  */
 import type { CardDef, CardId, CardIndex } from '../core/types.ts'
 
@@ -16,14 +16,16 @@ import type { CardDef, CardId, CardIndex } from '../core/types.ts'
 const COLORLESS: readonly CardDef[] = [
   {
     id: 'n001', name: 'ガルダ', kind: 'creature',  // インド（迦楼羅）
-    type: 'colorless', hp: 80, ex: false, retreatCost: 1, weakness: 'lightning', stage: 0,
+    flavor: 'インドの霊鳥。蛇族ナーガを喰らう天の乗り物で、その翼は太陽を覆うという。',
+    type: 'colorless', hp: 80, ex: false, retreatCost: 1, weakness: null, stage: 0,
     attacks: [
       { name: 'へびとりのつめ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
     ],
   },
   {
     id: 'n002', name: 'ペガソス', kind: 'creature',  // ギリシア（天馬）
-    type: 'colorless', hp: 60, ex: false, retreatCost: 1, weakness: 'fighting', stage: 0,
+    flavor: 'メドゥーサの血から生まれた翼馬。蹄で大地を打つと泉が湧いたと伝わる。',
+    type: 'colorless', hp: 60, ex: false, retreatCost: 1, weakness: null, stage: 0,
     attacks: [
       { name: 'ひづめうち', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 10 }] },
       { name: 'てんがけ', cost: ['colorless', 'colorless'],
@@ -35,7 +37,8 @@ const COLORLESS: readonly CardDef[] = [
   },
   {
     id: 'n003', name: 'タオテツ', kind: 'creature',  // 中国（饕餮）
-    type: 'colorless', hp: 120, ex: false, retreatCost: 3, weakness: 'fighting', stage: 0,
+    flavor: '何でも食らう伝説の悪獣。青銅器に刻まれ、貪欲そのものを表す。',
+    type: 'colorless', hp: 120, ex: false, retreatCost: 3, weakness: null, stage: 0,
     attacks: [
       { name: 'くらいつく', cost: ['colorless', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
       { name: 'むさぼりぐい', cost: ['colorless', 'colorless', 'colorless'],
@@ -44,7 +47,8 @@ const COLORLESS: readonly CardDef[] = [
   },
   {
     id: 'n004', name: 'パズズ', kind: 'creature',  // 中東（風の魔神）
-    type: 'colorless', hp: 90, ex: false, retreatCost: 1, weakness: 'lightning', stage: 0,
+    flavor: '熱風と疫病を運ぶメソポタミアの魔神。一方で、他の魔を退ける護符にもなった。',
+    type: 'colorless', hp: 90, ex: false, retreatCost: 1, weakness: null, stage: 0,
     attacks: [
       { name: 'あくふうのやいば', cost: ['colorless', 'colorless'],
         effects: [{ type: 'damagePerHeads', target: 'opponentActive', count: 2, value: 30 }] },
@@ -57,6 +61,7 @@ const COLORLESS: readonly CardDef[] = [
 const FIRE: readonly CardDef[] = [
   {
     id: 'f001', name: 'シュクユウ', kind: 'creature',  // 中国（祝融・火の神）
+    flavor: '南方をつかさどる火の神。人に火の扱いを教えたとされる。',
     type: 'fire', hp: 80, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
       { name: 'なんぽうのほのお', cost: ['fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
@@ -64,6 +69,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f002', name: 'ラー', kind: 'creature',  // エジプト（太陽神）
+    flavor: '昼は天空を舟で渡り、夜は冥界を巡る太陽そのもの。隼の頭を持つ。',
     type: 'fire', hp: 90, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
       { name: 'たいようのつばさ', cost: ['colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
@@ -72,6 +78,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f003', name: 'ハスター', kind: 'creature',  // クトゥルフ（黄衣の王）
+    flavor: '名を口にすることさえ憚られる存在。黄の印を見た者は正気を失うという。',
     type: 'fire', hp: 80, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
       { name: 'きいろのいぶき', cost: ['fire'],
@@ -83,6 +90,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f004', name: 'スルト', kind: 'creature',  // 北欧（炎の巨人）
+    flavor: '世界の終わりに炎の剣レーヴァテインを振るい、大地を焼き尽くす巨人。',
     type: 'fire', hp: 130, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'レーヴァテイン', cost: ['fire', 'fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
@@ -90,6 +98,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f005', name: 'カグツチ', kind: 'creature',  // 日本（迦具土）
+    flavor: '火の神。生まれ落ちる際に母イザナミを焼き、父イザナギに斬られた。',
     type: 'fire', hp: 120, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'ひのつめ', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
@@ -102,6 +111,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f006', name: 'カグツチEX', kind: 'creature',  // 日本（迦具土）
+    flavor: '斬られた血と亡骸から、さらに多くの神が生まれたという。火は滅ぼすと同時に生む。',
     type: 'fire', hp: 180, ex: true, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'ほむらのつるぎ', cost: ['fire', 'fire'],
@@ -116,6 +126,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f007', name: 'アグニ', kind: 'creature',  // インド（火の神）
+    flavor: '供物を天へ運ぶ祭火の神。二つの顔と七つの舌を持つと歌われる。',
     type: 'fire', hp: 100, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'ごまのほのお', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
@@ -123,6 +134,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f008', name: 'ヘパイストス', kind: 'creature',  // ギリシア（鍛冶の神）
+    flavor: '神々の武具を打つ鍛冶の神。足は不自由だが、その腕に並ぶ者はいない。',
     type: 'fire', hp: 110, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'かじのつち', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
@@ -131,6 +143,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f009', name: 'セクメト', kind: 'creature',  // エジプト（破壊の女神）
+    flavor: '雌獅子の頭を持つ戦の女神。ラーの怒りが形をとった姿とされる。',
     type: 'fire', hp: 90, ex: false, retreatCost: 1, weakness: 'water', stage: 0,
     attacks: [
       { name: 'しゃくねつのきば', cost: ['fire'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
@@ -139,6 +152,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f010', name: 'クトゥグア', kind: 'creature',  // クトゥルフ（生ける炎）
+    flavor: '星々の彼方に棲む生ける炎。呼ばれれば、その場のすべてを灼き尽くす。',
     type: 'fire', hp: 100, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'せいえんのうねり', cost: ['fire', 'colorless'],
@@ -147,6 +161,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f011', name: 'ネルガル', kind: 'creature',  // 中東（冥界と戦の神）
+    flavor: '疫病と戦をもたらす神。冥界を妃エレシュキガルとともに治める。',
     type: 'fire', hp: 110, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'めいかいのほのお', cost: ['fire', 'colorless'],
@@ -158,6 +173,7 @@ const FIRE: readonly CardDef[] = [
   },
   {
     id: 'f012', name: 'アマテラス', kind: 'creature',  // 日本（天照大御神）
+    flavor: '高天原を治める太陽の女神。岩戸に隠れると、世は闇に包まれた。',
     type: 'fire', hp: 120, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
       { name: 'あまてらすのひかり', cost: ['fire', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
@@ -171,6 +187,7 @@ const FIRE: readonly CardDef[] = [
 const GRASS: readonly CardDef[] = [
   {
     id: 'g001', name: 'デメテル', kind: 'creature',  // ギリシア（豊穣の女神）
+    flavor: '穀物を育てる大地の女神。娘を奪われ嘆いた季節が、冬になったという。',
     type: 'grass', hp: 80, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'みのりのつち', cost: ['grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
@@ -178,6 +195,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g002', name: 'ドゥムジ', kind: 'creature',  // 中東（牧羊と植物の神）
+    flavor: '半年を冥界で過ごす植物の神。その往復が、草木の枯死と再生を表す。',
     type: 'grass', hp: 100, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'わかばのむち', cost: ['grass', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
@@ -185,6 +203,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g003', name: 'ヴァースキ', kind: 'creature',  // インド（蛇王）
+    flavor: 'ナーガの王。乳海を攪拌する際、山に巻きつく綱の役を担った。',
     type: 'grass', hp: 90, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'まきつく', cost: ['grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
@@ -193,6 +212,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g004', name: 'シュブニグラス', kind: 'creature',  // クトゥルフ（黒山羊）
+    flavor: '千匹の仔を孕む森の黒山羊。豊穣であることが、そのまま恐怖になる。',
     type: 'grass', hp: 80, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'せんびきのこやぎ', cost: ['grass'],
@@ -204,6 +224,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g005', name: 'オシリス', kind: 'creature',  // エジプト（再生の神）
+    flavor: '弟に殺され、妃イシスによって蘇った。以来、冥界と再生をつかさどる。',
     type: 'grass', hp: 120, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'よみがえりのめぐみ', cost: ['grass', 'colorless'],
@@ -215,6 +236,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g006', name: 'ユグドラシルEX', kind: 'creature',  // 北欧（世界樹）
+    flavor: '九つの世界を貫く大樹。根を齧られ蛇に噛まれてなお、立ち続ける。',
     type: 'grass', hp: 170, ex: true, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'せかいじゅのいかり', cost: ['grass', 'grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
@@ -227,6 +249,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g007', name: 'オオゲツヒメ', kind: 'creature',  // 日本（大宜都比売・穀物の女神）
+    flavor: '食物の女神。その亡骸から、稲・粟・小豆・麦・大豆が生まれた。',
     type: 'grass', hp: 100, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'ごこくのめぐみ', cost: ['grass', 'colorless'],
@@ -238,6 +261,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g008', name: 'イズン', kind: 'creature',  // 北欧（若返りの林檎の女神）
+    flavor: '神々に若さを保つ黄金の林檎を配る。彼女を失えば、神々さえ老いる。',
     type: 'grass', hp: 90, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'わかがえりのりんご', cost: ['grass'],
@@ -249,6 +273,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g009', name: 'シェンノウ', kind: 'creature',  // 中国（神農・農耕と薬草の神）
+    flavor: '農耕を教えた神。自ら百草を嘗めて、薬と毒を見分けたという。',
     type: 'grass', hp: 110, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'ひゃくそうのどく', cost: ['grass', 'colorless'],
@@ -260,6 +285,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g010', name: 'セイオウボ', kind: 'creature',  // 中国（西王母・不老の桃）
+    flavor: '崑崙山に住まう女仙。三千年に一度実る、不老の桃を管理する。',
     type: 'grass', hp: 120, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'ばんねんのもも', cost: ['grass', 'colorless'],
@@ -271,6 +297,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g011', name: 'ツァトゥグア', kind: 'creature',  // クトゥルフ（地底に眠るもの）
+    flavor: '地底の洞で微睡む、蟇に似た神。動くことをひどく厭う。',
     type: 'grass', hp: 100, ex: false, retreatCost: 2, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'ねばつくやみ', cost: ['grass', 'colorless'],
@@ -282,6 +309,7 @@ const GRASS: readonly CardDef[] = [
   },
   {
     id: 'g012', name: 'パン', kind: 'creature',  // ギリシア（牧神）
+    flavor: '山羊の脚を持つ野の神。その叫びは、理由なき恐慌の語源になった。',
     type: 'grass', hp: 90, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
       { name: 'きょうふのふえ', cost: ['grass'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
@@ -296,6 +324,7 @@ const GRASS: readonly CardDef[] = [
 const WATER: readonly CardDef[] = [
   {
     id: 'w001', name: 'ワタツミ', kind: 'creature',  // 日本（綿津見・海神）
+    flavor: '海をつかさどる神。海底の宮で山幸彦を迎え、潮を操る珠を授けた。',
     type: 'water', hp: 110, ex: false, retreatCost: 2, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'しおのながれ', cost: ['water', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
@@ -303,6 +332,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w002', name: 'ポセイドン', kind: 'creature',  // ギリシア（海の神）
+    flavor: '三叉の矛で海と地震を支配する。争えば、大地さえ揺らぐ。',
     type: 'water', hp: 130, ex: false, retreatCost: 2, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'さんさのやり', cost: ['water', 'water'], effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
@@ -310,6 +340,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w003', name: 'ヨルムンガンド', kind: 'creature',  // 北欧（世界蛇）
+    flavor: '大地を取り巻くほど巨大な毒蛇。自らの尾を咥えて海に横たわる。',
     type: 'water', hp: 120, ex: false, retreatCost: 2, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'どくのしぶき', cost: ['water'],
@@ -323,6 +354,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w004', name: 'エーギル', kind: 'creature',  // 北欧（海の巨人）
+    flavor: '海そのものを体現する巨人。神々を招き、大釜で酒を醸した。',
     type: 'water', hp: 100, ex: false, retreatCost: 2, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'たけりのなみ', cost: ['water', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
@@ -330,6 +362,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w005', name: 'ソベク', kind: 'creature',  // エジプト（ワニの神）
+    flavor: 'ナイルのワニの姿をとる神。荒々しくも、水辺に実りをもたらす。',
     type: 'water', hp: 90, ex: false, retreatCost: 1, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'かみつく', cost: ['water'], effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
@@ -338,6 +371,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w006', name: 'ハピ', kind: 'creature',  // エジプト（ナイルの氾濫）
+    flavor: '毎年の氾濫を運ぶ神。その水が引いたあとに、肥沃な土が残る。',
     type: 'water', hp: 110, ex: false, retreatCost: 2, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'はんらんのめぐみ', cost: ['water', 'colorless'],
@@ -349,6 +383,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w007', name: 'ヴァルナ', kind: 'creature',  // インド（水と法の神）
+    flavor: '天則を見張る神。偽りを働く者を、水の縄で縛るという。',
     type: 'water', hp: 100, ex: false, retreatCost: 2, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'りっぽうのなわ', cost: ['water', 'colorless'],
@@ -360,6 +395,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w008', name: 'ガンガー', kind: 'creature',  // インド（河の女神）
+    flavor: '天から降る聖河の化身。シヴァの髪が、その奔流を受け止めた。',
     type: 'water', hp: 90, ex: false, retreatCost: 1, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'せいりゅうのしずく', cost: ['water'],
@@ -371,6 +407,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w009', name: 'ティアマト', kind: 'creature',  // 中東（原初の海）
+    flavor: '万物を生んだ塩水の海。裂かれた体から、天と地が形づくられた。',
     type: 'water', hp: 120, ex: false, retreatCost: 2, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'げんしょのしお', cost: ['water', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
@@ -378,6 +415,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w010', name: 'アプスー', kind: 'creature',  // 中東（地下の淡水）
+    flavor: 'ティアマトと対をなす淡水の淵。すべての水源の父とされる。',
     type: 'water', hp: 100, ex: false, retreatCost: 2, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'ちていのみず', cost: ['water', 'colorless'],
@@ -386,6 +424,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w011', name: 'クトゥルフEX', kind: 'creature',  // クトゥルフ（旧支配者）
+    flavor: '海底都市ルルイエで、死してなお夢見る者。星が正しく並ぶとき目覚める。',
     type: 'water', hp: 180, ex: true, retreatCost: 3, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'きょうきのささやき', cost: ['water', 'water'],
@@ -400,6 +439,7 @@ const WATER: readonly CardDef[] = [
   },
   {
     id: 'w012', name: 'ゴンゴン', kind: 'creature',  // 中国（共工・水神）
+    flavor: '争いに敗れ、天を支える柱を折った水神。天は傾き、水は東へ流れた。',
     type: 'water', hp: 110, ex: false, retreatCost: 2, weakness: 'grass', stage: 0,
     attacks: [
       { name: 'こうずいのいかり', cost: ['water', 'colorless'], effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },

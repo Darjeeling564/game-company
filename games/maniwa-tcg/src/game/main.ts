@@ -11,8 +11,17 @@ import { requireCard } from '../data/cards.ts'
 import { DECKS } from '../data/decks.ts'
 // 方策はシミュレータと共有する。CPU の打ち筋とバランス測定を一致させるため
 import { greedyPolicy } from '../../tools/ai.ts'
-import { CPU, HUMAN, el, renderBattle, renderChoices } from './view.ts'
-import { load, recordResult } from './storage.ts'
+import {
+  CPU,
+  HUMAN,
+  cardDetailPanel,
+  describeAttack,
+  el,
+  formatCost,
+  renderBattle,
+  renderChoices,
+} from './view.ts'
+import { load, recordResult, save } from './storage.ts'
 
 const root = document.getElementById('app') as HTMLElement
 const CPU_DELAY_MS = 450
@@ -20,6 +29,23 @@ const CPU_DELAY_MS = 450
 let state: GameState = EMPTY_STATE
 let cpuRng: Rng = createRng(1)
 let cpuTimer: number | null = null
+
+/**
+ * 開いているモーダルの描画関数。
+ * CPU の手番でも再描画が走るため、モーダルを root に直接置くと消えてしまう。
+ * 描画関数として保持し、毎回の render で描き直すことで表示を保たせる。
+ */
+let overlay: (() => void) | null = null
+
+function openOverlay(draw: () => void): void {
+  overlay = draw
+  render()
+}
+
+function closeOverlay(): void {
+  overlay = null
+  render()
+}
 
 // ---------------------------------------------------------------- 画面
 
@@ -37,8 +63,9 @@ function showTitle(): void {
   screen.append(el('h1', 'title', 'maniwa-tcg'))
   screen.append(el('p', 'muted', '2人対戦カードバトル / 3ポイント先取'))
 
-  const record = load().record
-  screen.append(el('p', 'muted', `${record.wins}勝 ${record.losses}敗 ${record.draws}分`))
+  const saved = load()
+  screen.append(el('p', 'muted', `${saved.record.wins}勝 ${saved.record.losses}敗 ${saved.record.draws}分`))
+  if (saved.deckName !== null) screen.append(el('p', 'muted', `まえかいのデッキ: ${saved.deckName}`))
 
   const start = el('button', 'btn', 'たいせん')
   start.type = 'button'
@@ -96,6 +123,7 @@ function showResult(): void {
 // ---------------------------------------------------------------- 対戦
 
 function startBattle(deck: Deck): void {
+  save({ ...load(), deckName: deck.name })
   // 起動時刻をシードにする。core は純粋なままで、乱数の入口はここだけ
   const seed = Date.now() >>> 0
   cpuRng = createRng(seed ^ 0x5bf03635)
@@ -106,9 +134,15 @@ function startBattle(deck: Deck): void {
   render()
 }
 
-function apply(action: Action): void {
+function commit(action: Action): void {
   state = reduce(state, action)
   render()
+}
+
+/** 人間の操作。自分で選んだときだけモーダルを閉じる */
+function apply(action: Action): void {
+  overlay = null
+  commit(action)
 }
 
 /** CPU の手番・CPU の初期配置・CPU の入れ替えを1手ずつ進める */
@@ -129,8 +163,10 @@ function render(): void {
 
   renderBattle(root, state, {
     onAction: apply,
-    onAttackMenu: showAttackMenu,
-    onRetreatMenu: showRetreatMenu,
+    onAttackMenu: () => openOverlay(showAttackMenu),
+    onRetreatMenu: () => openOverlay(showRetreatMenu),
+    onCreatureTap: (owner, id) => openOverlay(() => showCreatureDetail(owner, id)),
+    onHandTap: (index) => openOverlay(() => showHandDetail(index)),
   })
 
   // 自分の入れ替えが必要なら、選ぶまで他の操作をさせない
@@ -139,11 +175,17 @@ function render(): void {
     return
   }
 
+  if (overlay !== null) overlay()
+
   if (cpuShouldMove()) {
     cpuTimer = window.setTimeout(() => {
-      const chosen = greedyPolicy(state, cpuRng)
+      // 初期配置は両者が同時に動けるので、CPU の手だけを選ばせる
+      const chosen = greedyPolicy(state, cpuRng, CPU)
+      if (chosen === null) return // CPU に打つ手が無い局面
       cpuRng = chosen.rng
-      apply(chosen.action)
+      if (chosen.action.type !== 'start' && chosen.action.player !== CPU) return
+      // CPU の行動でプレイヤーが開いているカード詳細を閉じない
+      commit(chosen.action)
     }, CPU_DELAY_MS)
   }
 }
@@ -156,22 +198,77 @@ function showAttackMenu(): void {
   const active = state.players[HUMAN].active
   if (active === null) return
   const card = requireCard(active.cardId)
+  // 名前とコストだけでは威力が分からず選べないので、効果まで出す
   const choices = myActions('attack').map((action) => {
     const index = action.type === 'attack' ? action.attackIndex : 0
     const attack = card.attacks[index]
-    return { label: `${attack?.name ?? '?'}（${attack?.cost.length ?? 0}）`, action }
+    return {
+      label: `${attack?.name ?? '?'}  [${attack === undefined ? '' : formatCost(attack.cost)}]`,
+      sub: attack === undefined ? '' : describeAttack(attack),
+      action,
+    }
   })
-  renderChoices(root, 'ワザをえらぶ', choices, apply, render)
+  renderChoices(root, 'ワザをえらぶ', choices, apply, closeOverlay)
 }
 
 function showRetreatMenu(): void {
-  const bench = state.players[HUMAN].bench
+  const player = state.players[HUMAN]
+  const cost = player.active === null ? 0 : requireCard(player.active.cardId).retreatCost
   const choices = myActions('retreat').map((action) => {
     const index = action.type === 'retreat' ? action.benchIndex : 0
-    const creature = bench[index]
-    return { label: creature === undefined ? '?' : requireCard(creature.cardId).name, action }
+    const creature = player.bench[index]
+    if (creature === undefined) return { label: '?', action }
+    const def = requireCard(creature.cardId)
+    return {
+      label: def.name,
+      sub: `HP ${def.hp - creature.damage}/${def.hp}`,
+      action,
+    }
   })
-  renderChoices(root, 'いれかえる', choices, apply, render)
+  renderChoices(root, `いれかえる（エネルギー${cost}をトラッシュ）`, choices, apply, closeOverlay)
+}
+
+/** 場のカードをタップしたとき。相手のカードも中身を確認できるようにする */
+function showCreatureDetail(owner: PlayerId, instanceId: number): void {
+  const player = state.players[owner]
+  const creature = [player.active, ...player.bench].find((c) => c !== null && c.instanceId === instanceId)
+  if (creature === undefined || creature === null) {
+    // きぜつなどで対象が消えた。overlay を残すと無効な状態が居座るので閉じる。
+    // この関数は render の中から呼ばれるため、ここで再描画はしない
+    overlay = null
+    return
+  }
+
+  const detail = cardDetailPanel(requireCard(creature.cardId), creature)
+  const choices = legalActions(state)
+    .filter((a) => a.type === 'attachEnergy' && a.player === HUMAN && a.target === instanceId)
+    .map((action) => ({ label: 'エネルギーをつける', action }))
+
+  renderChoices(root, owner === HUMAN ? 'じぶんのカード' : 'あいてのカード', choices, apply, closeOverlay, detail)
+}
+
+/** 手札をタップしたとき。出す前に性能を確認できるようにする */
+function showHandDetail(handIndex: number): void {
+  const cardId = state.players[HUMAN].hand[handIndex]
+  if (cardId === undefined) {
+    overlay = null
+    return
+  }
+
+  const detail = cardDetailPanel(requireCard(cardId), null)
+  const choices = legalActions(state)
+    .filter(
+      (a) =>
+        (a.type === 'playCreature' || a.type === 'setupPlace') &&
+        a.player === HUMAN &&
+        a.handIndex === handIndex,
+    )
+    .map((action) => ({
+      label: state.players[HUMAN].active === null ? 'バトル場にだす' : 'ベンチにだす',
+      action,
+    }))
+
+  renderChoices(root, 'てふだ', choices, apply, closeOverlay, detail)
 }
 
 function showPromoteMenu(): void {
