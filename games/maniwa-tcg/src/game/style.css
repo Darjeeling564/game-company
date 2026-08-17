@@ -184,6 +184,7 @@ body {
 
 .card__body {
   display: block;
+  position: relative;
   height: 100%;
   padding: 5px;
   border-radius: 6px;
@@ -191,6 +192,31 @@ body {
   background: linear-gradient(var(--card-bg) 45%, var(--card-deep));
   color: var(--card-text, var(--forest-dark));
   overflow: hidden;
+}
+
+/*
+ * 絵があるカードは絵を地に敷く。上に文字を載せるので、下半分を黒く落として
+ * 名前とHPが絵の明暗に左右されないようにする。
+ */
+.card__body--art {
+  /* 絵が入るカードは、絵が帯にならない高さを確保する */
+  min-height: 96px;
+  background-size: cover;
+  background-position: center 20%;
+  background-repeat: no-repeat;
+}
+
+.card__body--art::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 6px;
+  background: linear-gradient(rgba(0, 0, 0, 0.15) 30%, rgba(0, 0, 0, 0.72));
+  pointer-events: none;
+}
+
+.card__body--art > * {
+  position: relative;
 }
 
 /*

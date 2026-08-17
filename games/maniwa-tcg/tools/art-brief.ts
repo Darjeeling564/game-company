@@ -80,8 +80,13 @@ function main(argv: readonly string[]): number {
     return 0
   }
 
-  console.log(`maniwa-tcg カードイラスト入力データ（${briefs.length}種）`)
-  console.log('1枚ずつ Gem に貼り付ける。渡すのは以下の5項目のみ。')
+  console.log(`神話戦姫 カードイラスト入力データ（${briefs.length}種）`)
+  console.log('')
+  console.log('・神格はすべて美少女として擬人化して描く（男神・獣・怪物も同様）')
+  console.log('・1キャラにつき3枚。無傷 / 傷ついた姿 / 追い詰められた姿')
+  console.log('  ファイル名は <カードID>.webp / <カードID>-d1.webp / <カードID>-d2.webp')
+  console.log('・512×512 の正方形。3枚とも同一人物・同一衣装・同一画風で揃える')
+  console.log('・渡すデータは以下の5項目のみ。ここに無い要素を足さない')
   console.log('')
   for (const brief of briefs) {
     console.log(format(brief))

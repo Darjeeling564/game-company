@@ -18,7 +18,7 @@ import type {
 } from '../core/types.ts'
 import { BENCH_SIZE, WEAKNESS_BONUS } from '../core/types.ts'
 import { requireCard } from '../data/cards.ts'
-import { artUrl } from './art.ts'
+import { artStage, artUrl } from './art.ts'
 import { RARITY_STYLE, TYPE_COLOR, applyCardTheme } from './theme.ts'
 
 export const HUMAN: PlayerId = 0
@@ -169,7 +169,8 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
   const box = el('div', 'detail')
   applyCardTheme(box, card.origin, card.rarity, card.type)
 
-  const url = artUrl(card.id)
+  const stage = creature === null ? 'normal' : artStage(card.hp, creature.damage)
+  const url = artUrl(card.id, stage)
   if (url === null) {
     // 絵が未配置のカードは、属性の丸だけを置いた枠で代用する
     const placeholder = el('div', 'detail__art detail__art--empty')
@@ -325,6 +326,12 @@ function creatureCard(
   applyCardTheme(node, card.origin, card.rarity, card.type)
 
   const body = el('span', 'card__body')
+  // 絵は地に敷く。傷むと差し替わるので、詳細を開かなくても盤面で分かる
+  const url = artUrl(card.id, artStage(card.hp, creature.damage))
+  if (url !== null) {
+    body.classList.add('card__body--art')
+    body.style.backgroundImage = `url(${JSON.stringify(url)})`
+  }
   body.append(typeBadge(card.type))
   body.append(el('span', 'card__name', displayName(card.name, card.ex)))
   body.append(el('span', 'card__hp', `${remaining}/${card.hp}`))
@@ -425,6 +432,11 @@ function handView(state: GameState, handlers: Handlers): HTMLElement {
     node.type = 'button'
     applyCardTheme(node, card.origin, card.rarity, card.type)
     const body = el('span', 'card__body')
+    const url = artUrl(card.id)
+    if (url !== null) {
+      body.classList.add('card__body--art')
+      body.style.backgroundImage = `url(${JSON.stringify(url)})`
+    }
     body.append(typeBadge(card.type))
     body.append(el('span', 'card__name', displayName(card.name, card.ex)))
     body.append(el('span', 'card__hp', `HP${card.hp}`))
