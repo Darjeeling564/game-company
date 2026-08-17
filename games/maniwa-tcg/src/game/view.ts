@@ -18,6 +18,8 @@ import type {
 } from '../core/types.ts'
 import { BENCH_SIZE, WEAKNESS_BONUS } from '../core/types.ts'
 import { requireCard } from '../data/cards.ts'
+import { artUrl } from './art.ts'
+import { RARITY_STYLE, TYPE_COLOR, applyCardTheme } from './theme.ts'
 
 export const HUMAN: PlayerId = 0
 export const CPU: PlayerId = 1
@@ -47,26 +49,14 @@ export function originLabel(origin: Origin): string {
   return ORIGIN_LABEL[origin]
 }
 
-const RARITY_LABEL: Readonly<Record<Rarity, string>> = {
-  common: 'コモン',
-  uncommon: 'アンコモン',
-  rare: 'レア',
-  ultra: 'ウルトラレア',
-}
-
-const RARITY_MARK: Readonly<Record<Rarity, string>> = {
-  common: '◇',
-  uncommon: '◇◇',
-  rare: '◇◇◇',
-  ultra: '★',
+/** レアリティは記号ではなくアルファベットで表す（C / U / R / UR） */
+export function rarityCode(rarity: Rarity): string {
+  return RARITY_STYLE[rarity].code
 }
 
 export function rarityLabel(rarity: Rarity): string {
-  return `${RARITY_MARK[rarity]} ${RARITY_LABEL[rarity]}`
-}
-
-export function rarityMark(rarity: Rarity): string {
-  return RARITY_MARK[rarity]
+  const style = RARITY_STYLE[rarity]
+  return `${style.code} — ${style.label}`
 }
 
 /** コストを「炎炎無」の形にする */
@@ -149,21 +139,65 @@ export function recentLog(state: GameState, count: number): readonly string[] {
   return lines.slice(-count)
 }
 
-/** カード1枚の詳細。ワザのコストと効果まで見せる */
+/** 属性を色丸に白文字で示す。丸の色は theme.ts の TYPE_COLOR */
+function typeBadge(type: EnergyType): HTMLElement {
+  const badge = el('span', 'badge', energyLabel(type))
+  badge.style.setProperty('--card-type', TYPE_COLOR[type])
+  return badge
+}
+
+/** ワザ名。ruby があるときだけ <ruby> にしてフリガナを振る */
+function attackNameNode(attack: AttackDef): HTMLElement {
+  const span = el('span', 'detail__attackName')
+  if (attack.ruby === undefined) {
+    span.append(attack.name)
+  } else {
+    const ruby = el('ruby')
+    ruby.append(attack.name)
+    ruby.append(el('rt', undefined, attack.ruby))
+    span.append(ruby)
+  }
+  span.append(el('span', 'detail__attackCost', `[${formatCost(attack.cost)}]`))
+  return span
+}
+
+/**
+ * カード1枚の詳細。カードとしての体裁（イラスト・系統色の地・レアリティ色の枠）で
+ * 見せたうえで、ワザのコストと効果まで文字で出す。
+ */
 export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLElement {
   const box = el('div', 'detail')
-  const head = el('div', 'detail__head')
-  head.append(el('span', 'detail__name', displayName(card.name, card.ex)))
-  head.append(el('span', 'detail__rarity', rarityLabel(card.rarity)))
-  box.append(head)
-  box.append(el('div', 'detail__origin', originLabel(card.origin)))
+  applyCardTheme(box, card.origin, card.rarity, card.type)
+
+  const url = artUrl(card.id)
+  if (url === null) {
+    // 絵が未配置のカードは、属性の丸だけを置いた枠で代用する
+    const placeholder = el('div', 'detail__art detail__art--empty')
+    placeholder.append(typeBadge(card.type))
+    box.append(placeholder)
+  } else {
+    const art = el('img', 'detail__art')
+    art.src = url
+    art.alt = card.name
+    art.decoding = 'async'
+    box.append(art)
+  }
+
+  box.append(el('div', 'detail__name', displayName(card.name, card.ex)))
+  box.append(el('div', 'detail__rule'))
+
+  const foot = el('div', 'detail__foot')
+  foot.append(typeBadge(card.type))
+  foot.append(el('span', 'detail__origin', originLabel(card.origin)))
+  foot.append(el('span', 'detail__code', `${rarityCode(card.rarity)} HP${card.hp}`))
+  box.append(foot)
 
   const remaining = creature === null ? card.hp : Math.max(0, card.hp - creature.damage)
   const facts = [
-    `タイプ ${energyLabel(card.type)}`,
     `HP ${remaining}/${card.hp}`,
     card.weakness === null ? '弱点 なし' : `弱点 ${energyLabel(card.weakness)}（+${WEAKNESS_BONUS}）`,
     `にげる エネ${card.retreatCost}`,
+    `レアリティ ${rarityLabel(card.rarity)}`,
   ]
   if (creature !== null && creature.attached.length > 0) {
     facts.push(`ついているエネルギー ${creature.attached.map((e) => energyLabel(e)).join('')}`)
@@ -175,7 +209,7 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
 
   for (const attack of card.attacks) {
     const row = el('div', 'detail__attack')
-    row.append(el('span', 'detail__attackName', `${attack.name}  [${formatCost(attack.cost)}]`))
+    row.append(attackNameNode(attack))
     row.append(el('span', 'detail__attackText', describeAttack(attack)))
     box.append(row)
   }
@@ -288,21 +322,25 @@ function creatureCard(
   const remaining = Math.max(0, card.hp - creature.damage)
   const node = el('button', `card${isActive ? ' card--active' : ''}${selectable ? ' card--selectable' : ''}`)
   node.type = 'button'
+  applyCardTheme(node, card.origin, card.rarity, card.type)
 
-  node.append(el('span', 'card__name', displayName(card.name, card.ex)))
-  node.append(el('span', 'card__hp', `${remaining}/${card.hp}`))
+  const body = el('span', 'card__body')
+  body.append(typeBadge(card.type))
+  body.append(el('span', 'card__name', displayName(card.name, card.ex)))
+  body.append(el('span', 'card__hp', `${remaining}/${card.hp}`))
 
   const bar = el('div', 'card__bar')
   const fill = el('span')
   fill.style.width = `${(remaining / card.hp) * 100}%`
   bar.append(fill)
-  node.append(bar)
+  body.append(bar)
 
   const tags: string[] = []
   if (creature.attached.length > 0) tags.push(creature.attached.map((e) => energyLabel(e)).join(''))
   if (creature.status.includes('poisoned')) tags.push('どく')
-  if (tags.length > 0) node.append(el('span', 'card__tags', tags.join(' ')))
+  if (tags.length > 0) body.append(el('span', 'card__tags', tags.join(' ')))
 
+  node.append(body)
   bindTap(node, onTap, onDetail)
   return node
 }
@@ -385,8 +423,12 @@ function handView(state: GameState, handlers: Handlers): HTMLElement {
     const action = playable.get(index)
     const node = el('button', `card${action !== undefined ? ' card--selectable' : ''}`)
     node.type = 'button'
-    node.append(el('span', 'card__name', displayName(card.name, card.ex)))
-    node.append(el('span', 'card__hp', `HP${card.hp}`))
+    applyCardTheme(node, card.origin, card.rarity, card.type)
+    const body = el('span', 'card__body')
+    body.append(typeBadge(card.type))
+    body.append(el('span', 'card__name', displayName(card.name, card.ex)))
+    body.append(el('span', 'card__hp', `HP${card.hp}`))
+    node.append(body)
     const detail = (): void => handlers.onHandTap(index)
     bindTap(node, action === undefined ? detail : () => handlers.onAction(action), detail)
     hand.append(node)
