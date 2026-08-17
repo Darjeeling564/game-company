@@ -334,8 +334,28 @@ body {
   background: rgba(0, 0, 0, 0.18);
 }
 
+.detail__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .detail__name {
   font-size: 18px;
+}
+
+.detail__rarity {
+  flex: 0 0 auto;
+  font-size: 12px;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.detail__origin {
+  margin-top: -4px;
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 .detail__facts {

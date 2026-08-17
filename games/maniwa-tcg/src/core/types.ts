@@ -26,6 +26,24 @@ export type EnergyType =
 /** v1 は どく のみ */
 export type Status = 'poisoned'
 
+/**
+ * カードの系統（モチーフの出典）。
+ * 'original' は神話に由来しない独自キャラクター用の枠で、v1 では未使用。
+ */
+export type Origin =
+  | 'japan'
+  | 'egypt'
+  | 'norse'
+  | 'india'
+  | 'mesopotamia'
+  | 'cthulhu'
+  | 'greece'
+  | 'china'
+  | 'original'
+
+/** レアリティ。強さと稀少性から決める（SPEC 8.3） */
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'ultra'
+
 // ---------------------------------------------------------------- 定数
 
 export const DECK_SIZE = 20
@@ -88,6 +106,9 @@ export interface CardDef {
   readonly name: string
   /** モチーフになった神格・霊獣の説明。必須にして、カード追加時の書き忘れを型で防ぐ */
   readonly flavor: string
+  /** 系統（どの神話に属するか） */
+  readonly origin: Origin
+  readonly rarity: Rarity
   readonly kind: 'creature'
   readonly type: EnergyType
   readonly hp: number
