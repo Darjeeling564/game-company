@@ -97,6 +97,8 @@ export type Effect =
 
 export interface AttackDef {
   readonly name: string
+  /** 漢字や英語を使ったワザ名のフリガナ。かな書きのワザには付けない */
+  readonly ruby?: string
   readonly cost: readonly EnergyType[]
   readonly effects: readonly Effect[]
 }
