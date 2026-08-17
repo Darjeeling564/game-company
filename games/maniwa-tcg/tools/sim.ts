@@ -145,8 +145,9 @@ interface CardStat {
   winsWhenUsed: number
 }
 
+/** レアリティは記号ではなくアルファベットで表す（SPEC 9.1）。UI と表記を揃える */
 const RARITY_MARK: Readonly<Record<string, string>> = {
-  common: '◇', uncommon: '◇◇', rare: '◇◇◇', ultra: '★',
+  common: 'C', uncommon: 'U', rare: 'R', ultra: 'UR',
 }
 const RARITY_ORDER = ['ultra', 'rare', 'uncommon', 'common']
 

@@ -294,7 +294,8 @@ export interface CardDef {
 }
 
 export interface AttackDef {
-  readonly name: string
+  readonly name: string                      // 漢字・英語も可
+  readonly ruby?: string                     // name にフリガナが要るときだけ付ける
   readonly cost: readonly EnergyType[]       // 例: ['fire','fire','colorless']
   readonly effects: readonly Effect[]        // 先頭から順に解決
 }
@@ -549,6 +550,37 @@ CLAUDE.md 6章に従う。DotGothic16 / 森緑 `#2d5a3d` / クリーム `#f5f0e1
 - 手札は横スクロールではなく**枚数に応じて縮める**（横スクロール禁止のため）
 - アニメーションは CSS。Canvas は使わない
 
+
+### 9.1 カードの体裁
+
+カード1枚の見た目は、4つの属性をそれぞれ別の視覚要素に割り当てる。
+配色は `src/game/theme.ts` に集約し、テンプレート側には色を書かない。
+
+| 要素 | 表すもの | 実装 |
+|---|---|---|
+| 背景色 | 系統（origin） | `ORIGIN_STYLE`。下側を暗くして文字を載せる |
+| 装飾枠 | レアリティ | `RARITY_STYLE.frame`。C 灰 / U 銀 / R 金 / UR 虹 |
+| 色丸に白文字 | 属性（type） | `TYPE_COLOR`。丸の色だけが属性を表し、文字は常に白 |
+| カード名・ワザ名の色 | レアリティ | `RARITY_STYLE.text`。C 黒 / U 白 / R 金 / UR 虹 |
+
+- レアリティは記号ではなく**アルファベット**で書く（C / U / R / UR）
+- 文字色は系統の背景と同化しうるので、`RARITY_STYLE.edge` で縁取りの明度を文字色と逆にする。
+  C だけ明るい縁、それ以外は暗い縁になる
+- HP・系統名・レアリティ記号のような小さい文字はレアリティ色にせず、白＋暗い影で固定する。
+  細い文字にレアリティ色を乗せると潰れて読めない
+- UR の虹は枠と文字にグラデーションを使う。文字は `background-clip: text` で切り抜くため
+  `text-shadow` が効かず、縁取りは `drop-shadow` に置き換える
+- バトル場の印は枠の外側に1段空けてから置く。枠の色（レアリティ）と混ざらないようにする
+
+### 9.2 カードイラスト
+
+`src/data/art/<カードid>.webp` に置くと `src/game/art.ts` が自動で拾う。
+ファイル名がカードとの結び付けなので、絵を足すときにデータもロジックも触らない。
+
+- 形式: WebP / 正方形 / 256×256 を推奨（1枚あたり約30KB、40枚で約1.2MB）
+- 未配置のカードは、属性の丸だけを置いた枠で代用する。絵が揃うまで表示は壊れない
+- 外部で生成した絵を取り込む場合も、正方形に切り出して WebP にするだけでよい
+
 ---
 
 ## 10. セーブデータ
@@ -644,11 +676,14 @@ games/maniwa-tcg/
     game/
       main.ts               画面遷移と入力。core を呼ぶだけ
       view.ts               描画とカード表示の整形
+      theme.ts              9.1 の配色表（系統・レアリティ・属性）
+      art.ts                9.2 のイラスト読み込み
       style.css             6章のUI規約
       storage.ts            localStorage（maniwa-tcg_v1）
     data/
       cards.ts              8章のカード定義
       decks.ts              プリセットデッキ
+      art/                  9.2 のイラスト（<カードid>.webp）
   tests/
     rng.test.ts             PRNG の決定論と分布
     determinism.test.ts     決定論リプレイ
