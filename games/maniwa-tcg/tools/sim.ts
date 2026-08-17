@@ -138,10 +138,17 @@ function pct(part: number, total: number): string {
 interface CardStat {
   readonly id: string
   readonly name: string
+  readonly origin: string
+  readonly rarity: string
   inDeck: number
   usedIn: number
   winsWhenUsed: number
 }
+
+const RARITY_MARK: Readonly<Record<string, string>> = {
+  common: '◇', uncommon: '◇◇', rare: '◇◇◇', ultra: '★',
+}
+const RARITY_ORDER = ['ultra', 'rare', 'uncommon', 'common']
 
 // ---------------------------------------------------------------- 実行
 
@@ -181,7 +188,10 @@ function buildGroups(total: number): readonly { label: string; decks: readonly [
 const groups = buildGroups(options.games)
 
 const stats = new Map<string, CardStat>(
-  CARDS.map((c) => [c.id, { id: c.id, name: c.name, inDeck: 0, usedIn: 0, winsWhenUsed: 0 }]),
+  CARDS.map((c) => [
+    c.id,
+    { id: c.id, name: c.name, origin: c.origin, rarity: c.rarity, inDeck: 0, usedIn: 0, winsWhenUsed: 0 },
+  ]),
 )
 
 const allTurns: number[] = []
@@ -272,6 +282,8 @@ if (options.json) {
         cards: [...stats.values()].map((s) => ({
           id: s.id,
           name: s.name,
+          origin: s.origin,
+          rarity: s.rarity,
           adoptionRate: s.inDeck / (options.games * 2),
           usageRate: s.inDeck === 0 ? 0 : s.usedIn / s.inDeck,
           winRateWhenUsed: s.usedIn === 0 ? null : s.winsWhenUsed / s.usedIn,
@@ -323,14 +335,34 @@ if (options.json) {
   line('余剰エネルギー', (totalWasted / options.games).toFixed(1))
   console.log('')
 
-  console.log('■ カード別（採用率 / 使用率 / 使用時勝率 / 勝率寄与）')
+  // レアリティが強さの目安として機能しているかを見る
+  console.log('■ レアリティ別（種類数 / 平均使用率 / 平均勝率寄与）')
+  for (const rarity of RARITY_ORDER) {
+    const group = [...stats.values()].filter((s) => s.rarity === rarity && s.inDeck > 0)
+    if (group.length === 0) continue
+    const usage = mean(group.map((s) => s.usedIn / s.inDeck))
+    const contribution = mean(group.filter((s) => s.usedIn > 0).map((s) => s.winsWhenUsed / s.usedIn - overallWinRate))
+    line(`${RARITY_MARK[rarity] ?? rarity} ${rarity}`,
+      `${String(group.length).padStart(2)}種 / ${(usage * 100).toFixed(1)}% / ${contribution >= 0 ? '+' : ''}${(contribution * 100).toFixed(1)}pt`)
+  }
+  console.log('')
+
+  console.log('■ 系統別（種類数 / 平均使用率）')
+  for (const origin of [...new Set([...stats.values()].map((s) => s.origin))].sort()) {
+    const group = [...stats.values()].filter((s) => s.origin === origin && s.inDeck > 0)
+    if (group.length === 0) continue
+    line(origin, `${String(group.length).padStart(2)}種 / ${(mean(group.map((s) => s.usedIn / s.inDeck)) * 100).toFixed(1)}%`)
+  }
+  console.log('')
+
+  console.log('■ カード別（レア度 / 採用率 / 使用率 / 使用時勝率 / 勝率寄与）')
   const rows = [...stats.values()].sort((a, b) => b.usedIn / (b.inDeck || 1) - a.usedIn / (a.inDeck || 1))
   for (const s of rows) {
     const usage = s.inDeck === 0 ? 0 : s.usedIn / s.inDeck
     const winRate = s.usedIn === 0 ? null : s.winsWhenUsed / s.usedIn
     const contribution = winRate === null ? null : winRate - overallWinRate
     console.log(
-      `  ${s.id} ${s.name.padEnd(10, '　')} ` +
+      `  ${s.id} ${s.name.padEnd(10, '　')} ${(RARITY_MARK[s.rarity] ?? '').padEnd(3)} ` +
         `${pct(s.inDeck, options.games * 2).padStart(6)} / ${(usage * 100).toFixed(1).padStart(5)}% / ` +
         `${winRate === null ? '   -  ' : `${(winRate * 100).toFixed(1)}%`.padStart(6)} / ` +
         `${contribution === null ? '  -  ' : `${contribution >= 0 ? '+' : ''}${(contribution * 100).toFixed(1)}pt`}`,

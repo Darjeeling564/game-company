@@ -11,10 +11,12 @@ import type {
   Effect,
   EnergyType,
   GameState,
+  Origin,
   PlayerId,
   PlayerState,
+  Rarity,
 } from '../core/types.ts'
-import { BENCH_SIZE } from '../core/types.ts'
+import { BENCH_SIZE, WEAKNESS_BONUS } from '../core/types.ts'
 import { requireCard } from '../data/cards.ts'
 
 export const HUMAN: PlayerId = 0
@@ -27,6 +29,44 @@ const ENERGY_LABEL: Readonly<Record<string, string>> = {
 
 export function energyLabel(type: string | null): string {
   return type === null ? '—' : (ENERGY_LABEL[type] ?? type)
+}
+
+const ORIGIN_LABEL: Readonly<Record<Origin, string>> = {
+  japan: '日本神話',
+  egypt: 'エジプト神話',
+  norse: '北欧神話',
+  india: 'インド神話',
+  mesopotamia: '中東神話',
+  cthulhu: 'クトゥルフ神話',
+  greece: 'ギリシア神話',
+  china: '中国神話',
+  original: 'オリジン',
+}
+
+export function originLabel(origin: Origin): string {
+  return ORIGIN_LABEL[origin]
+}
+
+const RARITY_LABEL: Readonly<Record<Rarity, string>> = {
+  common: 'コモン',
+  uncommon: 'アンコモン',
+  rare: 'レア',
+  ultra: 'ウルトラレア',
+}
+
+const RARITY_MARK: Readonly<Record<Rarity, string>> = {
+  common: '◇',
+  uncommon: '◇◇',
+  rare: '◇◇◇',
+  ultra: '★',
+}
+
+export function rarityLabel(rarity: Rarity): string {
+  return `${RARITY_MARK[rarity]} ${RARITY_LABEL[rarity]}`
+}
+
+export function rarityMark(rarity: Rarity): string {
+  return RARITY_MARK[rarity]
 }
 
 /** コストを「炎炎無」の形にする */
@@ -112,13 +152,17 @@ export function recentLog(state: GameState, count: number): readonly string[] {
 /** カード1枚の詳細。ワザのコストと効果まで見せる */
 export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLElement {
   const box = el('div', 'detail')
-  box.append(el('div', 'detail__name', displayName(card.name, card.ex)))
+  const head = el('div', 'detail__head')
+  head.append(el('span', 'detail__name', displayName(card.name, card.ex)))
+  head.append(el('span', 'detail__rarity', rarityLabel(card.rarity)))
+  box.append(head)
+  box.append(el('div', 'detail__origin', originLabel(card.origin)))
 
   const remaining = creature === null ? card.hp : Math.max(0, card.hp - creature.damage)
   const facts = [
     `タイプ ${energyLabel(card.type)}`,
     `HP ${remaining}/${card.hp}`,
-    `弱点 ${card.weakness === null ? 'なし' : energyLabel(card.weakness)}（+20）`,
+    card.weakness === null ? '弱点 なし' : `弱点 ${energyLabel(card.weakness)}（+${WEAKNESS_BONUS}）`,
     `にげる エネ${card.retreatCost}`,
   ]
   if (creature !== null && creature.attached.length > 0) {

@@ -268,10 +268,20 @@ export interface Deck {
   readonly energy: readonly EnergyType[]     // 1〜3種。colorless は不可
 }
 
+/** 系統。'original' は神話に由来しない独自キャラクター用の枠 */
+export type Origin =
+  | 'japan' | 'egypt' | 'norse' | 'india'
+  | 'mesopotamia' | 'cthulhu' | 'greece' | 'china'
+  | 'original'
+
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'ultra'
+
 export interface CardDef {
   readonly id: CardId
   readonly name: string
   readonly flavor: string                    // モチーフの解説。詳細画面に出す
+  readonly origin: Origin                    // 系統
+  readonly rarity: Rarity                    // 8.4 の基準で決める
   readonly kind: 'creature'                  // v2 で 'item' | 'supporter' を追加
   readonly type: EnergyType
   readonly hp: number
@@ -349,6 +359,7 @@ export const CARDS: readonly CardDef[] = [
   {
     id: 'g001', name: 'デメテル',
     flavor: '穀物を育てる大地の女神。娘を奪われ嘆いた季節が、冬になったという。',
+    origin: 'greece', rarity: 'common',
     kind: 'creature',
     type: 'grass', hp: 60, ex: false, retreatCost: 1, weakness: 'fire', stage: 0,
     attacks: [
@@ -359,6 +370,7 @@ export const CARDS: readonly CardDef[] = [
   {
     id: 'f005', name: 'カグツチ',
     flavor: '火の神。生まれ落ちる際に母イザナミを焼き、父イザナギに斬られた。',
+    origin: 'japan', rarity: 'rare',
     kind: 'creature',
     type: 'fire', hp: 90, ex: false, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
@@ -374,6 +386,7 @@ export const CARDS: readonly CardDef[] = [
   {
     id: 'f006', name: 'カグツチEX',
     flavor: '斬られた血と亡骸から、さらに多くの神が生まれたという。火は滅ぼすと同時に生む。',
+    origin: 'japan', rarity: 'ultra',
     kind: 'creature',
     type: 'fire', hp: 140, ex: true, retreatCost: 2, weakness: 'water', stage: 0,
     attacks: [
@@ -413,6 +426,13 @@ v1 のプールは **40種**。8系統の神話から**各5枚ずつ**均等に�
 
 EX 級は各タイプに1枚ずつ（カグツチEX / ユグドラシルEX / クトゥルフEX）。
 
+系統は `origin` として項目に持つ。8.1 の表は要約であり、**データ側が真**である。
+`'original'` は神話に由来しない独自キャラクター用の枠で、**v1 では未使用**。独自キャラクターを
+足すときは、8系統の均等配分とは別枠として数える。
+
+各カードは `flavor` にモチーフの解説を持つ。**必須項目**とし、書き忘れを型で防ぐ。
+戦闘には影響しない表示専用のデータで、カード詳細の最下部に出す。
+
 ### 8.2 弱点は3すくみ
 
 弱点は **草 → 炎 → 水 → 草** の一方向の循環とする。
@@ -441,7 +461,34 @@ EX 級は各タイプに1枚ずつ（カグツチEX / ユグドラシルEX / ク
 ミラーマッチで互いに削れない膠着が生まれ、ターン上限まで試合が終わらなくなる
 （実際に到達率2.1%の退行を出したことがある）。
 
-### 8.3 バランス調整の記録
+### 8.3 レアリティ
+
+レアリティは**強さと稀少性**から決める。感覚で振らず、次の手順で算出する。
+
+1. カードごとに総合力を出す — `HP + 効率 × 3 + 最大威力 × 0.6`
+   - 効率 = ワザの期待値 ÷ コスト数 の最大値
+   - 期待値はコイン依存を確率で、回復・どく・ドロー・エネルギー破壊を換算値で見積もる
+2. 総合力で区切る — **300以上=ウルトラレア / 225以上=レア / 180以上=アンコモン / それ未満=コモン**
+3. **無色は1段下げる** — 全デッキ共通で2枚積みされ、稀少性が低いため
+
+| レアリティ | 表記 | 種類数 |
+|---|---|---|
+| ウルトラレア | ★ | 3（EX級） |
+| レア | ◇◇◇ | 5 |
+| アンコモン | ◇◇ | 15 |
+| コモン | ◇ | 17 |
+
+シミュレーションでレアリティ別の使用率と勝率寄与を出し、**強さの順に単調であること**を
+健全性の条件とする。逆転していれば、レアリティか数値のどちらかが実態と合っていない。
+
+| レアリティ | 平均使用率 | 平均勝率寄与 |
+|---|---|---|
+| ★ ウルトラレア | 59.1% | +4.1pt |
+| ◇◇◇ レア | 46.1% | +2.9pt |
+| ◇◇ アンコモン | 33.7% | -3.0pt |
+| ◇ コモン | 24.1% | -3.4pt |
+
+### 8.4 バランス調整の記録
 
 初期値では先手勝率が基準を外れていた。原因と対処を残しておく。
 
