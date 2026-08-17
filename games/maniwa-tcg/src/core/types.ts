@@ -42,7 +42,7 @@ export type Origin =
   | 'original'
 
 /** レアリティ。強さと稀少性から決める（SPEC 8.3） */
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'ultra'
+export type Rarity = 'common' | 'rare' | 'superRare' | 'ultra'
 
 // ---------------------------------------------------------------- 定数
 

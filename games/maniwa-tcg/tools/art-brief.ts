@@ -29,8 +29,8 @@ const ORIGIN_LABEL: Readonly<Record<Origin, string>> = {
 
 const RARITY_LABEL: Readonly<Record<Rarity, string>> = {
   common: 'C（コモン）',
-  uncommon: 'U（アンコモン）',
   rare: 'R（レア）',
+  superRare: 'SR（スーパーレア）',
   ultra: 'UR（ウルトラレア）',
 }
 

@@ -147,9 +147,12 @@ interface CardStat {
 
 /** レアリティは記号ではなくアルファベットで表す（SPEC 9.1）。UI と表記を揃える */
 const RARITY_MARK: Readonly<Record<string, string>> = {
-  common: 'C', uncommon: 'U', rare: 'R', ultra: 'UR',
+  common: 'C', rare: 'R', superRare: 'SR', ultra: 'UR',
 }
-const RARITY_ORDER = ['ultra', 'rare', 'uncommon', 'common']
+const RARITY_ORDER = ['ultra', 'superRare', 'rare', 'common']
+const RARITY_LABEL: Readonly<Record<string, string>> = {
+  common: 'コモン', rare: 'レア', superRare: 'スーパーレア', ultra: 'ウルトラレア',
+}
 
 // ---------------------------------------------------------------- 実行
 
@@ -343,7 +346,7 @@ if (options.json) {
     if (group.length === 0) continue
     const usage = mean(group.map((s) => s.usedIn / s.inDeck))
     const contribution = mean(group.filter((s) => s.usedIn > 0).map((s) => s.winsWhenUsed / s.usedIn - overallWinRate))
-    line(`${RARITY_MARK[rarity] ?? rarity} ${rarity}`,
+    line(`${RARITY_MARK[rarity] ?? rarity} ${RARITY_LABEL[rarity] ?? rarity}`,
       `${String(group.length).padStart(2)}種 / ${(usage * 100).toFixed(1)}% / ${contribution >= 0 ? '+' : ''}${(contribution * 100).toFixed(1)}pt`)
   }
   console.log('')

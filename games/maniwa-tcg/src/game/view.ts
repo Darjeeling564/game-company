@@ -49,7 +49,7 @@ export function originLabel(origin: Origin): string {
   return ORIGIN_LABEL[origin]
 }
 
-/** レアリティは記号ではなくアルファベットで表す（C / U / R / UR） */
+/** レアリティは記号ではなくアルファベットで表す（C / R / SR / UR） */
 export function rarityCode(rarity: Rarity): string {
   return RARITY_STYLE[rarity].code
 }

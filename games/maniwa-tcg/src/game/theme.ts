@@ -56,12 +56,12 @@ export const RARITY_STYLE: Readonly<Record<Rarity, RarityStyle>> = {
     code: 'C', label: 'コモン',
     frame: '#7e7e7e', text: '#14100c', edge: '#f2ece0', gradientText: false,
   },
-  uncommon: {
-    code: 'U', label: 'アンコモン',
-    frame: '#c8d2d8', text: '#ffffff', edge: '#1a1410', gradientText: false,
-  },
   rare: {
     code: 'R', label: 'レア',
+    frame: '#c8d2d8', text: '#ffffff', edge: '#1a1410', gradientText: false,
+  },
+  superRare: {
+    code: 'SR', label: 'スーパーレア',
     frame: '#e0bf5c', text: '#f5d98a', edge: '#1a1410', gradientText: false,
   },
   ultra: {
