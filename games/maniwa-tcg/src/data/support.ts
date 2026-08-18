@@ -177,7 +177,10 @@ export const ULTIMATES: readonly UltimateCard[] = [
     flavor: '風がかたちを変え、見てはならない印を空に描く。読めた者から崩れていく。',
     cost: ['wind', 'wind', 'colorless'],
     effects: [
-      { type: 'damage', target: 'opponentActive', value: 100 },
+      // ハスターEX 自身の「かぜにのるもの」と同コスト同威力だったため、
+      // 絶技が一度も選ばれない死に札になっていた。他の絶技と同じく
+      // 対応キャラの最強ワザより一段上に置く（夜間レポート 2026-08-19）
+      { type: 'damage', target: 'opponentActive', value: 120 },
       { type: 'discardEnergy', target: 'opponentActive', value: 1 },
     ],
   },
