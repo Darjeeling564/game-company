@@ -62,6 +62,42 @@ function format(brief: Brief): string {
   ].join('\n')
 }
 
+/** 種別ごとの描き方。カードに渡す5項目は変えず、指示だけを分ける */
+const KIND_BRIEF: readonly {
+  readonly kind: CardDef['kind']
+  readonly title: string
+  readonly note: readonly string[]
+}[] = [
+  {
+    kind: 'creature',
+    title: 'キャラクター',
+    note: [
+      '神格はすべて美少女として擬人化して描く（男神・獣・怪物も同様）',
+      '1キャラにつき3枚。無傷 / 傷ついた姿 / 追い詰められた姿',
+      '  ファイル名は <カードID>.webp / <カードID>-d1.webp / <カードID>-d2.webp',
+      '3枚とも同一人物・同一衣装・同一画風で揃える',
+    ],
+  },
+  {
+    kind: 'item',
+    title: 'アイテム',
+    note: ['人物は描かず、道具そのものを1点だけ描く', '1枚のみ。ダメージ違いは作らない'],
+  },
+  {
+    kind: 'action',
+    title: '行動',
+    note: ['儀式や現象そのものを描く。人物を入れる場合は後ろ姿かシルエットに留める', '1枚のみ'],
+  },
+  {
+    kind: 'ultimate',
+    title: '絶技',
+    note: [
+      '対応するキャラが技を放つ瞬間を描く。キャラの姿は元のカードと揃える',
+      '1枚のみ。構図はカードの中でもっとも派手にする',
+    ],
+  },
+]
+
 function main(argv: readonly string[]): number {
   const json = argv.includes('--json')
   const ids = argv.filter((a) => !a.startsWith('--'))
@@ -74,23 +110,25 @@ function main(argv: readonly string[]): number {
         return found
       })
 
-  const briefs = cards.map(toBrief)
   if (json) {
-    console.log(JSON.stringify(briefs, null, 2))
+    console.log(JSON.stringify(cards.map(toBrief), null, 2))
     return 0
   }
 
-  console.log(`神話戦姫 カードイラスト入力データ（${briefs.length}種）`)
-  console.log('')
-  console.log('・神格はすべて美少女として擬人化して描く（男神・獣・怪物も同様）')
-  console.log('・1キャラにつき3枚。無傷 / 傷ついた姿 / 追い詰められた姿')
-  console.log('  ファイル名は <カードID>.webp / <カードID>-d1.webp / <カードID>-d2.webp')
-  console.log('・512×512 の正方形。3枚とも同一人物・同一衣装・同一画風で揃える')
-  console.log('・渡すデータは以下の5項目のみ。ここに無い要素を足さない')
-  console.log('')
-  for (const brief of briefs) {
-    console.log(format(brief))
+  console.log(`神話戦姫 カードイラスト入力データ（${cards.length}種）`)
+  console.log('512×512 の正方形。渡すデータは5項目のみで、ここに無い要素を足さない。')
+
+  for (const section of KIND_BRIEF) {
+    const group = cards.filter((c) => c.kind === section.kind)
+    if (group.length === 0) continue
     console.log('')
+    console.log(`━━━ ${section.title}（${group.length}種）`)
+    for (const line of section.note) console.log(`・${line}`)
+    console.log('')
+    for (const card of group) {
+      console.log(format(toBrief(card)))
+      console.log('')
+    }
   }
   return 0
 }

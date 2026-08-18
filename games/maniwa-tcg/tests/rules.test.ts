@@ -14,9 +14,13 @@ function creature(instanceId: number, cardId: string, attached: readonly EnergyT
   return { instanceId, cardId, damage, attached, status: [], placedTurn: 0 }
 }
 
-function player(active: Creature | null, bench: readonly Creature[] = []): PlayerState {
+function player(
+  active: Creature | null,
+  bench: readonly Creature[] = [],
+  hand: readonly string[] = [],
+): PlayerState {
   return {
-    deck: [], hand: [], discard: [],
+    deck: [], hand, discard: [],
     active, bench, points: 0,
     energy: { pool: ['fire'], current: null, next: 'fire' },
     attachedThisTurn: false, retreatedThisTurn: false, usedActionThisTurn: false,
@@ -195,10 +199,13 @@ describe('先攻1ターン目', () => {
     let state = reduce(EMPTY_STATE, {
       type: 'start', seed: 20260815, decks: [FIRE_DECK, GRASS_DECK], firstPlayer: 0,
     })
-    state = reduce(state, { type: 'setupPlace', player: 0, handIndex: 0 })
-    state = reduce(state, { type: 'setupPlace', player: 1, handIndex: 0 })
-    state = reduce(state, { type: 'setupDone', player: 0 })
-    state = reduce(state, { type: 'setupDone', player: 1 })
+    // 手札の先頭がキャラとは限らない（アイテムや行動も配られる）。
+    // 合法手から選ばせて、デッキの中身に依存しないようにする
+    for (const player of [0, 1] as const) {
+      const place = legalActions(state).find((a) => a.type === 'setupPlace' && a.player === player)
+      if (place !== undefined) state = reduce(state, place)
+      state = reduce(state, { type: 'setupDone', player })
+    }
     return state
   }
 
@@ -237,5 +244,85 @@ describe('カードデータ', () => {
         expect(card.attacks.length, `${id}`).toBeGreaterThan(0)
       }
     }
+  })
+})
+
+// ---------------------------------------------------------------- 種別（SPEC 16章）
+
+describe('アイテム・行動・絶技', () => {
+  it('アイテムは1ターンに何枚でも使える（Q10）', () => {
+    // i002 供物の果実 = 2枚ひく。2枚持たせて、1枚使ってももう1枚使えることを見る
+    const me = player(creature(1, 'f002'), [], ['i002', 'i002'])
+    const state = battleState(me, player(creature(2, 'g001')))
+
+    const after = reduce(state, { type: 'playItem', player: 0, handIndex: 0 })
+    expect(after.players[0].discard).toEqual(['i002'])
+    expect(after.current).toBe(0) // ターンは終わらない
+    expect(legalActions(after).some((a) => a.type === 'playItem')).toBe(true)
+  })
+
+  it('行動は1ターンに1枚まで（Q9）', () => {
+    // a001 天啓 = 3枚ひく
+    const me = player(creature(1, 'f002'), [], ['a001', 'a001'])
+    const state = battleState(me, player(creature(2, 'g001')))
+
+    const after = reduce(state, { type: 'playAction', player: 0, handIndex: 0 })
+    expect(after.players[0].usedActionThisTurn).toBe(true)
+    expect(legalActions(after).some((a) => a.type === 'playAction')).toBe(false)
+
+    const again = reduce(after, { type: 'playAction', player: 0, handIndex: 0 })
+    expect(again.log.at(-1)?.kind).toBe('rejected')
+  })
+
+  it('絶技は対応キャラがバトル場にいないと使えない（Q8）', () => {
+    // u004 焔剣 は f004 スルト 専用。別のキャラでは撃てない
+    const wrong = player(creature(1, 'f002', ['fire', 'fire']), [], ['u004'])
+    const rejected = reduce(battleState(wrong, player(creature(2, 'g001'))), {
+      type: 'useUltimate', player: 0, handIndex: 0,
+    })
+    expect(rejected.log.at(-1)?.kind).toBe('rejected')
+    expect(rejected.log.at(-1)?.detail).toContain('f004')
+
+    const right = player(creature(1, 'f004', ['fire', 'fire']), [], ['u004'])
+    const ok = reduce(battleState(right, player(creature(2, 'g001'))), {
+      type: 'useUltimate', player: 0, handIndex: 0,
+    })
+    expect(ok.log.some((e) => e.kind === 'ultimate')).toBe(true)
+  })
+
+  it('絶技はエネルギーが足りないと使えない', () => {
+    const poor = player(creature(1, 'f004', ['fire']), [], ['u004'])
+    const state = battleState(poor, player(creature(2, 'g001')))
+    expect(legalActions(state).some((a) => a.type === 'useUltimate')).toBe(false)
+  })
+
+  it('絶技を撃つとターンが終わる（Q7）', () => {
+    // 相手が倒れると入れ替えや決着が挟まるので、耐えるだけのHPを持たせる
+    const me = player(creature(1, 'f004', ['fire', 'fire']), [], ['u004'])
+    const after = reduce(battleState(me, player(creature(2, 'w011'))), {
+      type: 'useUltimate', player: 0, handIndex: 0,
+    })
+    expect(after.current).toBe(1)
+    expect(after.players[0].discard).toEqual(['u004'])
+  })
+
+  it('先攻1ターン目は絶技も撃てない', () => {
+    const me = player(creature(1, 'f004', ['fire', 'fire']), [], ['u004'])
+    const state = battleState(me, player(creature(2, 'g001')), 1)
+    expect(legalActions(state).some((a) => a.type === 'useUltimate')).toBe(false)
+  })
+
+  it('アイテムで相手を倒しても自分のターンは続く', () => {
+    // i007 呪詛の釘 = 10ダメージ。あと10で落ちる相手を倒しても手番は渡らない
+    const me = player(creature(1, 'f002'), [], ['i007'])
+    const foe = player(creature(2, 'g001', [], 70), [creature(3, 'g003')]) // g001 は HP80
+    const after = reduce(battleState(me, foe), { type: 'playItem', player: 0, handIndex: 0 })
+
+    expect(after.players[0].points).toBe(1)
+    expect(after.phase).toEqual({ kind: 'promote', queue: [1], resume: 'continue' })
+
+    const promoted = reduce(after, { type: 'promote', player: 1, benchIndex: 0 })
+    expect(promoted.current).toBe(0) // 入れ替えのあとも自分の手番のまま
+    expect(promoted.phase.kind).toBe('main')
   })
 })

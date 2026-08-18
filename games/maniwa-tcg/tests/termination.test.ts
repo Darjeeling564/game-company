@@ -13,7 +13,7 @@ import { EMPTY_STATE, isOver, reduce } from '../src/core/reduce.ts'
 import { createRng } from '../src/core/rng.ts'
 import type { Deck, GameState, PlayerId } from '../src/core/types.ts'
 import { MAX_TURNS } from '../src/core/types.ts'
-import { FIRE_DECK, GRASS_DECK } from '../src/data/decks.ts'
+import { DECKS, FIRE_DECK, GRASS_DECK } from '../src/data/decks.ts'
 import type { Policy } from '../tools/ai.ts'
 import { greedyPolicy, randomPolicy } from '../tools/ai.ts'
 
@@ -81,4 +81,21 @@ describe('終局保証', () => {
     }
     expect(overrun).toEqual([])
   }, 60000)
+})
+
+describe('全デッキの終局保証', () => {
+  it('6デッキの総当たりが規定ターン以内に終わる', () => {
+    const overruns: string[] = []
+    let seed = 1
+    for (const a of DECKS) {
+      for (const b of DECKS) {
+        for (let i = 0; i < 40; i += 1) {
+          const outcome = play(seed, [a, b], greedyPolicy)
+          if (!outcome.finished) overruns.push(`${a.name} vs ${b.name} seed=${seed}`)
+          seed += 1
+        }
+      }
+    }
+    expect(overruns.slice(0, 5)).toEqual([])
+  })
 })

@@ -94,6 +94,16 @@ export function validateDeck(deck: Deck): readonly string[] {
   const hasCreature = deck.cards.some((id) => findCard(id)?.kind === 'creature')
   if (!hasCreature) errors.push('クリーチャーを1枚以上入れる')
 
+  // 絶技は撃てるキャラが同じデッキに無いと死に札になる（SPEC 16.5）
+  const inDeck = new Set(deck.cards)
+  for (const id of new Set(deck.cards)) {
+    const card = findCard(id)
+    if (card?.kind !== 'ultimate') continue
+    if (!inDeck.has(card.requires)) {
+      errors.push(`絶技 ${card.name} には ${card.requires} が必要`)
+    }
+  }
+
   return errors
 }
 

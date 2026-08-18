@@ -13,6 +13,7 @@
  * 弱点は 草→炎→水→草 の3すくみ（SPEC 8.2）。無色は3すくみの外側なので弱点を持たない。
  */
 import type { CardDef, CardId, CardIndex, CreatureCard } from '../core/types.ts'
+import { ACTIONS, ITEMS, ULTIMATES } from './support.ts'
 
 // ------------------------------------------------ 無色: 眷属（全デッキ共通のコア）
 
@@ -492,7 +493,10 @@ const WATER: readonly CreatureCard[] = [
   },
 ]
 
-export const CARDS: readonly CardDef[] = [...COLORLESS, ...FIRE, ...GRASS, ...WATER]
+/** キャラ */
+export const CREATURES: readonly CreatureCard[] = [...COLORLESS, ...FIRE, ...GRASS, ...WATER]
+
+export const CARDS: readonly CardDef[] = [...CREATURES, ...ITEMS, ...ACTIONS, ...ULTIMATES]
 
 export const CARD_INDEX: CardIndex = new Map(CARDS.map((c) => [c.id, c]))
 
@@ -517,6 +521,10 @@ export function requireCreature(id: CardId): CreatureCard {
   if (card.kind !== 'creature') throw new Error(`not a creature: ${id}`)
   return card
 }
+
+export const ITEM_IDS = ITEMS.map((c) => c.id)
+export const ACTION_IDS = ACTIONS.map((c) => c.id)
+export const ULTIMATE_IDS = ULTIMATES.map((c) => c.id)
 
 export const COLORLESS_IDS = COLORLESS.map((c) => c.id)
 export const FIRE_IDS = FIRE.map((c) => c.id)

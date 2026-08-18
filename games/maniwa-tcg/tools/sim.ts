@@ -54,6 +54,10 @@ interface MatchResult {
   readonly attacks: readonly [number, number]
   readonly retreats: readonly [number, number]
   readonly attaches: readonly [number, number]
+  /** 種別ごとの使用回数。絶技が死に札になっていないかを見るため（SPEC 16.7） */
+  readonly items: readonly [number, number]
+  readonly supports: readonly [number, number]
+  readonly ultimates: readonly [number, number]
   /** 使われずに終わったエネルギー */
   readonly wastedEnergy: number
 }
@@ -66,6 +70,9 @@ function runMatch(seed: number, decks: readonly [Deck, Deck], firstPlayer: Playe
   const attacks: [number, number] = [0, 0]
   const retreats: [number, number] = [0, 0]
   const attaches: [number, number] = [0, 0]
+  const items: [number, number] = [0, 0]
+  const supports: [number, number] = [0, 0]
+  const ultimates: [number, number] = [0, 0]
   let wastedEnergy = 0
 
   for (let step = 0; step < MAX_STEPS && !isOver(state); step += 1) {
@@ -77,9 +84,15 @@ function runMatch(seed: number, decks: readonly [Deck, Deck], firstPlayer: Playe
 
     switch (action.type) {
       case 'setupPlace':
-      case 'playCreature': {
+      case 'playCreature':
+      case 'playItem':
+      case 'playAction':
+      case 'useUltimate': {
         const cardId = before.players[action.player].hand[action.handIndex]
         if (cardId !== undefined) used[action.player].add(cardId)
+        if (action.type === 'playItem') items[action.player] += 1
+        if (action.type === 'playAction') supports[action.player] += 1
+        if (action.type === 'useUltimate') ultimates[action.player] += 1
         break
       }
       case 'attack': {
@@ -116,6 +129,9 @@ function runMatch(seed: number, decks: readonly [Deck, Deck], firstPlayer: Playe
     attacks,
     retreats,
     attaches,
+    items,
+    supports,
+    ultimates,
     wastedEnergy,
   }
 }

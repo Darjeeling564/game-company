@@ -119,6 +119,8 @@ export interface AttackDef {
 interface CardBase {
   readonly id: CardId
   readonly name: string
+  /** 漢字や英語を使ったカード名のフリガナ。かな書きの名前には付けない */
+  readonly ruby?: string
   /** モチーフになった神格・霊獣の説明。必須にして、カード追加時の書き忘れを型で防ぐ */
   readonly flavor: string
   /** 系統（どの神話に属するか） */
@@ -160,8 +162,6 @@ export interface UltimateCard extends CardBase {
   /** この絶技を撃てるキャラのカードID。バトル場にいることが条件（Q8） */
   readonly requires: CardId
   readonly cost: readonly EnergyType[]
-  /** 漢字や英語のときのフリガナ */
-  readonly ruby?: string
   readonly effects: readonly Effect[]
 }
 
