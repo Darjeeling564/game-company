@@ -8,9 +8,20 @@
  */
 import type { Action } from './actions.ts'
 import { describeAction } from './actions.ts'
+import { applyEffects } from './effects.ts'
 import { createRng, pick, shuffle } from './rng.ts'
 import { allCreatures, log, playerAt, updateCreature, withPlayer } from './state.ts'
-import { attackError, beginTurn, canPayCost, finishTurn, performAttack, afterPromote } from './rules.ts'
+import {
+  afterPromote,
+  attackError,
+  beginTurn,
+  canPayCost,
+  finishTurn,
+  performAttack,
+  performUltimate,
+  resolveInTurn,
+  ultimateError,
+} from './rules.ts'
 import type { CardId, Creature, Deck, EnergyType, GameState, PlayerId, PlayerState } from './types.ts'
 import {
   BENCH_SIZE,
@@ -19,7 +30,7 @@ import {
   MAX_MULLIGAN,
   MAX_SAME_NAME,
 } from './types.ts'
-import { findCard, requireCard } from '../data/cards.ts'
+import { findCard, requireCreature } from '../data/cards.ts'
 
 // ---------------------------------------------------------------- 初期状態
 
@@ -33,6 +44,7 @@ const EMPTY_PLAYER: PlayerState = {
   energy: { pool: [], current: null, next: null },
   attachedThisTurn: false,
   retreatedThisTurn: false,
+  usedActionThisTurn: false,
 }
 
 export const EMPTY_STATE: GameState = {
@@ -248,8 +260,9 @@ function reducePromote(state: GameState, action: PlayerAction): GameState {
   const queue = state.phase.queue.slice(1)
   const next = log(promoted, action.player, 'promote', `#${chosen.instanceId}`)
 
-  if (queue.length > 0) return { ...next, phase: { kind: 'promote', queue } }
-  return afterPromote({ ...next, phase: { kind: 'main' } })
+  const resume = state.phase.resume
+  if (queue.length > 0) return { ...next, phase: { kind: 'promote', queue, resume } }
+  return afterPromote({ ...next, phase: { kind: 'main' } }, resume)
 }
 
 function reduceMain(state: GameState, action: PlayerAction): GameState {
@@ -291,7 +304,7 @@ function reduceMain(state: GameState, action: PlayerAction): GameState {
       const chosen = player.bench[action.benchIndex]
       if (chosen === undefined) return reject(state, action, 'ベンチの範囲外')
 
-      const cost = requireCard(active.cardId).retreatCost
+      const cost = requireCreature(active.cardId).retreatCost
       if (active.attached.length < cost) return reject(state, action, `エネルギーが${cost}個必要`)
 
       const retreated: Creature = {
@@ -307,6 +320,38 @@ function reduceMain(state: GameState, action: PlayerAction): GameState {
         retreatedThisTurn: true,
       }
       return log(withPlayer(state, id, updated), id, 'retreat', `#${chosen.instanceId}`)
+    }
+
+    case 'playItem':
+    case 'playAction': {
+      const kind = action.type === 'playItem' ? 'item' : 'action'
+      if (kind === 'action' && player.usedActionThisTurn) {
+        return reject(state, action, 'このターンは行動カードを使用済み')
+      }
+      const cardId = player.hand[action.handIndex]
+      if (cardId === undefined) return reject(state, action, '手札の範囲外')
+      const card = findCard(cardId)
+      if (card === undefined) return reject(state, action, '未知のカード')
+      if (card.kind !== kind) return reject(state, action, `${kind} ではない`)
+
+      // 先に手札から抜いてトラッシュへ送る。効果でドローしても位置がずれない
+      const hand = [...player.hand.slice(0, action.handIndex), ...player.hand.slice(action.handIndex + 1)]
+      const updated: PlayerState = {
+        ...player,
+        hand,
+        discard: [...player.discard, cardId],
+        usedActionThisTurn: kind === 'action' ? true : player.usedActionThisTurn,
+      }
+      const played = log(withPlayer(state, id, updated), id, kind, card.name)
+      const resolved = applyEffects(played, id, card.effects)
+      // ターンは終わらせない。倒れた個体だけ片付けて手番を続ける
+      return resolveInTurn(resolved, id)
+    }
+
+    case 'useUltimate': {
+      const error = ultimateError(state, id, action.handIndex)
+      if (error !== null) return reject(state, action, error)
+      return performUltimate(state, id, action.handIndex)
     }
 
     case 'endTurn':
@@ -344,10 +389,13 @@ function canonical(state: GameState): string {
       `${p.energy.pool.join('')}/${p.energy.current ?? '-'}/${p.energy.next ?? '-'}`,
       p.attachedThisTurn ? '1' : '0',
       p.retreatedThisTurn ? '1' : '0',
+      p.usedActionThisTurn ? '1' : '0',
     ].join(';')
 
   const phase =
-    state.phase.kind === 'promote' ? `promote(${state.phase.queue.join(',')})` : state.phase.kind
+    state.phase.kind === 'promote'
+      ? `promote(${state.phase.queue.join(',')}/${state.phase.resume})`
+      : state.phase.kind
 
   return [
     state.rng.seed,
@@ -425,7 +473,7 @@ export function legalActions(state: GameState): readonly Action[] {
 
       const active = player.active
       if (active !== null && !player.retreatedThisTurn) {
-        const cost = requireCard(active.cardId).retreatCost
+        const cost = requireCreature(active.cardId).retreatCost
         if (active.attached.length >= cost) {
           player.bench.forEach((_, benchIndex) => out.push({ type: 'retreat', player: id, benchIndex }))
         }
@@ -433,10 +481,23 @@ export function legalActions(state: GameState): readonly Action[] {
 
       // 先攻1ターン目は攻撃できない（SPEC 3.3）
       if (active !== null && !(state.turn === 1 && id === state.firstPlayer)) {
-        requireCard(active.cardId).attacks.forEach((attack, attackIndex) => {
+        requireCreature(active.cardId).attacks.forEach((attack, attackIndex) => {
           if (canPayCost(active.attached, attack.cost)) out.push({ type: 'attack', player: id, attackIndex })
         })
       }
+
+      // アイテムは枚数制限なし、行動は1ターン1枚（SPEC 16.8 Q9・Q10）
+      player.hand.forEach((cardId, handIndex) => {
+        const card = findCard(cardId)
+        if (card === undefined) return
+        if (card.kind === 'item') out.push({ type: 'playItem', player: id, handIndex })
+        if (card.kind === 'action' && !player.usedActionThisTurn) {
+          out.push({ type: 'playAction', player: id, handIndex })
+        }
+        if (card.kind === 'ultimate' && ultimateError(state, id, handIndex) === null) {
+          out.push({ type: 'useUltimate', player: id, handIndex })
+        }
+      })
 
       out.push({ type: 'endTurn', player: id })
       return out

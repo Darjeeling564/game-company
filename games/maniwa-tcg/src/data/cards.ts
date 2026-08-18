@@ -12,11 +12,11 @@
  *
  * 弱点は 草→炎→水→草 の3すくみ（SPEC 8.2）。無色は3すくみの外側なので弱点を持たない。
  */
-import type { CardDef, CardId, CardIndex } from '../core/types.ts'
+import type { CardDef, CardId, CardIndex, CreatureCard } from '../core/types.ts'
 
 // ------------------------------------------------ 無色: 眷属（全デッキ共通のコア）
 
-const COLORLESS: readonly CardDef[] = [
+const COLORLESS: readonly CreatureCard[] = [
   {
     id: 'n001', name: 'ガルダ', kind: 'creature',  // インド（迦楼羅）
     flavor: 'インドの霊鳥。蛇族ナーガを喰らう天の乗り物で、その翼は太陽を覆うという。',
@@ -65,7 +65,7 @@ const COLORLESS: readonly CardDef[] = [
 
 // ------------------------------------------------ 炎: 火・太陽・破壊
 
-const FIRE: readonly CardDef[] = [
+const FIRE: readonly CreatureCard[] = [
   {
     id: 'f001', name: 'シュクユウ', kind: 'creature',  // 中国（祝融・火の神）
     flavor: '南方をつかさどる火の神。人に火の扱いを教えたとされる。',
@@ -203,7 +203,7 @@ const FIRE: readonly CardDef[] = [
 
 // ------------------------------------------------ 草: 大地・豊穣
 
-const GRASS: readonly CardDef[] = [
+const GRASS: readonly CreatureCard[] = [
   {
     id: 'g001', name: 'デメテル', kind: 'creature',  // ギリシア（豊穣の女神）
     flavor: '穀物を育てる大地の女神。娘を奪われ嘆いた季節が、冬になったという。',
@@ -352,7 +352,7 @@ const GRASS: readonly CardDef[] = [
 
 // ------------------------------------------------ 水: 海・河
 
-const WATER: readonly CardDef[] = [
+const WATER: readonly CreatureCard[] = [
   {
     id: 'w001', name: 'ワタツミ', kind: 'creature',  // 日本（綿津見・海神）
     flavor: '海をつかさどる神。海底の宮で山幸彦を迎え、潮を操る珠を授けた。',
@@ -504,6 +504,17 @@ export function findCard(id: CardId): CardDef | undefined {
 export function requireCard(id: CardId): CardDef {
   const card = CARD_INDEX.get(id)
   if (card === undefined) throw new Error(`unknown card: ${id}`)
+  return card
+}
+
+/**
+ * 場に出ている個体のカードを引く。個体はクリーチャーからしか作られないので、
+ * ここで種別を絞っておけば呼び出し側が毎回 kind を確かめずに済む。
+ * 種別が違えば状態の破損なので、そのまま落とす。
+ */
+export function requireCreature(id: CardId): CreatureCard {
+  const card = requireCard(id)
+  if (card.kind !== 'creature') throw new Error(`not a creature: ${id}`)
   return card
 }
 

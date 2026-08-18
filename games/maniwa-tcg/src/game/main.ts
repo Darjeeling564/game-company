@@ -7,7 +7,7 @@ import { EMPTY_STATE, isOver, legalActions, reduce } from '../core/reduce.ts'
 import type { Rng } from '../core/rng.ts'
 import { createRng } from '../core/rng.ts'
 import type { Deck, GameState, PlayerId } from '../core/types.ts'
-import { requireCard } from '../data/cards.ts'
+import { requireCard, requireCreature } from '../data/cards.ts'
 import { DECKS } from '../data/decks.ts'
 // 方策はシミュレータと共有する。CPU の打ち筋とバランス測定を一致させるため
 import { greedyPolicy } from '../../tools/ai.ts'
@@ -197,7 +197,7 @@ function myActions(type: Action['type']): readonly Action[] {
 function showAttackMenu(): void {
   const active = state.players[HUMAN].active
   if (active === null) return
-  const card = requireCard(active.cardId)
+  const card = requireCreature(active.cardId)
   // 名前とコストだけでは威力が分からず選べないので、効果まで出す
   const choices = myActions('attack').map((action) => {
     const index = action.type === 'attack' ? action.attackIndex : 0
@@ -213,12 +213,12 @@ function showAttackMenu(): void {
 
 function showRetreatMenu(): void {
   const player = state.players[HUMAN]
-  const cost = player.active === null ? 0 : requireCard(player.active.cardId).retreatCost
+  const cost = player.active === null ? 0 : requireCreature(player.active.cardId).retreatCost
   const choices = myActions('retreat').map((action) => {
     const index = action.type === 'retreat' ? action.benchIndex : 0
     const creature = player.bench[index]
     if (creature === undefined) return { label: '?', action }
-    const def = requireCard(creature.cardId)
+    const def = requireCreature(creature.cardId)
     return {
       label: def.name,
       sub: `HP ${def.hp - creature.damage}/${def.hp}`,
@@ -277,7 +277,7 @@ function showPromoteMenu(): void {
     const index = action.type === 'promote' ? action.benchIndex : 0
     const creature = bench[index]
     if (creature === undefined) return { label: '?', action }
-    const def = requireCard(creature.cardId)
+    const def = requireCreature(creature.cardId)
     return { label: `${def.name}（${def.hp - creature.damage}/${def.hp}）`, action }
   })
   renderChoices(root, 'バトル場にだす', choices, apply, null)

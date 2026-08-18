@@ -12,7 +12,7 @@ import { pick } from '../src/core/rng.ts'
 import { canPayCost } from '../src/core/rules.ts'
 import type { Effect, GameState, PlayerId } from '../src/core/types.ts'
 import { BENCH_SIZE, WEAKNESS_BONUS } from '../src/core/types.ts'
-import { requireCard } from '../src/data/cards.ts'
+import { requireCard, requireCreature } from '../src/data/cards.ts'
 
 export interface Choice {
   readonly rng: Rng
@@ -92,7 +92,7 @@ export const greedyPolicy: Policy = (state, rng, only) => {
         const forActive = player.active === null
         const scoreOf = (action: (typeof places)[number]): number => {
           if (action.type !== 'setupPlace') return -Infinity
-          const card = requireCard(player.hand[action.handIndex] as string)
+          const card = requireCreature(player.hand[action.handIndex] as string)
           if (!forActive) return card.hp
           const minCost = Math.min(...card.attacks.map((a) => a.cost.length))
           return -minCost * 1000 + card.hp
@@ -114,7 +114,7 @@ export const greedyPolicy: Policy = (state, rng, only) => {
       const remaining = (x: typeof a) => {
         if (x.type !== 'promote') return -1
         const c = bench[x.benchIndex]
-        return c === undefined ? -1 : requireCard(c.cardId).hp - c.damage
+        return c === undefined ? -1 : requireCreature(c.cardId).hp - c.damage
       }
       return remaining(b) > remaining(a) ? b : a
     })
@@ -129,18 +129,22 @@ export const greedyPolicy: Policy = (state, rng, only) => {
   if (plays.length > 0) {
     const best = plays.reduce((a, b) => {
       const hpOf = (x: typeof a) =>
-        x.type === 'playCreature' ? requireCard(player.hand[x.handIndex] as string).hp : 0
+        x.type === 'playCreature' ? requireCreature(player.hand[x.handIndex] as string).hp : 0
       return hpOf(b) > hpOf(a) ? b : a
     })
     return { rng, action: best }
   }
+
+  // --- アイテムと行動: 使えるなら使う。エネルギー付与より前に置かないと gainEnergy が死ぬ ---
+  const supports = legal.filter((a) => a.type === 'playItem' || a.type === 'playAction')
+  if (supports.length > 0) return { rng, action: supports[0] as Action }
 
   // --- エネルギー: バトル場が最強のワザを撃てないなら優先、撃てるならベンチを育てる ---
   const attaches = legal.filter((a) => a.type === 'attachEnergy')
   if (attaches.length > 0) {
     const active = player.active
     // 最後のワザを最も強いものとして扱う（データの並び順の約束）
-    const strongest = active === null ? undefined : requireCard(active.cardId).attacks.at(-1)
+    const strongest = active === null ? undefined : requireCreature(active.cardId).attacks.at(-1)
     const activeReady =
       active !== null && strongest !== undefined && canPayCost(active.attached, strongest.cost)
 
@@ -153,20 +157,23 @@ export const greedyPolicy: Policy = (state, rng, only) => {
     return { rng, action: toBench ?? (attaches[0] as Action) }
   }
 
-  // --- 攻撃: 期待ダメージが最大のワザ。相手を倒せるなら最優先 ---
-  const attacks = legal.filter((a) => a.type === 'attack')
+  // --- 攻撃と絶技: 期待ダメージが最大のもの。相手を倒せるなら最優先 ---
+  const attacks = legal.filter((a) => a.type === 'attack' || a.type === 'useUltimate')
   if (attacks.length > 0 && player.active !== null) {
-    const card = requireCard(player.active.cardId)
+    const card = requireCreature(player.active.cardId)
     const foe = state.players[id === 0 ? 1 : 0].active
     const remaining =
-      foe === null ? Number.POSITIVE_INFINITY : requireCard(foe.cardId).hp - foe.damage
+      foe === null ? Number.POSITIVE_INFINITY : requireCreature(foe.cardId).hp - foe.damage
     const weak =
-      foe !== null && requireCard(foe.cardId).weakness === card.type ? WEAKNESS_BONUS : 0
+      foe !== null && requireCreature(foe.cardId).weakness === card.type ? WEAKNESS_BONUS : 0
 
     const scored = attacks.map((action) => {
-      const index = action.type === 'attack' ? action.attackIndex : 0
-      const attack = card.attacks[index]
-      const damage = attack === undefined ? 0 : expectedDamage(attack.effects) + weak
+      // 絶技は手札から撃つので、効果は手札のカードから読む
+      const effects =
+        action.type === 'useUltimate'
+          ? (requireCard(player.hand[action.handIndex] as string) as { effects: readonly Effect[] }).effects
+          : (card.attacks[action.type === 'attack' ? action.attackIndex : 0]?.effects ?? [])
+      const damage = expectedDamage(effects) + weak
       return { action, score: damage >= remaining ? damage + 1000 : damage }
     })
     return { rng, action: scored.reduce((a, b) => (b.score > a.score ? b : a)).action }

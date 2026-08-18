@@ -6,7 +6,7 @@ import { applyEffects } from './effects.ts'
 import { pick } from './rng.ts'
 import type { Rng } from './rng.ts'
 import { allCreatures, drawOne, log, playerAt, withPlayer } from './state.ts'
-import type { Creature, EnergyType, GameState, PlayerId, PlayerState } from './types.ts'
+import type { Creature, EnergyType, GameState, PlayerId, PlayerState, UltimateCard } from './types.ts'
 import {
   MAX_TURNS,
   POINTS_FOR_EX,
@@ -15,7 +15,7 @@ import {
   POISON_DAMAGE,
   opponentOf,
 } from './types.ts'
-import { requireCard } from '../data/cards.ts'
+import { findCard, requireCreature } from '../data/cards.ts'
 
 // ---------------------------------------------------------------- コスト
 
@@ -39,7 +39,7 @@ export function canPayCost(attached: readonly EnergyType[], cost: readonly Energ
 }
 
 export function isKnockedOut(creature: Creature): boolean {
-  return creature.damage >= requireCard(creature.cardId).hp
+  return creature.damage >= requireCreature(creature.cardId).hp
 }
 
 // ---------------------------------------------------------------- ターン境界
@@ -62,6 +62,7 @@ export function beginTurn(state: GameState): GameState {
     energy: { ...player.energy, current: player.energy.next, next: rolled.energy },
     attachedThisTurn: false,
     retreatedThisTurn: false,
+    usedActionThisTurn: false,
   }
 
   const next = withPlayer({ ...state, rng: rolled.rng }, id, drawOne(supplied))
@@ -104,7 +105,7 @@ function resolveKnockouts(state: GameState, actor: PlayerId): GameState {
 
     const ids = new Set(knocked.map((c) => c.instanceId))
     const gained = knocked.reduce(
-      (sum, c) => sum + (requireCard(c.cardId).ex ? POINTS_FOR_EX : POINTS_FOR_NORMAL),
+      (sum, c) => sum + (requireCreature(c.cardId).ex ? POINTS_FOR_EX : POINTS_FOR_NORMAL),
       0,
     )
 
@@ -157,14 +158,28 @@ function promoteQueue(state: GameState, actor: PlayerId): readonly PlayerId[] {
   })
 }
 
-/** 効果解決後の共通処理: きぜつ → 勝敗 → 入れ替え待ち or 手番交代 */
-function settle(state: GameState, actor: PlayerId): GameState {
+/**
+ * 効果解決後の共通処理: きぜつ → 勝敗 → 入れ替え待ち or 手番交代。
+ *
+ * resume は入れ替えが済んだあとの戻り先。攻撃やターン終了なら手番を渡し（'pass'）、
+ * アイテムや行動の途中なら手番を続ける（'continue'）。入れ替えを挟むかどうかで
+ * 挙動が変わってはいけないので、待ちに入るときも Phase に持たせて引き継ぐ。
+ */
+function settle(state: GameState, actor: PlayerId, resume: 'pass' | 'continue'): GameState {
   const resolved = checkVictory(resolveKnockouts(state, actor), actor)
   if (resolved.phase.kind === 'ended') return resolved
 
   const queue = promoteQueue(resolved, actor)
-  if (queue.length > 0) return { ...resolved, phase: { kind: 'promote', queue } }
-  return passTurn(resolved)
+  if (queue.length > 0) return { ...resolved, phase: { kind: 'promote', queue, resume } }
+  return resume === 'pass' ? passTurn(resolved) : resolved
+}
+
+/**
+ * ターンを終わらせずにきぜつと勝敗だけを解決する。
+ * アイテムや行動で相手を倒したときに使う。倒した瞬間にターンが終わっては困る。
+ */
+export function resolveInTurn(state: GameState, actor: PlayerId): GameState {
+  return settle(state, actor, 'continue')
 }
 
 /**
@@ -180,12 +195,12 @@ export function finishTurn(state: GameState, actor: PlayerId): GameState {
     current = withPlayer(current, id, { ...player, active: { ...active, damage: active.damage + POISON_DAMAGE } })
     current = log(current, id, 'poison', `#${active.instanceId} +${POISON_DAMAGE}`)
   }
-  return settle(current, actor)
+  return settle(current, actor, 'pass')
 }
 
-/** 入れ替えがすべて済んだあとに呼ぶ */
-export function afterPromote(state: GameState): GameState {
-  return passTurn(state)
+/** 入れ替えがすべて済んだあとに呼ぶ。戻り先は待ちに入ったときの resume に従う */
+export function afterPromote(state: GameState, resume: 'pass' | 'continue'): GameState {
+  return resume === 'pass' ? passTurn(state) : state
 }
 
 // ---------------------------------------------------------------- 攻撃
@@ -195,7 +210,7 @@ export function attackError(state: GameState, actor: PlayerId, attackIndex: numb
   if (state.turn === 1 && actor === state.firstPlayer) return '先攻1ターン目は攻撃できない'
   const active = playerAt(state, actor).active
   if (active === null) return 'バトル場が空'
-  const attack = requireCard(active.cardId).attacks[attackIndex]
+  const attack = requireCreature(active.cardId).attacks[attackIndex]
   if (attack === undefined) return 'そのワザは無い'
   if (!canPayCost(active.attached, attack.cost)) return 'エネルギーが足りない'
   return null
@@ -203,10 +218,46 @@ export function attackError(state: GameState, actor: PlayerId, attackIndex: numb
 
 export function performAttack(state: GameState, actor: PlayerId, attackIndex: number): GameState {
   const active = playerAt(state, actor).active as Creature
-  const attack = requireCard(active.cardId).attacks[attackIndex]
+  const attack = requireCreature(active.cardId).attacks[attackIndex]
   if (attack === undefined) return state
 
   const announced = log(state, actor, 'attack', attack.name)
   const resolved = applyEffects(announced, actor, attack.effects)
+  return finishTurn(resolved, actor)
+}
+
+// ---------------------------------------------------------------- 絶技
+
+/**
+ * 絶技を撃てるかを判定する。不可なら理由を返す（SPEC 16.1）。
+ * 攻撃と同じ制限に揃えてある。バトル場に対応キャラがいて、エネルギーが足り、
+ * 先攻1ターン目でないこと。
+ */
+export function ultimateError(state: GameState, actor: PlayerId, handIndex: number): string | null {
+  if (state.turn === 1 && actor === state.firstPlayer) return '先攻1ターン目は絶技を使えない'
+  const player = playerAt(state, actor)
+  const cardId = player.hand[handIndex]
+  if (cardId === undefined) return '手札の範囲外'
+  const card = findCard(cardId)
+  if (card === undefined) return '未知のカード'
+  if (card.kind !== 'ultimate') return '絶技ではない'
+  const active = player.active
+  if (active === null) return 'バトル場が空'
+  if (active.cardId !== card.requires) return `${card.requires} がバトル場にいない`
+  if (!canPayCost(active.attached, card.cost)) return 'エネルギーが足りない'
+  return null
+}
+
+/** 絶技を撃つ。攻撃と同じくターンが終了する（SPEC 16.8 Q7） */
+export function performUltimate(state: GameState, actor: PlayerId, handIndex: number): GameState {
+  const player = playerAt(state, actor)
+  const cardId = player.hand[handIndex] as string
+  const card = findCard(cardId) as UltimateCard
+
+  // 手札から抜いてトラッシュへ送ってから解決する。効果でドローしても位置がずれない
+  const hand = [...player.hand.slice(0, handIndex), ...player.hand.slice(handIndex + 1)]
+  const spent: PlayerState = { ...player, hand, discard: [...player.discard, cardId] }
+  const announced = log(withPlayer(state, actor, spent), actor, 'ultimate', card.name)
+  const resolved = applyEffects(announced, actor, card.effects)
   return finishTurn(resolved, actor)
 }

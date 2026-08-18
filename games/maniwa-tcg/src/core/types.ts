@@ -74,6 +74,7 @@ export type Target =
   | 'opponentBenchRandom'
   | 'self'
   | 'ownActive'
+  | 'ownBenchAll'
 
 export type Effect =
   | { readonly type: 'damage'; readonly target: Target; readonly value: number }
@@ -94,6 +95,17 @@ export type Effect =
   | { readonly type: 'discardEnergy'; readonly target: Target; readonly value: number }
   | { readonly type: 'applyStatus'; readonly target: Target; readonly status: Status }
   | { readonly type: 'draw'; readonly value: number }
+  /**
+   * エネルギーの付与をやり直せるようにする。付与済みフラグを戻し、在庫が空なら補充する。
+   * 「もう1回つけられる」を1つの効果で表すため、フラグと在庫の両方を面倒みる。
+   */
+  | { readonly type: 'gainEnergy' }
+  /** 対象に value 個のエネルギーを直接つける。付与済みフラグは消費しない */
+  | { readonly type: 'attachEnergy'; readonly target: Target; readonly value: number }
+  /** 相手のバトル場をベンチの1体と入れ替える（PRNG使用） */
+  | { readonly type: 'switchOpponent' }
+  /** 山札からクリーチャーを1枚手札に加え、山札を切り直す（PRNG使用） */
+  | { readonly type: 'searchCreature' }
 
 export interface AttackDef {
   readonly name: string
@@ -103,7 +115,8 @@ export interface AttackDef {
   readonly effects: readonly Effect[]
 }
 
-export interface CardDef {
+/** どの種別にも共通する項目 */
+interface CardBase {
   readonly id: CardId
   readonly name: string
   /** モチーフになった神格・霊獣の説明。必須にして、カード追加時の書き忘れを型で防ぐ */
@@ -111,6 +124,10 @@ export interface CardDef {
   /** 系統（どの神話に属するか） */
   readonly origin: Origin
   readonly rarity: Rarity
+}
+
+/** 場に出して戦うカード */
+export interface CreatureCard extends CardBase {
   readonly kind: 'creature'
   readonly type: EnergyType
   readonly hp: number
@@ -121,6 +138,38 @@ export interface CardDef {
   readonly stage?: 0
   readonly evolvesFrom?: string
 }
+
+/** アイテム。コスト無し・1ターンに何枚でも。使ったらトラッシュ（SPEC 16.1） */
+export interface ItemCard extends CardBase {
+  readonly kind: 'item'
+  readonly effects: readonly Effect[]
+}
+
+/** 行動。コスト無し・1ターンに1枚だけ。使ったらトラッシュ（SPEC 16.1） */
+export interface ActionCard extends CardBase {
+  readonly kind: 'action'
+  readonly effects: readonly Effect[]
+}
+
+/**
+ * 絶技（必殺技）。対応するキャラがバトル場にいるときだけ、エネルギーを払って撃てる。
+ * 撃つとターンが終了する（攻撃と排他。SPEC 16.8 Q7）。
+ */
+export interface UltimateCard extends CardBase {
+  readonly kind: 'ultimate'
+  /** この絶技を撃てるキャラのカードID。バトル場にいることが条件（Q8） */
+  readonly requires: CardId
+  readonly cost: readonly EnergyType[]
+  /** 漢字や英語のときのフリガナ */
+  readonly ruby?: string
+  readonly effects: readonly Effect[]
+}
+
+/**
+ * カード定義。種別ごとの直和にすることで、「アイテムのHP」のような
+ * 意味のない状態を型の時点で作れなくする。
+ */
+export type CardDef = CreatureCard | ItemCard | ActionCard | UltimateCard
 
 // ---------------------------------------------------------------- 状態
 
@@ -149,12 +198,24 @@ export interface PlayerState {
   readonly energy: EnergyZone
   readonly attachedThisTurn: boolean
   readonly retreatedThisTurn: boolean
+  /** 行動カードは1ターンに1枚だけ（SPEC 16.8 Q9） */
+  readonly usedActionThisTurn: boolean
 }
 
 export type Phase =
   | { readonly kind: 'setup' }
   | { readonly kind: 'main' }
-  | { readonly kind: 'promote'; readonly queue: readonly PlayerId[] }
+  /**
+   * きぜつ後の入れ替え待ち。resume は入れ替え後の戻り先。
+   * 攻撃やターン終了で入ったなら手番を渡し（'pass'）、アイテムや行動の途中なら
+   * そのまま手番を続ける（'continue'）。これが無いと、アイテムで相手を倒した
+   * 瞬間に自分のターンが終わってしまう。
+   */
+  | {
+      readonly kind: 'promote'
+      readonly queue: readonly PlayerId[]
+      readonly resume: 'pass' | 'continue'
+    }
   | { readonly kind: 'ended' }
 
 export type EndReason = 'points' | 'noCreature' | 'turnLimit' | 'simultaneous'

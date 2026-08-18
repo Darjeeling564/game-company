@@ -19,7 +19,7 @@ function player(active: Creature | null, bench: readonly Creature[] = []): Playe
     deck: [], hand: [], discard: [],
     active, bench, points: 0,
     energy: { pool: ['fire'], current: null, next: 'fire' },
-    attachedThisTurn: false, retreatedThisTurn: false,
+    attachedThisTurn: false, retreatedThisTurn: false, usedActionThisTurn: false,
   }
 }
 
@@ -122,7 +122,7 @@ describe('きぜつとポイント', () => {
     const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
     expect(after.players[1].discard).toEqual(['g001'])
     expect(after.players[1].active).toBeNull()
-    expect(after.phase).toEqual({ kind: 'promote', queue: [1] })
+    expect(after.phase).toEqual({ kind: 'promote', queue: [1], resume: 'pass' })
   })
 
   it('ベンチが無ければ場切れで負ける', () => {
@@ -229,10 +229,12 @@ describe('カードデータ', () => {
     }
   })
 
-  it('すべてのカードが1つ以上のワザを持つ', () => {
+  it('デッキのキャラは1つ以上のワザを持つ', () => {
     for (const deck of [FIRE_DECK, GRASS_DECK]) {
       for (const id of new Set(deck.cards)) {
-        expect(requireCard(id).attacks.length, `${id}`).toBeGreaterThan(0)
+        const card = requireCard(id)
+        if (card.kind !== 'creature') continue
+        expect(card.attacks.length, `${id}`).toBeGreaterThan(0)
       }
     }
   })
