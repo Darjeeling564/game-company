@@ -116,7 +116,7 @@ function main(argv: readonly string[]): number {
   }
 
   console.log(`神話戦姫 カードイラスト入力データ（${cards.length}種）`)
-  console.log('512×512 の正方形。渡すデータは5項目のみで、ここに無い要素を足さない。')
+  console.log('1024×1024 の正方形。渡すデータは5項目のみで、ここに無い要素を足さない。')
 
   for (const section of KIND_BRIEF) {
     const group = cards.filter((c) => c.kind === section.kind)
