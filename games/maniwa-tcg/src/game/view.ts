@@ -16,15 +16,17 @@ import type {
   PlayerState,
   Rarity,
 } from '../core/types.ts'
-import { BENCH_SIZE, WEAKNESS_BONUS } from '../core/types.ts'
-import { requireCard } from '../data/cards.ts'
+import { BENCH_SIZE, WEAKNESS_CHART, weaknessBonus } from '../core/types.ts'
+import { requireCard, requireCreature } from '../data/cards.ts'
+import { artStage, artUrl } from './art.ts'
+import { RARITY_STYLE, TYPE_COLOR, applyCardTheme } from './theme.ts'
 
 export const HUMAN: PlayerId = 0
 export const CPU: PlayerId = 1
 
 const ENERGY_LABEL: Readonly<Record<string, string>> = {
-  fire: '炎', grass: '草', water: '水', lightning: '電', psychic: '超',
-  fighting: '闘', darkness: '悪', metal: '鋼', colorless: '無',
+  fire: '炎', forest: '森', wind: '風', earth: '土', thunder: '雷', water: '水',
+  light: '光', dark: '闇', colorless: '無',
 }
 
 export function energyLabel(type: string | null): string {
@@ -47,26 +49,14 @@ export function originLabel(origin: Origin): string {
   return ORIGIN_LABEL[origin]
 }
 
-const RARITY_LABEL: Readonly<Record<Rarity, string>> = {
-  common: 'コモン',
-  uncommon: 'アンコモン',
-  rare: 'レア',
-  ultra: 'ウルトラレア',
-}
-
-const RARITY_MARK: Readonly<Record<Rarity, string>> = {
-  common: '◇',
-  uncommon: '◇◇',
-  rare: '◇◇◇',
-  ultra: '★',
+/** レアリティは記号ではなくアルファベットで表す（C / R / SR / UR） */
+export function rarityCode(rarity: Rarity): string {
+  return RARITY_STYLE[rarity].code
 }
 
 export function rarityLabel(rarity: Rarity): string {
-  return `${RARITY_MARK[rarity]} ${RARITY_LABEL[rarity]}`
-}
-
-export function rarityMark(rarity: Rarity): string {
-  return RARITY_MARK[rarity]
+  const style = RARITY_STYLE[rarity]
+  return `${style.code} — ${style.label}`
 }
 
 /** コストを「炎炎無」の形にする */
@@ -97,7 +87,28 @@ export function describeEffect(effect: Effect): string {
       return effect.status === 'poisoned' ? '相手をどくにする' : String(effect.status)
     case 'draw':
       return `${effect.value}枚ひく`
+    case 'gainEnergy':
+      return 'エネルギーをもう1回つけられる'
+    case 'attachEnergy':
+      return effect.target === 'ownBenchAll'
+        ? `自分のベンチ全体にエネルギーを${effect.value}こつける`
+        : `エネルギーを${effect.value}こつける`
+    case 'switchOpponent':
+      return '相手のバトル場をベンチと入れかえる'
+    case 'searchCreature':
+      return '山札からキャラを1枚手札にくわえる'
   }
+}
+
+const KIND_LABEL: Readonly<Record<CardDef['kind'], string>> = {
+  creature: 'キャラ',
+  item: 'アイテム',
+  action: '行動',
+  ultimate: '絶技',
+}
+
+export function kindLabel(kind: CardDef['kind']): string {
+  return KIND_LABEL[kind]
 }
 
 export function describeAttack(attack: AttackDef): string {
@@ -149,34 +160,136 @@ export function recentLog(state: GameState, count: number): readonly string[] {
   return lines.slice(-count)
 }
 
-/** カード1枚の詳細。ワザのコストと効果まで見せる */
+/**
+ * その属性が誰に弱いかを1行にする。相性は表から引くので、カードごとの記述は無い。
+ * 「何に強いか」ではなく「何にやられるか」を出す。守るときに要る情報だから。
+ */
+function weakOf(type: EnergyType): string {
+  const attackers = (Object.keys(WEAKNESS_CHART) as EnergyType[]).filter((a) =>
+    WEAKNESS_CHART[a].includes(type),
+  )
+  if (attackers.length === 0) return '弱点 なし'
+  const bonus = weaknessBonus(attackers[0] as EnergyType, type)
+  return `弱点 ${attackers.map((a) => energyLabel(a)).join('・')}（+${bonus}）`
+}
+
+/** 属性を色丸に白文字で示す。丸の色は theme.ts の TYPE_COLOR */
+function typeBadge(type: EnergyType): HTMLElement {
+  const badge = el('span', 'badge', energyLabel(type))
+  badge.style.setProperty('--card-type', TYPE_COLOR[type])
+  return badge
+}
+
+/** 種別の丸。キャラ以外は属性を持たないので、代わりにこれを出す */
+function kindBadge(kind: CardDef['kind']): HTMLElement {
+  const mark: Readonly<Record<CardDef['kind'], string>> = {
+    creature: 'キ', item: '道', action: '行', ultimate: '絶',
+  }
+  const badge = el('span', 'badge', mark[kind])
+  badge.style.setProperty('--card-type', kind === 'ultimate' ? '#8e44ad' : '#4a5a66')
+  return badge
+}
+
+/** ワザ名。ruby があるときだけ <ruby> にしてフリガナを振る */
+function attackNameNode(attack: AttackDef): HTMLElement {
+  const span = el('span', 'detail__attackName')
+  if (attack.ruby === undefined) {
+    span.append(attack.name)
+  } else {
+    const ruby = el('ruby')
+    ruby.append(attack.name)
+    ruby.append(el('rt', undefined, attack.ruby))
+    span.append(ruby)
+  }
+  span.append(el('span', 'detail__attackCost', `[${formatCost(attack.cost)}]`))
+  return span
+}
+
+/**
+ * カード1枚の詳細。カードとしての体裁（イラスト・系統色の地・レアリティ色の枠）で
+ * 見せたうえで、ワザのコストと効果まで文字で出す。
+ *
+ * 種別ごとに出す項目が違う。キャラは HP と弱点とワザ、アイテムと行動は効果だけ、
+ * 絶技は撃てる相手とコストを足す。無い項目を空欄で並べても読みにくいだけなので、
+ * 種別で分けて必要なものだけ出す。
+ */
 export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLElement {
   const box = el('div', 'detail')
-  const head = el('div', 'detail__head')
-  head.append(el('span', 'detail__name', displayName(card.name, card.ex)))
-  head.append(el('span', 'detail__rarity', rarityLabel(card.rarity)))
-  box.append(head)
-  box.append(el('div', 'detail__origin', originLabel(card.origin)))
+  // キャラ以外は属性を持たないので、丸の色は系統の暗い側で代用する
+  applyCardTheme(box, card.origin, card.rarity, card.kind === 'creature' ? card.type : 'colorless')
 
-  const remaining = creature === null ? card.hp : Math.max(0, card.hp - creature.damage)
-  const facts = [
-    `タイプ ${energyLabel(card.type)}`,
-    `HP ${remaining}/${card.hp}`,
-    card.weakness === null ? '弱点 なし' : `弱点 ${energyLabel(card.weakness)}（+${WEAKNESS_BONUS}）`,
-    `にげる エネ${card.retreatCost}`,
-  ]
-  if (creature !== null && creature.attached.length > 0) {
-    facts.push(`ついているエネルギー ${creature.attached.map((e) => energyLabel(e)).join('')}`)
+  const stage = card.kind === 'creature' && creature !== null
+    ? artStage(card.hp, creature.damage)
+    : 'normal'
+  const url = artUrl(card.id, stage)
+  if (url === null) {
+    // 絵が未配置のカードは、種別か属性を置いた枠で代用する
+    const placeholder = el('div', 'detail__art detail__art--empty')
+    placeholder.append(card.kind === 'creature' ? typeBadge(card.type) : kindBadge(card.kind))
+    box.append(placeholder)
+  } else {
+    const art = el('img', 'detail__art')
+    art.src = url
+    art.alt = card.name
+    art.decoding = 'async'
+    box.append(art)
   }
-  if (creature !== null && creature.status.includes('poisoned')) facts.push('どく')
+
+  // 漢字のカード名にはフリガナを振る。ワザ名と同じ扱い
+  const nameBox = el('div', 'detail__name')
+  const shown = displayName(card.name, card.kind === 'creature' && card.ex)
+  if (card.ruby === undefined) {
+    nameBox.append(shown)
+  } else {
+    const ruby = el('ruby')
+    ruby.append(shown)
+    ruby.append(el('rt', undefined, card.ruby))
+    nameBox.append(ruby)
+  }
+  box.append(nameBox)
+  box.append(el('div', 'detail__rule'))
+
+  const foot = el('div', 'detail__foot')
+  foot.append(card.kind === 'creature' ? typeBadge(card.type) : kindBadge(card.kind))
+  foot.append(el('span', 'detail__origin', originLabel(card.origin)))
+  foot.append(
+    el('span', 'detail__code', card.kind === 'creature'
+      ? `${rarityCode(card.rarity)} HP${card.hp}`
+      : rarityCode(card.rarity)),
+  )
+  box.append(foot)
+
+  const facts: string[] = [`種別 ${kindLabel(card.kind)}`, `レアリティ ${rarityLabel(card.rarity)}`]
+  if (card.kind === 'creature') {
+    const remaining = creature === null ? card.hp : Math.max(0, card.hp - creature.damage)
+    facts.unshift(
+      `HP ${remaining}/${card.hp}`,
+      weakOf(card.type),
+      `にげる エネ${card.retreatCost}`,
+    )
+    if (creature !== null && creature.attached.length > 0) {
+      facts.push(`ついているエネルギー ${creature.attached.map((e) => energyLabel(e)).join('')}`)
+    }
+    if (creature !== null && creature.status.includes('poisoned')) facts.push('どく')
+  }
+  if (card.kind === 'ultimate') {
+    facts.unshift(`${requireCard(card.requires).name} がバトル場にいるとき`, `コスト ${formatCost(card.cost)}`)
+  }
   const factRow = el('div', 'detail__facts')
   for (const fact of facts) factRow.append(el('span', undefined, fact))
   box.append(factRow)
 
-  for (const attack of card.attacks) {
+  if (card.kind === 'creature') {
+    for (const attack of card.attacks) {
+      const row = el('div', 'detail__attack')
+      row.append(attackNameNode(attack))
+      row.append(el('span', 'detail__attackText', describeAttack(attack)))
+      box.append(row)
+    }
+  } else {
+    // 絶技はカード名がそのままワザ名なので、名前を二度出さない
     const row = el('div', 'detail__attack')
-    row.append(el('span', 'detail__attackName', `${attack.name}  [${formatCost(attack.cost)}]`))
-    row.append(el('span', 'detail__attackText', describeAttack(attack)))
+    row.append(el('span', 'detail__attackText', card.effects.map(describeEffect).join(' / ')))
     box.append(row)
   }
 
@@ -284,25 +397,35 @@ function creatureCard(
   onTap: () => void,
   onDetail: () => void,
 ): HTMLElement {
-  const card = requireCard(creature.cardId)
+  const card = requireCreature(creature.cardId)
   const remaining = Math.max(0, card.hp - creature.damage)
   const node = el('button', `card${isActive ? ' card--active' : ''}${selectable ? ' card--selectable' : ''}`)
   node.type = 'button'
+  applyCardTheme(node, card.origin, card.rarity, card.type)
 
-  node.append(el('span', 'card__name', displayName(card.name, card.ex)))
-  node.append(el('span', 'card__hp', `${remaining}/${card.hp}`))
+  const body = el('span', 'card__body')
+  // 絵は地に敷く。傷むと差し替わるので、詳細を開かなくても盤面で分かる
+  const url = artUrl(card.id, artStage(card.hp, creature.damage))
+  if (url !== null) {
+    body.classList.add('card__body--art')
+    body.style.backgroundImage = `url(${JSON.stringify(url)})`
+  }
+  body.append(typeBadge(card.type))
+  body.append(el('span', 'card__name', displayName(card.name, card.ex)))
+  body.append(el('span', 'card__hp', `${remaining}/${card.hp}`))
 
   const bar = el('div', 'card__bar')
   const fill = el('span')
   fill.style.width = `${(remaining / card.hp) * 100}%`
   bar.append(fill)
-  node.append(bar)
+  body.append(bar)
 
   const tags: string[] = []
   if (creature.attached.length > 0) tags.push(creature.attached.map((e) => energyLabel(e)).join(''))
   if (creature.status.includes('poisoned')) tags.push('どく')
-  if (tags.length > 0) node.append(el('span', 'card__tags', tags.join(' ')))
+  if (tags.length > 0) body.append(el('span', 'card__tags', tags.join(' ')))
 
+  node.append(body)
   bindTap(node, onTap, onDetail)
   return node
 }
@@ -372,8 +495,17 @@ function handView(state: GameState, handlers: Handlers): HTMLElement {
   const legal = legalActions(state)
   const playable = new Map<number, Action>()
   for (const action of legal) {
-    if ((action.type === 'playCreature' || action.type === 'setupPlace') && action.player === HUMAN) {
-      playable.set(action.handIndex, action)
+    if (action.type === 'start' || action.player !== HUMAN) continue
+    switch (action.type) {
+      case 'playCreature':
+      case 'setupPlace':
+      case 'playItem':
+      case 'playAction':
+      case 'useUltimate':
+        playable.set(action.handIndex, action)
+        break
+      default:
+        break
     }
   }
 
@@ -385,8 +517,18 @@ function handView(state: GameState, handlers: Handlers): HTMLElement {
     const action = playable.get(index)
     const node = el('button', `card${action !== undefined ? ' card--selectable' : ''}`)
     node.type = 'button'
-    node.append(el('span', 'card__name', displayName(card.name, card.ex)))
-    node.append(el('span', 'card__hp', `HP${card.hp}`))
+    applyCardTheme(node, card.origin, card.rarity, card.kind === 'creature' ? card.type : 'colorless')
+    const body = el('span', 'card__body')
+    const url = artUrl(card.id)
+    if (url !== null) {
+      body.classList.add('card__body--art')
+      body.style.backgroundImage = `url(${JSON.stringify(url)})`
+    }
+    body.append(card.kind === 'creature' ? typeBadge(card.type) : kindBadge(card.kind))
+    body.append(el('span', 'card__name', displayName(card.name, card.kind === 'creature' && card.ex)))
+    // キャラは HP、それ以外は種別を出す。手札で何が使えるか一目で分かるようにする
+    body.append(el('span', 'card__hp', card.kind === 'creature' ? `HP${card.hp}` : kindLabel(card.kind)))
+    node.append(body)
     const detail = (): void => handlers.onHandTap(index)
     bindTap(node, action === undefined ? detail : () => handlers.onAction(action), detail)
     hand.append(node)
@@ -439,7 +581,7 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   attackBtn.addEventListener('click', handlers.onAttackMenu)
   controls.append(attackBtn)
 
-  const retreatCost = player.active === null ? 0 : requireCard(player.active.cardId).retreatCost
+  const retreatCost = player.active === null ? 0 : requireCreature(player.active.cardId).retreatCost
   const retreatBtn = el('button', 'btn btn--ghost', `にげる（エネ${retreatCost}）`)
   retreatBtn.type = 'button'
   retreatBtn.disabled = !canRetreat

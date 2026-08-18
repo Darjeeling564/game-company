@@ -12,16 +12,22 @@ export type PlayerId = 0 | 1
 export type CardId = string
 export type InstanceId = number
 
+/**
+ * 属性（SPEC 17章）。
+ * 元素6種は環で相性を持ち、光と闇は互いにだけ、無はどことも相性を持たない。
+ */
 export type EnergyType =
-  | 'grass'
+  // 元素6種。環: 炎 → 森 → 風 → 土 → 雷 → 水 → 炎
   | 'fire'
+  | 'forest'
+  | 'wind'
+  | 'earth'
+  | 'thunder'
   | 'water'
-  | 'lightning'
-  | 'psychic'
-  | 'fighting'
-  | 'darkness'
-  | 'metal'
-  | 'colorless' // コスト表記専用。供給・付与はされない
+  // 対の2種。互いにだけ弱点を持つ
+  | 'light'
+  | 'dark'
+  | 'colorless' // 無。コスト表記専用で、供給・付与はされない
 
 /** v1 は どく のみ */
 export type Status = 'poisoned'
@@ -42,7 +48,7 @@ export type Origin =
   | 'original'
 
 /** レアリティ。強さと稀少性から決める（SPEC 8.3） */
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'ultra'
+export type Rarity = 'common' | 'rare' | 'superRare' | 'ultra'
 
 // ---------------------------------------------------------------- 定数
 
@@ -54,7 +60,38 @@ export const MAX_MULLIGAN = 10
 export const POINTS_TO_WIN = 3
 export const POINTS_FOR_EX = 2
 export const POINTS_FOR_NORMAL = 1
+/** 元素どうしの弱点ボーナス */
 export const WEAKNESS_BONUS = 20
+/**
+ * 光 ⇄ 闇 の弱点ボーナス。
+ * 光と闇は元素6種に対して不利対面を持たないぶん一方的に得をするので、
+ * 同族で当たったときの被害を大きくして釣り合わせる（SPEC 17.3）。
+ */
+export const LIGHT_DARK_BONUS = 40
+
+/**
+ * 相性表。攻撃側の属性 -> 弱点を突ける相手の属性（SPEC 17.2）。
+ *
+ * 環をカードごとに書くと必ず食い違うカードが出るので、ここ1箇所に置き、
+ * CardDef は弱点を持たない。無はどこにも相関しない。
+ */
+export const WEAKNESS_CHART: Readonly<Record<EnergyType, readonly EnergyType[]>> = {
+  fire: ['forest'],      // 森を焼く
+  forest: ['wind'],      // 木立が風を受け止める
+  wind: ['earth'],       // 砂を巻き上げ、地を削る
+  earth: ['thunder'],    // 地に雷を逃がす
+  thunder: ['water'],    // 水を伝って焼く
+  water: ['fire'],       // 炎を消す
+  light: ['dark'],
+  dark: ['light'],
+  colorless: [],         // 無はどこにも相関しない
+}
+
+/** attacker が defender の弱点を突けるなら、その加算値。突けないなら 0 */
+export function weaknessBonus(attacker: EnergyType, defender: EnergyType): number {
+  if (!WEAKNESS_CHART[attacker].includes(defender)) return 0
+  return attacker === 'light' || attacker === 'dark' ? LIGHT_DARK_BONUS : WEAKNESS_BONUS
+}
 export const POISON_DAMAGE = 10
 
 /** 終局保証のための上限。通常の対戦で到達してはならない（SPEC 3.6） */
@@ -74,6 +111,7 @@ export type Target =
   | 'opponentBenchRandom'
   | 'self'
   | 'ownActive'
+  | 'ownBenchAll'
 
 export type Effect =
   | { readonly type: 'damage'; readonly target: Target; readonly value: number }
@@ -94,31 +132,81 @@ export type Effect =
   | { readonly type: 'discardEnergy'; readonly target: Target; readonly value: number }
   | { readonly type: 'applyStatus'; readonly target: Target; readonly status: Status }
   | { readonly type: 'draw'; readonly value: number }
+  /**
+   * エネルギーの付与をやり直せるようにする。付与済みフラグを戻し、在庫が空なら補充する。
+   * 「もう1回つけられる」を1つの効果で表すため、フラグと在庫の両方を面倒みる。
+   */
+  | { readonly type: 'gainEnergy' }
+  /** 対象に value 個のエネルギーを直接つける。付与済みフラグは消費しない */
+  | { readonly type: 'attachEnergy'; readonly target: Target; readonly value: number }
+  /** 相手のバトル場をベンチの1体と入れ替える（PRNG使用） */
+  | { readonly type: 'switchOpponent' }
+  /** 山札からクリーチャーを1枚手札に加え、山札を切り直す（PRNG使用） */
+  | { readonly type: 'searchCreature' }
 
 export interface AttackDef {
   readonly name: string
+  /** 漢字や英語を使ったワザ名のフリガナ。かな書きのワザには付けない */
+  readonly ruby?: string
   readonly cost: readonly EnergyType[]
   readonly effects: readonly Effect[]
 }
 
-export interface CardDef {
+/** どの種別にも共通する項目 */
+interface CardBase {
   readonly id: CardId
   readonly name: string
+  /** 漢字や英語を使ったカード名のフリガナ。かな書きの名前には付けない */
+  readonly ruby?: string
   /** モチーフになった神格・霊獣の説明。必須にして、カード追加時の書き忘れを型で防ぐ */
   readonly flavor: string
   /** 系統（どの神話に属するか） */
   readonly origin: Origin
   readonly rarity: Rarity
+}
+
+/** 場に出して戦うカード */
+export interface CreatureCard extends CardBase {
   readonly kind: 'creature'
   readonly type: EnergyType
   readonly hp: number
   readonly ex: boolean
   readonly retreatCost: number
-  readonly weakness: EnergyType | null
+  /** 弱点はカードに持たせず WEAKNESS_CHART から導く（SPEC 17.4） */
   readonly attacks: readonly AttackDef[]
   readonly stage?: 0
   readonly evolvesFrom?: string
 }
+
+/** アイテム。コスト無し・1ターンに何枚でも。使ったらトラッシュ（SPEC 16.1） */
+export interface ItemCard extends CardBase {
+  readonly kind: 'item'
+  readonly effects: readonly Effect[]
+}
+
+/** 行動。コスト無し・1ターンに1枚だけ。使ったらトラッシュ（SPEC 16.1） */
+export interface ActionCard extends CardBase {
+  readonly kind: 'action'
+  readonly effects: readonly Effect[]
+}
+
+/**
+ * 絶技（必殺技）。対応するキャラがバトル場にいるときだけ、エネルギーを払って撃てる。
+ * 撃つとターンが終了する（攻撃と排他。SPEC 16.8 Q7）。
+ */
+export interface UltimateCard extends CardBase {
+  readonly kind: 'ultimate'
+  /** この絶技を撃てるキャラのカードID。バトル場にいることが条件（Q8） */
+  readonly requires: CardId
+  readonly cost: readonly EnergyType[]
+  readonly effects: readonly Effect[]
+}
+
+/**
+ * カード定義。種別ごとの直和にすることで、「アイテムのHP」のような
+ * 意味のない状態を型の時点で作れなくする。
+ */
+export type CardDef = CreatureCard | ItemCard | ActionCard | UltimateCard
 
 // ---------------------------------------------------------------- 状態
 
@@ -147,12 +235,24 @@ export interface PlayerState {
   readonly energy: EnergyZone
   readonly attachedThisTurn: boolean
   readonly retreatedThisTurn: boolean
+  /** 行動カードは1ターンに1枚だけ（SPEC 16.8 Q9） */
+  readonly usedActionThisTurn: boolean
 }
 
 export type Phase =
   | { readonly kind: 'setup' }
   | { readonly kind: 'main' }
-  | { readonly kind: 'promote'; readonly queue: readonly PlayerId[] }
+  /**
+   * きぜつ後の入れ替え待ち。resume は入れ替え後の戻り先。
+   * 攻撃やターン終了で入ったなら手番を渡し（'pass'）、アイテムや行動の途中なら
+   * そのまま手番を続ける（'continue'）。これが無いと、アイテムで相手を倒した
+   * 瞬間に自分のターンが終わってしまう。
+   */
+  | {
+      readonly kind: 'promote'
+      readonly queue: readonly PlayerId[]
+      readonly resume: 'pass' | 'continue'
+    }
   | { readonly kind: 'ended' }
 
 export type EndReason = 'points' | 'noCreature' | 'turnLimit' | 'simultaneous'

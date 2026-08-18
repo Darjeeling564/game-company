@@ -14,12 +14,16 @@ function creature(instanceId: number, cardId: string, attached: readonly EnergyT
   return { instanceId, cardId, damage, attached, status: [], placedTurn: 0 }
 }
 
-function player(active: Creature | null, bench: readonly Creature[] = []): PlayerState {
+function player(
+  active: Creature | null,
+  bench: readonly Creature[] = [],
+  hand: readonly string[] = [],
+): PlayerState {
   return {
-    deck: [], hand: [], discard: [],
+    deck: [], hand, discard: [],
     active, bench, points: 0,
     energy: { pool: ['fire'], current: null, next: 'fire' },
-    attachedThisTurn: false, retreatedThisTurn: false,
+    attachedThisTurn: false, retreatedThisTurn: false, usedActionThisTurn: false,
   }
 }
 
@@ -40,13 +44,13 @@ function battleState(a: PlayerState, b: PlayerState, turn = 5): GameState {
 describe('canPayCost', () => {
   it('色指定はぴったり一致が必要', () => {
     expect(canPayCost(['fire'], ['fire'])).toBe(true)
-    expect(canPayCost(['grass'], ['fire'])).toBe(false)
+    expect(canPayCost(['forest'], ['fire'])).toBe(false)
     expect(canPayCost([], ['fire'])).toBe(false)
   })
 
   it('colorless は任意のタイプ1個で払える', () => {
-    expect(canPayCost(['grass'], ['colorless'])).toBe(true)
-    expect(canPayCost(['fire', 'grass'], ['fire', 'colorless'])).toBe(true)
+    expect(canPayCost(['forest'], ['colorless'])).toBe(true)
+    expect(canPayCost(['fire', 'forest'], ['fire', 'colorless'])).toBe(true)
     expect(canPayCost(['fire'], ['fire', 'colorless'])).toBe(false)
   })
 
@@ -54,7 +58,7 @@ describe('canPayCost', () => {
     // fire2個で「fire + colorless」は払える
     expect(canPayCost(['fire', 'fire'], ['fire', 'colorless'])).toBe(true)
     // fire1個 + grass1個で「fire + fire」は払えない
-    expect(canPayCost(['fire', 'grass'], ['fire', 'fire'])).toBe(false)
+    expect(canPayCost(['fire', 'forest'], ['fire', 'fire'])).toBe(false)
   })
 
   it('余分なエネルギーがあっても払える', () => {
@@ -63,11 +67,11 @@ describe('canPayCost', () => {
 })
 
 describe('弱点', () => {
-  it('炎の攻撃は草（弱点:炎）に +20 される', () => {
-    // f001 シュクユウ「なんぽうのほのお」20ダメージ → g001 デメテル（弱点 fire）
+  it('炎の攻撃は森（弱点:炎）に +20 される', () => {
+    // f006 シュクユウ「なんぽうのほのお」20ダメージ → s004 パン（森）
     const state = battleState(
-      player(creature(1, 'f001', ['fire'])),
-      player(creature(2, 'g001')),
+      player(creature(1, 'f006', ['fire'])),
+      player(creature(2, 's004')),
     )
     const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
     const target = after.players[1].active
@@ -75,20 +79,20 @@ describe('弱点', () => {
   })
 
   it('弱点が一致しなければ素通し', () => {
-    // 炎 → 炎（弱点 grass）は加算されない
+    // 炎 → 炎（炎の弱点は水）は加算されない
     const state = battleState(
-      player(creature(1, 'f001', ['fire'])),
-      player(creature(2, 'f001')),
+      player(creature(1, 'f006', ['fire'])),
+      player(creature(2, 'f006')),
     )
     const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
     expect(after.players[1].active?.damage).toBe(20)
   })
 
   it('ベンチへのダメージには弱点を適用しない', () => {
-    // f006 カグツチEX「あまのおはばり」: バトル場90 + ベンチ全体10
+    // f002 カグツチEX「てんそうのほのお」: バトル場90 + ベンチ全体10
     const state = battleState(
-      player(creature(1, 'f006', ['fire', 'fire', 'fire'])),
-      player(creature(2, 'g002'), [creature(3, 'g001')]),
+      player(creature(1, 'f002', ['fire', 'fire', 'fire'])),
+      player(creature(2, 's007'), [creature(3, 's004')]),
     )
     const after = reduce(state, { type: 'attack', player: 0, attackIndex: 1 })
     expect(after.players[1].bench[0]?.damage).toBe(10) // +20 されない
@@ -98,51 +102,51 @@ describe('弱点', () => {
 describe('きぜつとポイント', () => {
   it('通常のクリーチャーは1ポイント', () => {
     const state = battleState(
-      player(creature(1, 'f004', ['fire', 'fire'])), // レーヴァテイン 50 + 弱点20
-      player(creature(2, 'g001', [], 40), [creature(3, 'g001')]), // hp80、残り40
+      player(creature(1, 'f006', ['fire', 'fire'])), // ひをさずける 40 + 弱点20
+      player(creature(2, 's004', [], 40), [creature(3, 's004')]), // hp90、残り50
     )
-    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
+    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 1 })
     expect(after.players[0].points).toBe(1)
   })
 
   it('EX級は2ポイント', () => {
     const state = battleState(
-      player(creature(1, 'f004', ['fire', 'fire'])),
-      player(creature(2, 'g006', [], 100), [creature(3, 'g001')]), // ユグドラシルEX hp170、残り70
+      player(creature(1, 'f006', ['fire', 'fire'])),
+      player(creature(2, 's001', [], 120), [creature(3, 's004')]), // ユグドラシルEX hp170、残り50
     )
-    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
+    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 1 })
     expect(after.players[0].points).toBe(2)
   })
 
   it('きぜつしたカードはトラッシュへ送られ、入れ替え待ちになる', () => {
     const state = battleState(
-      player(creature(1, 'f004', ['fire', 'fire'])),
-      player(creature(2, 'g001', [], 40), [creature(3, 'g003')]),
+      player(creature(1, 'f006', ['fire', 'fire'])),
+      player(creature(2, 's004', [], 40), [creature(3, 's005')]),
     )
-    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
-    expect(after.players[1].discard).toEqual(['g001'])
+    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 1 })
+    expect(after.players[1].discard).toEqual(['s004'])
     expect(after.players[1].active).toBeNull()
-    expect(after.phase).toEqual({ kind: 'promote', queue: [1] })
+    expect(after.phase).toEqual({ kind: 'promote', queue: [1], resume: 'pass' })
   })
 
   it('ベンチが無ければ場切れで負ける', () => {
     const state = battleState(
-      player(creature(1, 'f004', ['fire', 'fire'])),
-      player(creature(2, 'g001', [], 40)), // ベンチ無し
+      player(creature(1, 'f006', ['fire', 'fire'])),
+      player(creature(2, 's004', [], 40)), // ベンチ無し
     )
-    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
+    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 1 })
     expect(after.phase.kind).toBe('ended')
     expect(after.endReason).toBe('noCreature')
     expect(after.winner).toBe(0)
   })
 
   it('3ポイントに達したら勝利', () => {
-    const attacker = player(creature(1, 'f004', ['fire', 'fire']))
+    const attacker = player(creature(1, 'f006', ['fire', 'fire']))
     const state = battleState(
       { ...attacker, points: 2 },
-      player(creature(2, 'g001', [], 40), [creature(3, 'g001')]),
+      player(creature(2, 's004', [], 40), [creature(3, 's004')]),
     )
-    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
+    const after = reduce(state, { type: 'attack', player: 0, attackIndex: 1 })
     expect(after.winner).toBe(0)
     expect(after.endReason).toBe('points')
   })
@@ -150,11 +154,11 @@ describe('きぜつとポイント', () => {
   it('同時に3ポイントへ達した場合は手番プレイヤーの勝ち（Q2）', () => {
     // n002 ペガソス「てんがけ」: 相手40 + 自分10。両者を同時にきぜつさせる
     const attacker: PlayerState = {
-      ...player(creature(1, 'n002', ['fire', 'fire'], 50), [creature(4, 'g001')]), // hp60、残り10
+      ...player(creature(1, 'n002', ['fire', 'fire'], 50), [creature(4, 's004')]), // hp60、残り10
       points: 2,
     }
     const defender: PlayerState = {
-      ...player(creature(2, 'g001', [], 40), [creature(3, 'g001')]), // hp80、残り40
+      ...player(creature(2, 's004', [], 50), [creature(3, 's004')]), // hp90、残り40
       points: 2,
     }
     const after = reduce(battleState(attacker, defender), { type: 'attack', player: 0, attackIndex: 1 })
@@ -167,24 +171,24 @@ describe('きぜつとポイント', () => {
 
 describe('どく', () => {
   it('ターン終了時に10ダメージを受ける', () => {
-    // f003 ハスター「きいろのいぶき」: 10ダメージ + どく
+    // f007 セクメト「やくびょうのいぶき」: 30ダメージ + どく
     const state = battleState(
-      player(creature(1, 'f003', ['fire'])),
-      player(creature(2, 'f001')), // 炎なので弱点は乗らない
+      player(creature(1, 'f007', ['fire', 'fire'])),
+      player(creature(2, 'f006')), // 炎なので弱点は乗らない
     )
-    const poisoned = reduce(state, { type: 'attack', player: 0, attackIndex: 0 })
-    // 攻撃10 + そのターン終了時のどく10
-    expect(poisoned.players[1].active?.damage).toBe(20)
+    const poisoned = reduce(state, { type: 'attack', player: 0, attackIndex: 1 })
+    // 攻撃30 + そのターン終了時のどく10
+    expect(poisoned.players[1].active?.damage).toBe(40)
     expect(poisoned.players[1].active?.status).toContain('poisoned')
 
     // 相手のターンを終了させると、さらに10
     const next = reduce(poisoned, { type: 'endTurn', player: 1 })
-    expect(next.players[1].active?.damage).toBe(30)
+    expect(next.players[1].active?.damage).toBe(50)
   })
 
   it('にげると解除される', () => {
-    const active = { ...creature(1, 'f001', ['fire']), status: ['poisoned'] as const }
-    const state = battleState(player(active, [creature(2, 'f002')]), player(creature(3, 'g001')))
+    const active = { ...creature(1, 'f006', ['fire']), status: ['poisoned'] as const }
+    const state = battleState(player(active, [creature(2, 'f002')]), player(creature(3, 's004')))
     const after = reduce(state, { type: 'retreat', player: 0, benchIndex: 0 })
     expect(after.players[0].bench.at(-1)?.status).toEqual([])
   })
@@ -195,10 +199,13 @@ describe('先攻1ターン目', () => {
     let state = reduce(EMPTY_STATE, {
       type: 'start', seed: 20260815, decks: [FIRE_DECK, GRASS_DECK], firstPlayer: 0,
     })
-    state = reduce(state, { type: 'setupPlace', player: 0, handIndex: 0 })
-    state = reduce(state, { type: 'setupPlace', player: 1, handIndex: 0 })
-    state = reduce(state, { type: 'setupDone', player: 0 })
-    state = reduce(state, { type: 'setupDone', player: 1 })
+    // 手札の先頭がキャラとは限らない（アイテムや行動も配られる）。
+    // 合法手から選ばせて、デッキの中身に依存しないようにする
+    for (const player of [0, 1] as const) {
+      const place = legalActions(state).find((a) => a.type === 'setupPlace' && a.player === player)
+      if (place !== undefined) state = reduce(state, place)
+      state = reduce(state, { type: 'setupDone', player })
+    }
     return state
   }
 
@@ -229,11 +236,93 @@ describe('カードデータ', () => {
     }
   })
 
-  it('すべてのカードが1つ以上のワザを持つ', () => {
+  it('デッキのキャラは1つ以上のワザを持つ', () => {
     for (const deck of [FIRE_DECK, GRASS_DECK]) {
       for (const id of new Set(deck.cards)) {
-        expect(requireCard(id).attacks.length, `${id}`).toBeGreaterThan(0)
+        const card = requireCard(id)
+        if (card.kind !== 'creature') continue
+        expect(card.attacks.length, `${id}`).toBeGreaterThan(0)
       }
     }
+  })
+})
+
+// ---------------------------------------------------------------- 種別（SPEC 16章）
+
+describe('アイテム・行動・絶技', () => {
+  it('アイテムは1ターンに何枚でも使える（Q10）', () => {
+    // i002 供物の果実 = 2枚ひく。2枚持たせて、1枚使ってももう1枚使えることを見る
+    const me = player(creature(1, 'f002'), [], ['i002', 'i002'])
+    const state = battleState(me, player(creature(2, 's004')))
+
+    const after = reduce(state, { type: 'playItem', player: 0, handIndex: 0 })
+    expect(after.players[0].discard).toEqual(['i002'])
+    expect(after.current).toBe(0) // ターンは終わらない
+    expect(legalActions(after).some((a) => a.type === 'playItem')).toBe(true)
+  })
+
+  it('行動は1ターンに1枚まで（Q9）', () => {
+    // a001 天啓 = 3枚ひく
+    const me = player(creature(1, 'f002'), [], ['a001', 'a001'])
+    const state = battleState(me, player(creature(2, 's004')))
+
+    const after = reduce(state, { type: 'playAction', player: 0, handIndex: 0 })
+    expect(after.players[0].usedActionThisTurn).toBe(true)
+    expect(legalActions(after).some((a) => a.type === 'playAction')).toBe(false)
+
+    const again = reduce(after, { type: 'playAction', player: 0, handIndex: 0 })
+    expect(again.log.at(-1)?.kind).toBe('rejected')
+  })
+
+  it('絶技は対応キャラがバトル場にいないと使えない（Q8）', () => {
+    // u001 天叢焼 は f002 カグツチEX 専用。別のキャラでは撃てない
+    const wrong = player(creature(1, 'f006', ['fire', 'fire', 'fire']), [], ['u001'])
+    const rejected = reduce(battleState(wrong, player(creature(2, 's004'))), {
+      type: 'useUltimate', player: 0, handIndex: 0,
+    })
+    expect(rejected.log.at(-1)?.kind).toBe('rejected')
+    expect(rejected.log.at(-1)?.detail).toContain('f002')
+
+    const right = player(creature(1, 'f002', ['fire', 'fire', 'fire']), [], ['u001'])
+    const ok = reduce(battleState(right, player(creature(2, 's004'))), {
+      type: 'useUltimate', player: 0, handIndex: 0,
+    })
+    expect(ok.log.some((e) => e.kind === 'ultimate')).toBe(true)
+  })
+
+  it('絶技はエネルギーが足りないと使えない', () => {
+    const poor = player(creature(1, 'f002', ['fire']), [], ['u001'])
+    const state = battleState(poor, player(creature(2, 's004')))
+    expect(legalActions(state).some((a) => a.type === 'useUltimate')).toBe(false)
+  })
+
+  it('絶技を撃つとターンが終わる（Q7）', () => {
+    // 相手が倒れると入れ替えや決着が挟まるので、耐えるだけのHPを持たせる
+    const me = player(creature(1, 'f002', ['fire', 'fire', 'fire']), [], ['u001'])
+    const after = reduce(battleState(me, player(creature(2, 'w002'))), {
+      type: 'useUltimate', player: 0, handIndex: 0,
+    })
+    expect(after.current).toBe(1)
+    expect(after.players[0].discard).toEqual(['u001'])
+  })
+
+  it('先攻1ターン目は絶技も撃てない', () => {
+    const me = player(creature(1, 'f002', ['fire', 'fire', 'fire']), [], ['u001'])
+    const state = battleState(me, player(creature(2, 's004')), 1)
+    expect(legalActions(state).some((a) => a.type === 'useUltimate')).toBe(false)
+  })
+
+  it('アイテムで相手を倒しても自分のターンは続く', () => {
+    // i007 呪詛の釘 = 10ダメージ。あと10で落ちる相手を倒しても手番は渡らない
+    const me = player(creature(1, 'f002'), [], ['i007'])
+    const foe = player(creature(2, 's004', [], 80), [creature(3, 's005')]) // g001 は HP80
+    const after = reduce(battleState(me, foe), { type: 'playItem', player: 0, handIndex: 0 })
+
+    expect(after.players[0].points).toBe(1)
+    expect(after.phase).toEqual({ kind: 'promote', queue: [1], resume: 'continue' })
+
+    const promoted = reduce(after, { type: 'promote', player: 1, benchIndex: 0 })
+    expect(promoted.current).toBe(0) // 入れ替えのあとも自分の手番のまま
+    expect(promoted.phase.kind).toBe('main')
   })
 })

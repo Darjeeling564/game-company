@@ -12,7 +12,7 @@ import { createRng, pick } from '../src/core/rng.ts'
 import { allCreatures } from '../src/core/state.ts'
 import type { Deck, GameState, PlayerId } from '../src/core/types.ts'
 import { BENCH_SIZE, DECK_SIZE } from '../src/core/types.ts'
-import { FIRE_DECK, GRASS_DECK } from '../src/data/decks.ts'
+import { DECKS, FIRE_DECK, GRASS_DECK } from '../src/data/decks.ts'
 
 function violations(state: GameState, label: string): readonly string[] {
   const found: string[] = []
@@ -85,6 +85,18 @@ describe('ルール不変条件', () => {
   it('異なるデッキどうしでも保たれる', () => {
     const found: string[] = []
     for (let seed = 1; seed <= 100; seed += 1) found.push(...playRandom(seed, [FIRE_DECK, GRASS_DECK]))
+    expect(found.slice(0, 5)).toEqual([])
+  })
+
+  it('全デッキの総当たりでも保たれる（アイテム・行動・絶技を含む）', () => {
+    const found: string[] = []
+    let seed = 1
+    for (const a of DECKS) {
+      for (const b of DECKS) {
+        found.push(...playRandom(seed, [a, b]))
+        seed += 1
+      }
+    }
     expect(found.slice(0, 5)).toEqual([])
   })
 
