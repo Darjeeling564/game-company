@@ -28,7 +28,8 @@ CLAUDE.md 7章「バーティカルスライス優先」に従い、v1 は**対�
 
 ### v1 に含まない（v2 以降）
 
-- 進化、グッズ / サポート等のトレーナーカード、特性
+- 進化、特性
+- アイテム / 行動 / 絶技のカード（**16章に設計案。承認後に着手する**）
 - ねむり / まひ / こんらん（ターン境界でのコイン処理が必要なため）
 - オンライン対戦、デッキ編集 UI、カードの量産
 
@@ -823,8 +824,147 @@ Q1 の帰結として、先攻はエネルギー1個ぶん先行する。先手�
 ## 15. v2 以降の候補
 
 - 進化（`stage` / `evolvesFrom` は既にスキーマにある）
-- トレーナーカード（`kind` の拡張。1ターン1枚のサポート制限）
 - 特性（常時効果。`Effect` とは別のトリガー型が必要）
 - ねむり / まひ / こんらん
 - 対戦中の中断復帰（`GameState` の保存。`maniwa-tcg_v2` へ）
 - デッキ編集 UI
+
+---
+
+## 16. v2: カード種別の拡張（設計案・未承認）
+
+クリーチャーだけだった `kind` を4種類に広げ、種類数を増やす。
+**本章は提案であり、Q7〜Q12 の承認を得るまで実装に着手しない**（CLAUDE.md 7章）。
+
+### 16.1 4つの種別
+
+| 種別 | `kind` | 1ターンの使用回数 | コスト | 使用後 |
+|---|---|---|---|---|
+| キャラクター | `'creature'` | 場に出す（ベンチ空きぶん） | なし | 場に残る |
+| アイテム | `'item'` | **制限なし** | なし | トラッシュ |
+| 行動 | `'action'` | **1枚まで** | なし | トラッシュ |
+| 絶技 | `'ultimate'` | **1回（攻撃と排他）** | エネルギー | トラッシュ |
+
+- **アイテム** — 手札とエネルギーを回す潤滑油。効果は小さく、事故を減らす役
+- **行動** — 1ターン1枚の強い一手。盤面を動かす（入れ替え・大回復・山札から連れてくる）
+- **絶技（必殺技）** — 特定のキャラが**バトル場にいるときだけ**撃てる切り札。
+  エネルギーを払い、**撃つとターンが終了する**。攻撃の代わりに使う一撃であって、
+  攻撃に上乗せするものではない。先攻1ターン目に撃てないのも攻撃と同じ
+
+### 16.2 スキーマ
+
+`CardDef` を種別ごとの直和にする。共通項（id / name / flavor / origin / rarity）は残し、
+キャラクター専用の項目（hp / type / ex / weakness / attacks / retreatCost）は
+`kind: 'creature'` のときだけ持つ。こうすると「アイテムの HP」のような無意味な状態を
+型で作れなくなる。
+
+```ts
+interface CardBase {
+  readonly id: CardId
+  readonly name: string
+  readonly flavor: string
+  readonly origin: Origin
+  readonly rarity: Rarity
+}
+
+export type CardDef =
+  | (CardBase & {
+      readonly kind: 'creature'
+      readonly type: EnergyType
+      readonly hp: number
+      readonly ex: boolean
+      readonly retreatCost: number
+      readonly weakness: EnergyType | null
+      readonly attacks: readonly AttackDef[]
+      readonly stage?: 0
+      readonly evolvesFrom?: string
+    })
+  | (CardBase & { readonly kind: 'item';   readonly effects: readonly Effect[] })
+  | (CardBase & { readonly kind: 'action'; readonly effects: readonly Effect[] })
+  | (CardBase & {
+      readonly kind: 'ultimate'
+      /** この絶技を撃てるキャラ。バトル場にいることが条件 */
+      readonly requires: CardId
+      readonly cost: readonly EnergyType[]
+      readonly ruby?: string
+      readonly effects: readonly Effect[]
+    })
+```
+
+効果は**すべて既存の `Effect` で表す**（CLAUDE.md 4章）。種別ごとに関数を書かない。
+
+### 16.3 追加する Effect
+
+既存9種では表せないものだけを足す。解釈は `core/effects.ts` の1箇所に増やす。
+
+```ts
+/** エネルギーゾーンに1つ足す（今ターンの在庫が埋まっていれば次ターンぶん） */
+| { readonly type: 'gainEnergy'; readonly value: number }
+
+/** 対象にエネルギーを直接つける。付与フラグを消費しない */
+| { readonly type: 'attachEnergy'; readonly target: Target; readonly value: number }
+
+/** 相手のバトル場をベンチの1体と入れ替える（PRNG使用） */
+| { readonly type: 'switchOpponent' }
+
+/** 山札からクリーチャーを1枚手札に加えてシャッフル（PRNG使用） */
+| { readonly type: 'searchCreature' }
+```
+
+`Target` に `'ownBenchAll'`（自分のベンチ全体）を足す。全体回復を書くため。
+
+### 16.4 状態と Action の追加
+
+```ts
+// PlayerState
+readonly usedActionThisTurn: boolean   // 行動カードを使ったか
+readonly attackedThisTurn: boolean     // 攻撃または絶技を使ったか（既存の判定を明示化）
+
+// Action
+| { readonly type: 'playItem';     readonly player: PlayerId; readonly handIndex: number }
+| { readonly type: 'playAction';   readonly player: PlayerId; readonly handIndex: number }
+| { readonly type: 'useUltimate';  readonly player: PlayerId; readonly handIndex: number }
+```
+
+`legalActions` がこの3つも返すようにする。UI・AI・シミュレータは今までどおり
+`legalActions` だけを見るので、どれも判定を書き足さない（SPEC 9章）。
+
+### 16.5 デッキ構築の制限
+
+- 20枚ちょうど / 同名2枚まで は据え置き
+- **クリーチャーは12枚以上**。非クリーチャーは最大8枚
+  （少なすぎるとバトル場が埋まらず、事故負けが増えるため）
+- 絶技は、対応するキャラが同じデッキに入っていなければデッキ不正とする
+
+### 16.6 種類数の目標
+
+| 種別 | 現在 | 目標 | 内訳 |
+|---|---|---|---|
+| キャラクター | 40 | **64** | 8系統 × 8 |
+| アイテム | 0 | **12** | 系統に依らない共通カード |
+| 行動 | 0 | **12** | 同上 |
+| 絶技 | 0 | **8** | UR / SR のキャラ8体に1つずつ |
+| 合計 | 40 | **96** | |
+
+量産は**ロジックとテストが安定してから最後に行う**（CLAUDE.md 7章）。
+
+### 16.7 検証で追加すること
+
+- **不変条件** — アイテム・行動・絶技のどれを使っても、手札・山札・トラッシュの
+  合計枚数が保存されること（カードが消えたり増えたりしない）
+- **終局保証** — 回復系のアイテムと行動が入ってもターン上限に到達しないこと。
+  8.2 の「回復 < ダメージ」の制約は、アイテムと行動にも適用する
+- **シミュレーション** — 先手勝率45〜55%を維持すること。種別ごとの採用率・勝率寄与を
+  カード別の集計に足す
+- 絶技はキャラ依存なので、**絶技だけが使われずに終わっていないか**を必ず見る
+
+### 16.8 要確認事項（Q7〜Q12）
+
+| # | 論点 | 推奨案 | 理由 |
+|---|---|---|---|
+| Q7 | 絶技はターンを終了させるか | **させる（攻撃と排他）** | 攻撃に上乗せできると、エネルギーが溜まった時点で一方的に決着する |
+| Q8 | 絶技の発動条件 | **対応キャラがバトル場にいること + エネルギーコスト** | ベンチでも撃てると、耐久キャラを盾にして撃ち放題になる |
+| Q9 | 行動カードの上限 | **1ターン1枚** | ポケポケのサポートと同じ。連打できると手札の引きだけで勝負がつく |
+| Q10 | アイテムの上限 | **無制限** | 効果を小さくして枚数で調整する。上限を作ると読みが複雑になる |
+| Q11 | 非クリーチャーの枚数上限 | **8枚（クリーチャー12枚以上）** | 事故負けの増加を抑える。実測して調整する |
+| Q12 | 種類数の目標 | **96種**（キャラ64 / アイテム12 / 行動12 / 絶技8） | 系統ごとに8体そろえるとデッキの色が出る。絶技は UR / SR に限る |
