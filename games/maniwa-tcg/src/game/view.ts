@@ -222,7 +222,18 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
     box.append(art)
   }
 
-  box.append(el('div', 'detail__name', displayName(card.name, card.kind === 'creature' && card.ex)))
+  // 漢字のカード名にはフリガナを振る。ワザ名と同じ扱い
+  const nameBox = el('div', 'detail__name')
+  const shown = displayName(card.name, card.kind === 'creature' && card.ex)
+  if (card.ruby === undefined) {
+    nameBox.append(shown)
+  } else {
+    const ruby = el('ruby')
+    ruby.append(shown)
+    ruby.append(el('rt', undefined, card.ruby))
+    nameBox.append(ruby)
+  }
+  box.append(nameBox)
   box.append(el('div', 'detail__rule'))
 
   const foot = el('div', 'detail__foot')
@@ -263,10 +274,8 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
       box.append(row)
     }
   } else {
+    // 絶技はカード名がそのままワザ名なので、名前を二度出さない
     const row = el('div', 'detail__attack')
-    if (card.kind === 'ultimate') {
-      row.append(attackNameNode({ name: card.name, cost: card.cost, effects: card.effects, ...(card.ruby === undefined ? {} : { ruby: card.ruby }) }))
-    }
     row.append(el('span', 'detail__attackText', card.effects.map(describeEffect).join(' / ')))
     box.append(row)
   }
