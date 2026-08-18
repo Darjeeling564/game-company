@@ -16,7 +16,7 @@ import type {
   PlayerState,
   Rarity,
 } from '../core/types.ts'
-import { BENCH_SIZE, WEAKNESS_BONUS } from '../core/types.ts'
+import { BENCH_SIZE, WEAKNESS_CHART, weaknessBonus } from '../core/types.ts'
 import { requireCard, requireCreature } from '../data/cards.ts'
 import { artStage, artUrl } from './art.ts'
 import { RARITY_STYLE, TYPE_COLOR, applyCardTheme } from './theme.ts'
@@ -25,8 +25,8 @@ export const HUMAN: PlayerId = 0
 export const CPU: PlayerId = 1
 
 const ENERGY_LABEL: Readonly<Record<string, string>> = {
-  fire: '炎', grass: '草', water: '水', lightning: '電', psychic: '超',
-  fighting: '闘', darkness: '悪', metal: '鋼', colorless: '無',
+  fire: '炎', forest: '森', wind: '風', earth: '土', thunder: '雷', water: '水',
+  light: '光', dark: '闇', colorless: '無',
 }
 
 export function energyLabel(type: string | null): string {
@@ -160,6 +160,19 @@ export function recentLog(state: GameState, count: number): readonly string[] {
   return lines.slice(-count)
 }
 
+/**
+ * その属性が誰に弱いかを1行にする。相性は表から引くので、カードごとの記述は無い。
+ * 「何に強いか」ではなく「何にやられるか」を出す。守るときに要る情報だから。
+ */
+function weakOf(type: EnergyType): string {
+  const attackers = (Object.keys(WEAKNESS_CHART) as EnergyType[]).filter((a) =>
+    WEAKNESS_CHART[a].includes(type),
+  )
+  if (attackers.length === 0) return '弱点 なし'
+  const bonus = weaknessBonus(attackers[0] as EnergyType, type)
+  return `弱点 ${attackers.map((a) => energyLabel(a)).join('・')}（+${bonus}）`
+}
+
 /** 属性を色丸に白文字で示す。丸の色は theme.ts の TYPE_COLOR */
 function typeBadge(type: EnergyType): HTMLElement {
   const badge = el('span', 'badge', energyLabel(type))
@@ -251,7 +264,7 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
     const remaining = creature === null ? card.hp : Math.max(0, card.hp - creature.damage)
     facts.unshift(
       `HP ${remaining}/${card.hp}`,
-      card.weakness === null ? '弱点 なし' : `弱点 ${energyLabel(card.weakness)}（+${WEAKNESS_BONUS}）`,
+      weakOf(card.type),
       `にげる エネ${card.retreatCost}`,
     )
     if (creature !== null && creature.attached.length > 0) {

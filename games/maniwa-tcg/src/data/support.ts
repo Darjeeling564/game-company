@@ -153,7 +153,7 @@ export const ACTIONS: readonly ActionCard[] = [
 export const ULTIMATES: readonly UltimateCard[] = [
   {
     id: 'u001', name: '天叢焼', ruby: 'あめのむらやき', kind: 'ultimate',
-    origin: 'japan', rarity: 'ultra', requires: 'f006',
+    origin: 'japan', rarity: 'ultra', requires: 'f002',
     flavor: '生まれた瞬間に母を焼いた火が、そのまま戦場を舐める。カグツチEXの極み。',
     cost: ['fire', 'fire', 'colorless'],
     effects: [
@@ -163,17 +163,47 @@ export const ULTIMATES: readonly UltimateCard[] = [
   },
   {
     id: 'u002', name: '世界樹の恵み', ruby: 'せかいじゅのめぐみ', kind: 'ultimate',
-    origin: 'norse', rarity: 'ultra', requires: 'g006',
+    origin: 'norse', rarity: 'ultra', requires: 's001',
     flavor: '枝が天を覆い、根が泉を汲み上げる。傷つきながらも立ち続ける大樹の力。',
-    cost: ['grass', 'grass', 'colorless'],
+    cost: ['forest', 'forest', 'colorless'],
     effects: [
       { type: 'damage', target: 'opponentActive', value: 90 },
       { type: 'heal', target: 'self', value: 20 },
     ],
   },
   {
-    id: 'u003', name: '星辰再臨', ruby: 'せいしんさいりん', kind: 'ultimate',
-    origin: 'cthulhu', rarity: 'ultra', requires: 'w011',
+    id: 'u003', name: '黄の印', ruby: 'きいろのしるし', kind: 'ultimate',
+    origin: 'cthulhu', rarity: 'ultra', requires: 'k006',
+    flavor: '風がかたちを変え、見てはならない印を空に描く。読めた者から崩れていく。',
+    cost: ['wind', 'wind', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 100 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
+  {
+    id: 'u004', name: '地底の眠り', ruby: 'ちていのねむり', kind: 'ultimate',
+    origin: 'cthulhu', rarity: 'ultra', requires: 'e008',
+    flavor: '黒い泥が洞窟から溢れ出す。沈んだものは二度と形を取り戻さない。',
+    cost: ['earth', 'earth', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 100 },
+      { type: 'damage', target: 'opponentBenchAll', value: 10 },
+    ],
+  },
+  {
+    id: 'u005', name: '神威の雷', ruby: 'しんいのいかずち', kind: 'ultimate',
+    origin: 'greece', rarity: 'ultra', requires: 't003',
+    flavor: '天が裂け、逆らう者の上にだけ落ちる。神々の王が下す最後の答え。',
+    cost: ['thunder', 'thunder', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 120 },
+      { type: 'selfDamage', value: 20 },
+    ],
+  },
+  {
+    id: 'u006', name: '星辰再臨', ruby: 'せいしんさいりん', kind: 'ultimate',
+    origin: 'cthulhu', rarity: 'ultra', requires: 'w002',
     flavor: '星の位置が正しくなった。海底の都が浮上し、見た者の理性が砕ける。',
     cost: ['water', 'water', 'colorless'],
     effects: [
@@ -182,50 +212,23 @@ export const ULTIMATES: readonly UltimateCard[] = [
     ],
   },
   {
-    id: 'u004', name: '焔剣', ruby: 'レーヴァテイン', kind: 'ultimate',
-    origin: 'norse', rarity: 'superRare', requires: 'f004',
-    flavor: '世界の終わりに振るわれる剣。振り抜いた本人も炎から逃れられない。',
-    cost: ['fire', 'fire'],
-    effects: [
-      { type: 'damage', target: 'opponentActive', value: 90 },
-      { type: 'selfDamage', value: 10 },
-    ],
-  },
-  {
-    id: 'u005', name: '神産みの業火', ruby: 'かみうみのごうか', kind: 'ultimate',
-    origin: 'japan', rarity: 'superRare', requires: 'f005',
-    flavor: '生まれ落ちること自体が災いだった火の神。触れた者は焼けただれ続ける。',
-    cost: ['fire', 'colorless'],
-    effects: [
-      { type: 'damage', target: 'opponentActive', value: 70 },
-      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
-    ],
-  },
-  {
-    id: 'u006', name: '天岩戸開', ruby: 'あまのいわとびらき', kind: 'ultimate',
-    origin: 'japan', rarity: 'superRare', requires: 'f012',
+    id: 'u007', name: '天岩戸開', ruby: 'あまのいわとびらき', kind: 'ultimate',
+    origin: 'japan', rarity: 'ultra', requires: 'l001',
     flavor: '閉ざされた岩戸が開き、世界に光が戻る。隠れていたものがすべて見える。',
-    cost: ['fire', 'fire'],
+    cost: ['light', 'light', 'colorless'],
     effects: [
-      { type: 'damage', target: 'opponentActive', value: 80 },
+      { type: 'damage', target: 'opponentActive', value: 100 },
       { type: 'draw', value: 2 },
     ],
   },
   {
-    id: 'u007', name: '大海嘯', ruby: 'だいかいしょう', kind: 'ultimate',
-    origin: 'greece', rarity: 'superRare', requires: 'w002',
-    flavor: '三叉の矛が海底を突く。押し寄せた水が、蓄えたものごと流し去る。',
-    cost: ['water', 'water'],
+    id: 'u008', name: '這い寄る混沌', ruby: 'はいよるこんとん', kind: 'ultimate',
+    origin: 'cthulhu', rarity: 'ultra', requires: 'd001',
+    flavor: '千の貌のどれが本物か、誰も言い当てられない。答えを探した者から壊れる。',
+    cost: ['dark', 'dark', 'colorless'],
     effects: [
-      { type: 'damage', target: 'opponentActive', value: 90 },
-      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+      { type: 'damage', target: 'opponentActive', value: 100 },
+      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
     ],
-  },
-  {
-    id: 'u008', name: '世界蛇の顎', ruby: 'せかいへびのあぎと', kind: 'ultimate',
-    origin: 'norse', rarity: 'superRare', requires: 'w003',
-    flavor: '自らの尾を咥えた蛇が口を開く。緩んだ環が、世界を三度打つ。',
-    cost: ['water', 'water', 'colorless'],
-    effects: [{ type: 'damagePerHeads', target: 'opponentActive', count: 3, value: 50 }],
   },
 ]

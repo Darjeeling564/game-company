@@ -11,7 +11,7 @@ import type { Rng } from '../src/core/rng.ts'
 import { pick } from '../src/core/rng.ts'
 import { canPayCost } from '../src/core/rules.ts'
 import type { Effect, GameState, PlayerId } from '../src/core/types.ts'
-import { BENCH_SIZE, WEAKNESS_BONUS } from '../src/core/types.ts'
+import { BENCH_SIZE, weaknessBonus } from '../src/core/types.ts'
 import { requireCard, requireCreature } from '../src/data/cards.ts'
 
 export interface Choice {
@@ -26,13 +26,22 @@ export interface Choice {
  */
 export type Policy = (state: GameState, rng: Rng, only?: PlayerId) => Choice | null
 
-/** コイン依存は期待値で見積もる。順序付けにしか使わないので粗くてよい */
+/**
+ * ワザの良さを1つの数値にする。順序付けにしか使わないので粗くてよい。
+ *
+ * ダメージ以外も評価する。回復・エネルギー破壊・ドロー・どくを0点にすると、
+ * それらを軸にした属性（森の回復、風の撹乱）が実際より弱く測れてしまい、
+ * 「AI が使えないから弱い」だけのカードを数値の問題と読み違える。
+ * 重みはダメージ換算の目安で、厳密さより「無視しない」ことを優先している。
+ */
 export function expectedDamage(effects: readonly Effect[]): number {
   let total = 0
   for (const effect of effects) {
     switch (effect.type) {
       case 'damage':
         if (effect.target === 'opponentActive') total += effect.value
+        else if (effect.target === 'opponentBenchAll') total += effect.value * 1.5
+        else if (effect.target === 'opponentBenchRandom') total += effect.value * 0.5
         break
       case 'damagePerHeads':
         if (effect.target === 'opponentActive') total += (effect.value * effect.count) / 2
@@ -41,9 +50,37 @@ export function expectedDamage(effects: readonly Effect[]): number {
         total += expectedDamage(effect.then) / 2
         break
       case 'selfDamage':
-        total -= effect.value / 4 // 反動はわずかに嫌う
+        // 反動は受けたダメージぶんそのまま損。軽く見ていたら、自傷ドローを
+        // 「強いカード」と誤って採点し、デッキの地力を20pt読み違えた
+        total -= effect.value
         break
-      default:
+      case 'heal':
+        // 受けたダメージを戻すぶん、実質的に相手の打点を削っている
+        total += effect.value * (effect.target === 'ownBenchAll' ? 0.4 : 0.6)
+        break
+      case 'discardEnergy':
+        // 1個奪うと相手のワザが1ターン遅れる。それを打点に換算する
+        if (effect.target !== 'self' && effect.target !== 'ownActive') total += effect.value * 15
+        break
+      case 'applyStatus':
+        total += 15 // どくは残りターン数ぶん効くが、控えめに見る
+        break
+      case 'draw':
+        // 手札はエネルギーほど詰まらない。引いても置けなければ意味が無い
+        total += effect.value * 5
+        break
+      case 'gainEnergy':
+        // エネルギーは1ターン1個しか増えない。前借りできる価値はダメージ換算で大きい
+        total += 30
+        break
+      case 'attachEnergy':
+        total += effect.value * 35
+        break
+      case 'switchOpponent':
+        total += 10
+        break
+      case 'searchCreature':
+        total += 8
         break
     }
   }
@@ -164,8 +201,7 @@ export const greedyPolicy: Policy = (state, rng, only) => {
     const foe = state.players[id === 0 ? 1 : 0].active
     const remaining =
       foe === null ? Number.POSITIVE_INFINITY : requireCreature(foe.cardId).hp - foe.damage
-    const weak =
-      foe !== null && requireCreature(foe.cardId).weakness === card.type ? WEAKNESS_BONUS : 0
+    const weak = foe === null ? 0 : weaknessBonus(card.type, requireCreature(foe.cardId).type)
 
     const scored = attacks.map((action) => {
       // 絶技は手札から撃つので、効果は手札のカードから読む

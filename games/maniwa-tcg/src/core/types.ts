@@ -12,16 +12,22 @@ export type PlayerId = 0 | 1
 export type CardId = string
 export type InstanceId = number
 
+/**
+ * 属性（SPEC 17章）。
+ * 元素6種は環で相性を持ち、光と闇は互いにだけ、無はどことも相性を持たない。
+ */
 export type EnergyType =
-  | 'grass'
+  // 元素6種。環: 炎 → 森 → 風 → 土 → 雷 → 水 → 炎
   | 'fire'
+  | 'forest'
+  | 'wind'
+  | 'earth'
+  | 'thunder'
   | 'water'
-  | 'lightning'
-  | 'psychic'
-  | 'fighting'
-  | 'darkness'
-  | 'metal'
-  | 'colorless' // コスト表記専用。供給・付与はされない
+  // 対の2種。互いにだけ弱点を持つ
+  | 'light'
+  | 'dark'
+  | 'colorless' // 無。コスト表記専用で、供給・付与はされない
 
 /** v1 は どく のみ */
 export type Status = 'poisoned'
@@ -54,7 +60,38 @@ export const MAX_MULLIGAN = 10
 export const POINTS_TO_WIN = 3
 export const POINTS_FOR_EX = 2
 export const POINTS_FOR_NORMAL = 1
+/** 元素どうしの弱点ボーナス */
 export const WEAKNESS_BONUS = 20
+/**
+ * 光 ⇄ 闇 の弱点ボーナス。
+ * 光と闇は元素6種に対して不利対面を持たないぶん一方的に得をするので、
+ * 同族で当たったときの被害を大きくして釣り合わせる（SPEC 17.3）。
+ */
+export const LIGHT_DARK_BONUS = 40
+
+/**
+ * 相性表。攻撃側の属性 -> 弱点を突ける相手の属性（SPEC 17.2）。
+ *
+ * 環をカードごとに書くと必ず食い違うカードが出るので、ここ1箇所に置き、
+ * CardDef は弱点を持たない。無はどこにも相関しない。
+ */
+export const WEAKNESS_CHART: Readonly<Record<EnergyType, readonly EnergyType[]>> = {
+  fire: ['forest'],      // 森を焼く
+  forest: ['wind'],      // 木立が風を受け止める
+  wind: ['earth'],       // 砂を巻き上げ、地を削る
+  earth: ['thunder'],    // 地に雷を逃がす
+  thunder: ['water'],    // 水を伝って焼く
+  water: ['fire'],       // 炎を消す
+  light: ['dark'],
+  dark: ['light'],
+  colorless: [],         // 無はどこにも相関しない
+}
+
+/** attacker が defender の弱点を突けるなら、その加算値。突けないなら 0 */
+export function weaknessBonus(attacker: EnergyType, defender: EnergyType): number {
+  if (!WEAKNESS_CHART[attacker].includes(defender)) return 0
+  return attacker === 'light' || attacker === 'dark' ? LIGHT_DARK_BONUS : WEAKNESS_BONUS
+}
 export const POISON_DAMAGE = 10
 
 /** 終局保証のための上限。通常の対戦で到達してはならない（SPEC 3.6） */
@@ -135,7 +172,7 @@ export interface CreatureCard extends CardBase {
   readonly hp: number
   readonly ex: boolean
   readonly retreatCost: number
-  readonly weakness: EnergyType | null
+  /** 弱点はカードに持たせず WEAKNESS_CHART から導く（SPEC 17.4） */
   readonly attacks: readonly AttackDef[]
   readonly stage?: 0
   readonly evolvesFrom?: string

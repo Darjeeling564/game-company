@@ -73,13 +73,13 @@ export const RARITY_STYLE: Readonly<Record<Rarity, RarityStyle>> = {
 /** 属性の丸の色。中の文字は常に白にする */
 export const TYPE_COLOR: Readonly<Record<EnergyType, string>> = {
   fire: '#c0392b',
-  grass: '#3f7452',
+  forest: '#3f7452',
+  wind: '#5f9ea0',
+  earth: '#8a6a3a',
+  thunder: '#b8912a',
   water: '#2f6f96',
-  lightning: '#b8912a',
-  psychic: '#8552a0',
-  fighting: '#a2542c',
-  darkness: '#3e3a44',
-  metal: '#6b7480',
+  light: '#c9a227',
+  dark: '#4a3a5c',
   colorless: '#8a8578',
 }
 

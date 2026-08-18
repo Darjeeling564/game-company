@@ -8,7 +8,7 @@
 import { flipCoins, nextInt, pick, shuffle } from './rng.ts'
 import { allCreatures, drawOne, log, playerAt, updateCreature, withPlayer } from './state.ts'
 import type { Creature, Effect, EnergyType, GameState, InstanceId, PlayerId, PlayerState, Target } from './types.ts'
-import { WEAKNESS_BONUS, opponentOf } from './types.ts'
+import { opponentOf, weaknessBonus } from './types.ts'
 import { findCard, requireCreature } from '../data/cards.ts'
 
 interface Slot {
@@ -55,8 +55,8 @@ function resolveTargets(
   }
 }
 
-/** 攻撃している側のタイプ。弱点判定に使う */
-function attackerType(state: GameState, actor: PlayerId): string | null {
+/** 攻撃している側の属性。弱点判定に使う */
+function attackerType(state: GameState, actor: PlayerId): EnergyType | null {
   const active = playerAt(state, actor).active
   return active === null ? null : requireCreature(active.cardId).type
 }
@@ -69,8 +69,10 @@ function dealDamage(state: GameState, actor: PlayerId, slot: Slot, base: number)
 
   const card = requireCreature(target.cardId)
   const type = attackerType(state, actor)
-  const weak = slot.isActive && slot.owner !== actor && card.weakness !== null && card.weakness === type
-  const amount = Math.max(0, base + (weak ? WEAKNESS_BONUS : 0))
+  // 弱点はバトル場への攻撃にのみ適用する（SPEC 3.4）。相性は表から引く（17.4）
+  const bonus =
+    slot.isActive && slot.owner !== actor && type !== null ? weaknessBonus(type, card.type) : 0
+  const amount = Math.max(0, base + bonus)
 
   const updated = updateCreature(owner, slot.instanceId, (c) => ({ ...c, damage: c.damage + amount }))
   return log(withPlayer(state, slot.owner, updated), slot.owner, 'damage', `#${slot.instanceId} +${amount}`)
