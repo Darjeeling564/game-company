@@ -83,7 +83,9 @@ function build(r: Recipe, index: number): Deck {
   return {
     name: r.name,
     cards: [
-      ...r.main,
+      // 属性の先頭8種だけを採る。新しいキャラを配列に足したとき、デッキが
+      // 黙って21枚になって不正になるのを防ぐ（2026-08-20 の夜間ジョブで踏んだ）
+      ...r.main.slice(0, 8),
       ...(index % 2 === 0 ? NEUTRAL_A : NEUTRAL_B),
       ...(ITEM_SETS[index] as readonly string[]),
       ...(ACTION_SETS[index] as readonly string[]),
