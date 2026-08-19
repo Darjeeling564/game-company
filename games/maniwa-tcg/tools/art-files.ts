@@ -34,7 +34,7 @@ let total = 0
 if (!plain) {
   console.log('# 必要なイラストのファイル名')
   console.log('')
-  console.log('games/maniwa-tcg/src/data/art/ に置く。512×512 の正方形 WebP。')
+  console.log('games/maniwa-tcg/src/data/art/ に置く。1024×1024 の正方形 WebP。')
 }
 
 for (const kind of kinds) {
