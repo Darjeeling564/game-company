@@ -76,6 +76,22 @@ export const ITEMS: readonly ItemCard[] = [
     flavor: '汲んでも尽きぬ蜜酒の壺。控えの者たちにも等しく回される。',
     effects: [{ type: 'heal', target: 'ownBenchAll', value: 10 }],
   },
+  {
+    id: 'i013', name: '劫初の猛毒', ruby: 'ごうしょのもうどく', kind: 'item', origin: 'india', rarity: 'rare',
+    flavor: '乳海を攪拌したとき、甘露より先に湧き出た毒。世界を焼くまえに飲み干された。',
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 10 },
+      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+    ],
+  },
+  {
+    id: 'i014', name: '真理の羽根', ruby: 'しんりのはね', kind: 'item', origin: 'egypt', rarity: 'common',
+    flavor: '死者の心臓と釣り合わせる一枚。偽りを載せた皿は、必ず重く傾く。',
+    effects: [
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
