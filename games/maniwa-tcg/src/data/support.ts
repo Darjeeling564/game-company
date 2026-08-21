@@ -146,6 +146,21 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'coinFlip', count: 1, min: 1, then: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
     ],
   },
+  {
+    id: 'a013', name: '運命の三女神', ruby: 'モイライ', kind: 'action', origin: 'greece', rarity: 'superRare',
+    flavor: '糸を紡ぐ者、長さを測る者、断つ者。三姉妹の手が揃ったとき、寿命が決まる。',
+    effects: [
+      { type: 'damagePerHeads', target: 'opponentActive', value: 30, count: 3 },
+    ],
+  },
+  {
+    id: 'a014', name: '二羽の渡り', ruby: 'フギンとムニン', kind: 'action', origin: 'norse', rarity: 'rare',
+    flavor: '思考と記憶の名を持つ双烏。世界を巡り、見聞きしたすべてを主の耳に囁く。',
+    effects: [
+      { type: 'draw', value: 2 },
+      { type: 'searchCreature' },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
