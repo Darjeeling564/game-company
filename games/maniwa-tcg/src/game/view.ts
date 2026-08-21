@@ -101,9 +101,9 @@ export function describeEffect(effect: Effect): string {
 }
 
 const KIND_LABEL: Readonly<Record<CardDef['kind'], string>> = {
-  creature: 'キャラ',
-  item: 'アイテム',
-  action: '行動',
+  creature: '姫神',
+  item: '神具',
+  action: '道標',
   ultimate: '絶技',
 }
 
@@ -180,10 +180,13 @@ function typeBadge(type: EnergyType): HTMLElement {
   return badge
 }
 
-/** 種別の丸。キャラ以外は属性を持たないので、代わりにこれを出す */
+/**
+ * 種別の丸。姫神以外は属性を持たないので、代わりにこれを出す。
+ * 字は種別名の頭文字を取る（KIND_LABEL と対応させること）
+ */
 function kindBadge(kind: CardDef['kind']): HTMLElement {
   const mark: Readonly<Record<CardDef['kind'], string>> = {
-    creature: 'キ', item: '道', action: '行', ultimate: '絶',
+    creature: '姫', item: '神', action: '道', ultimate: '絶',
   }
   const badge = el('span', 'badge', mark[kind])
   badge.style.setProperty('--card-type', kind === 'ultimate' ? '#8e44ad' : '#4a5a66')

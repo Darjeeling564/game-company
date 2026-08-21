@@ -70,7 +70,7 @@ const KIND_BRIEF: readonly {
 }[] = [
   {
     kind: 'creature',
-    title: 'キャラクター',
+    title: '姫神',
     note: [
       '神格はすべて美少女として擬人化して描く（男神・獣・怪物も同様）',
       '1キャラにつき3枚。無傷 / 傷ついた姿 / 追い詰められた姿',
@@ -80,12 +80,12 @@ const KIND_BRIEF: readonly {
   },
   {
     kind: 'item',
-    title: 'アイテム',
+    title: '神具',
     note: ['人物は描かず、道具そのものを1点だけ描く', '1枚のみ。ダメージ違いは作らない'],
   },
   {
     kind: 'action',
-    title: '行動',
+    title: '道標',
     note: ['儀式や現象そのものを描く。人物を入れる場合は後ろ姿かシルエットに留める', '1枚のみ'],
   },
   {
@@ -115,7 +115,7 @@ function main(argv: readonly string[]): number {
     return 0
   }
 
-  console.log(`神話戦姫 カードイラスト入力データ（${cards.length}種）`)
+  console.log(`姫神演義 カードイラスト入力データ（${cards.length}種）`)
   console.log('1024×1024 の正方形。渡すデータは5項目のみで、ここに無い要素を足さない。')
 
   for (const section of KIND_BRIEF) {

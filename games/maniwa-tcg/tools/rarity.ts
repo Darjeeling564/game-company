@@ -105,9 +105,9 @@ const diffOnly = process.argv.includes('--diff')
 let mismatches = 0
 
 const groups: readonly (readonly [string, readonly Row[]])[] = [
-  ['キャラクター', CREATURES.map(creatureRow)],
-  ['アイテム', ITEMS.map((c) => supportRow(c as never))],
-  ['行動', ACTIONS.map((c) => supportRow(c as never))],
+  ['姫神', CREATURES.map(creatureRow)],
+  ['神具', ITEMS.map((c) => supportRow(c as never))],
+  ['道標', ACTIONS.map((c) => supportRow(c as never))],
   ['絶技', ULTIMATES.map((c) => supportRow(c as never))],
 ]
 
