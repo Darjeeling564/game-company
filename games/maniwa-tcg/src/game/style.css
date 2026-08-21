@@ -254,18 +254,40 @@ body {
   text-shadow: 0 0 3px var(--card-edge);
 }
 
-/* 属性は色丸に白文字。丸の色だけが属性を表し、文字は常に白 */
+/*
+ * 属性は色丸に白文字。丸の色だけが属性を表し、文字は常に白。
+ *
+ * 立体感は「地の色を塗り替えず、白と黒の半透明を上に重ねる」で作る。
+ * --card-type は属性ごとに変わるので、色そのものを指定すると9属性ぶんの
+ * グラデーションを書く羽目になる。重ねる方式なら地の色相を保ったまま
+ * 同じ1つの指定で全属性に効く。
+ *
+ * 影の大きさは em で持たせる。バッジは 16px（カード上）と 40px（詳細のイラスト無し）で
+ * 使い回すため、px で書くと大きいほうで効きが薄くなる。
+ */
 .badge {
   display: inline-grid;
   place-items: center;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--card-type, var(--forest-light));
+  background:
+    /* 左上からの光 */
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.1) 45%, transparent 65%),
+    /* 右下の落ち込み */
+    radial-gradient(circle at 72% 84%, rgba(0, 0, 0, 0.4), transparent 58%),
+    var(--card-type, var(--forest-light));
+  box-shadow:
+    /* 上の縁のハイライトと下の縁の陰で、球の丸みを出す */
+    inset 0 0.1em 0.1em rgba(255, 255, 255, 0.5),
+    inset 0 -0.12em 0.16em rgba(0, 0, 0, 0.45),
+    /* 面から浮かせる */
+    0 0.1em 0.16em rgba(0, 0, 0, 0.45);
   color: #fff;
   font-size: 10px;
   line-height: 1;
-  text-shadow: none;
+  /* 文字は彫り込み。上を明るくしたぶん白文字が沈むので、影で輪郭を戻す */
+  text-shadow: 0 0.08em 0.08em rgba(0, 0, 0, 0.6);
 }
 
 .card .badge {
