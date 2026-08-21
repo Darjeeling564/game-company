@@ -459,10 +459,14 @@ function creatureCard(
   bar.append(fill)
   body.append(bar)
 
-  const tags: string[] = []
-  if (creature.attached.length > 0) tags.push(creature.attached.map((e) => energyLabel(e)).join(''))
-  if (creature.status.includes('poisoned')) tags.push('どく')
-  if (tags.length > 0) body.append(el('span', 'card__tags', tags.join(' ')))
+  // ついているエネルギーは丸で出す。詳細画面のコスト表記と同じ見た目にそろえ、
+  // 「あと何個で撃てるか」をカードの行き来なしに数えられるようにする
+  if (creature.attached.length > 0 || creature.status.includes('poisoned')) {
+    const tags = el('span', 'card__tags')
+    if (creature.attached.length > 0) tags.append(costBadges(creature.attached))
+    if (creature.status.includes('poisoned')) tags.append(el('span', 'card__status', 'どく'))
+    body.append(tags)
+  }
 
   node.append(body)
   bindTap(node, onTap, onDetail)

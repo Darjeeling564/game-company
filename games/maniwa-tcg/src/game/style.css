@@ -206,12 +206,22 @@ body {
   background-repeat: no-repeat;
 }
 
+/*
+ * 絵の上に文字を載せるための下敷き。
+ * 以前は下側だけ暗くしていたが、名前は上端にあるので効いていなかった。
+ * ベンチは絵が明るいと名前が読めなくなるため、上端にも暗い帯を戻す。
+ */
 .card__body--art::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: 6px;
-  background: linear-gradient(rgba(0, 0, 0, 0.15) 30%, rgba(0, 0, 0, 0.72));
+  background: linear-gradient(
+    rgba(0, 0, 0, 0.62) 0%,
+    rgba(0, 0, 0, 0.28) 26%,
+    rgba(0, 0, 0, 0.18) 42%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
   pointer-events: none;
 }
 
@@ -241,17 +251,48 @@ body {
   cursor: default;
 }
 
+/*
+ * カード名。1行に収めようとすると、ベンチ（3枚並びで実効80px程度）では
+ * 「プリティヴィー」のような7文字の名前が切れる。2行まで折り返して、
+ * それを超えたぶんだけ切り詰める。属性の丸は float なので、
+ * 1行目は丸をよけ、2行目から幅いっぱいを使う。
+ */
 .card__name {
   font-size: 13px;
-  display: block;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+  /*
+   * 「ー」「ゃ」などを行頭に落とさない。禁則を切ると、7文字の名前が
+   * 「プリティヴィ」＋「ー」のように、2行目が1文字だけになる
+   */
+  line-break: strict;
   /*
    * 文字色はレアリティで決まるので、系統の地と同化しうる。縁取りの色を文字色と
    * 逆の明度にして（theme.ts の edge）、どの組み合わせでも読めるようにする。
    */
   text-shadow: 0 0 3px var(--card-edge);
+}
+
+/*
+ * 絵の上の名前は縁取りを厚くする。
+ * コモンの文字色は黒なので、暗いイラストの上では下敷きを足しても沈んだままになる。
+ * 明るい縁（edge）を三重に重ねて、黒文字のまわりに光の輪を作る。
+ */
+.card__body--art .card__name {
+  text-shadow:
+    0 0 2px var(--card-edge),
+    0 0 4px var(--card-edge),
+    0 0 7px var(--card-edge);
+}
+
+/* ベンチは幅が無いので一段小さくする。バトル場は横長なので 13px のまま */
+.slots > .card:not(.card--active) .card__name {
+  font-size: 12px;
+  line-height: 1.25;
 }
 
 /*
@@ -337,12 +378,28 @@ body {
   background: #f5f0e1;
 }
 
+/*
+ * ついているエネルギーの丸と状態異常。盤面は幅が無いので、丸は詳細画面より
+ * 一回り小さくする。4個以上ついたら折り返して、カードの外へはみ出させない。
+ */
 .card__tags {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.card__tags .badge {
+  width: 13px;
+  height: 13px;
+  font-size: 8px;
+}
+
+.card__status {
   color: #ffd9cf;
+  font-size: 11px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
