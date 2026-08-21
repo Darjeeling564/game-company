@@ -11,9 +11,9 @@ import { CARDS } from '../src/data/cards.ts'
 import type { CardDef } from '../src/core/types.ts'
 
 const KIND_LABEL: Readonly<Record<CardDef['kind'], string>> = {
-  creature: 'キャラ',
-  item: 'アイテム',
-  action: '行動',
+  creature: '姫神',
+  item: '神具',
+  action: '道標',
   ultimate: '絶技',
 }
 

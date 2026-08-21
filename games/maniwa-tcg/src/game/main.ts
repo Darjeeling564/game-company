@@ -60,7 +60,7 @@ function showTitle(): void {
   clearTimer()
   root.replaceChildren()
   const screen = el('div', 'screen')
-  screen.append(el('h1', 'title', '神話戦姫'))
+  screen.append(el('h1', 'title', '姫神演義'))
   screen.append(el('p', 'muted', '2人対戦カードバトル / 3ポイント先取'))
 
   const saved = load()

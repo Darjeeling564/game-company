@@ -24,7 +24,7 @@ const FIRE: readonly CreatureCard[] = [
   {
     id: 'f001', name: 'カグツチ', kind: 'creature',
     flavor: '生まれ落ちた瞬間に母を焼いた火の神。切り裂かれた体からさらに神々が生まれた。',
-    origin: 'japan', rarity: 'superRare',
+    origin: 'japan', rarity: 'rare',
     type: 'fire', hp: 120, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'ひのこ', cost: ['fire'],
@@ -48,7 +48,7 @@ const FIRE: readonly CreatureCard[] = [
   {
     id: 'f003', name: 'スルト', kind: 'creature',
     flavor: '世界の終わりに南方から現れ、炎の剣で大地を焼き尽くす巨人。',
-    origin: 'norse', rarity: 'superRare',
+    origin: 'norse', rarity: 'rare',
     type: 'fire', hp: 130, ex: false, retreatCost: 3, stage: 0,
     attacks: [
       { name: 'やいばのひらめき', cost: ['fire', 'colorless'],
@@ -60,7 +60,7 @@ const FIRE: readonly CreatureCard[] = [
   {
     id: 'f004', name: 'アグニ', kind: 'creature',
     flavor: '七つの舌を持つ火の神。供物を焼いて神々へ届ける、天と地の使者。',
-    origin: 'india', rarity: 'rare',
+    origin: 'india', rarity: 'common',
     type: 'fire', hp: 100, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'ささげび', cost: ['fire'],
@@ -136,7 +136,7 @@ const FOREST: readonly CreatureCard[] = [
   {
     id: 's002', name: 'セイオウボ', kind: 'creature',
     flavor: '崑崙に住まう女仙。三千年に一度実る桃を管理している。',
-    origin: 'china', rarity: 'rare',
+    origin: 'china', rarity: 'superRare',
     type: 'forest', hp: 120, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'ばんとう', cost: ['forest'],
@@ -148,7 +148,7 @@ const FOREST: readonly CreatureCard[] = [
   {
     id: 's003', name: 'シュブニグラス', kind: 'creature',
     flavor: '千匹の仔を孕む森の黒山羊。豊穣と繁殖の名のもとに増え続ける。',
-    origin: 'cthulhu', rarity: 'superRare',
+    origin: 'cthulhu', rarity: 'rare',
     type: 'forest', hp: 120, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'こやぎのむれ', cost: ['forest'],
@@ -160,7 +160,7 @@ const FOREST: readonly CreatureCard[] = [
   {
     id: 's004', name: 'パン', kind: 'creature',
     flavor: '山羊の脚を持つ牧神。その叫びは軍勢を恐慌に陥れた。',
-    origin: 'greece', rarity: 'common',
+    origin: 'greece', rarity: 'rare',
     type: 'forest', hp: 90, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'あしぶえ', cost: ['forest'],
@@ -184,7 +184,7 @@ const FOREST: readonly CreatureCard[] = [
   {
     id: 's006', name: 'オシリス', kind: 'creature',
     flavor: '殺され、繋ぎ合わされて甦った緑の肌の王。冥界と穀物をつかさどる。',
-    origin: 'egypt', rarity: 'rare',
+    origin: 'egypt', rarity: 'superRare',
     type: 'forest', hp: 120, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'あおきて', cost: ['forest'],
@@ -224,7 +224,7 @@ const WIND: readonly CreatureCard[] = [
   {
     id: 'k001', name: 'パズズ', kind: 'creature',
     flavor: '熱風と疫病を運ぶ魔神。一方で、他の魔を退ける護符にもなった。',
-    origin: 'mesopotamia', rarity: 'rare',
+    origin: 'mesopotamia', rarity: 'common',
     type: 'wind', hp: 100, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'あくふう', cost: ['wind'],
@@ -236,7 +236,7 @@ const WIND: readonly CreatureCard[] = [
   {
     id: 'k002', name: 'シナツヒコ', kind: 'creature',
     flavor: '国生みの霧を吹き払った風の神。その息が海を渡る船を押す。',
-    origin: 'japan', rarity: 'common',
+    origin: 'japan', rarity: 'rare',
     type: 'wind', hp: 100, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'いぶき', cost: ['wind'],
@@ -272,7 +272,7 @@ const WIND: readonly CreatureCard[] = [
   {
     id: 'k005', name: 'シュウ', kind: 'creature',
     flavor: '天と地の間に立ち、両者を引き離し続ける大気の神。',
-    origin: 'egypt', rarity: 'rare',
+    origin: 'egypt', rarity: 'superRare',
     type: 'wind', hp: 110, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'たいきをささえる', cost: ['wind'],
@@ -296,7 +296,7 @@ const WIND: readonly CreatureCard[] = [
   {
     id: 'k007', name: 'ニョルズ', kind: 'creature',
     flavor: '航海と豊漁をつかさどる神。祈れば風は必ず追い風に変わる。',
-    origin: 'norse', rarity: 'rare',
+    origin: 'norse', rarity: 'superRare',
     type: 'wind', hp: 120, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'しおかぜ', cost: ['wind'],
@@ -308,7 +308,7 @@ const WIND: readonly CreatureCard[] = [
   {
     id: 'k008', name: 'フェイリェン', kind: 'creature',
     flavor: '風伯と呼ばれる風の司。鹿の体に雀の頭を持つ姿で描かれる。',
-    origin: 'china', rarity: 'common',
+    origin: 'china', rarity: 'rare',
     type: 'wind', hp: 100, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'つむじかぜ', cost: ['wind'],
@@ -336,7 +336,7 @@ const EARTH: readonly CreatureCard[] = [
   {
     id: 'e002', name: 'オオゲツヒメ', kind: 'creature',
     flavor: '体から食物を生み出す女神。斬られた亡骸から五穀が芽吹いた。',
-    origin: 'japan', rarity: 'rare',
+    origin: 'japan', rarity: 'common',
     type: 'earth', hp: 100, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'もてなし', cost: ['earth'],
@@ -372,7 +372,7 @@ const EARTH: readonly CreatureCard[] = [
   {
     id: 'e005', name: 'ニンフルサグ', kind: 'creature',
     flavor: '粘土から人を形づくった大地の母。傷を癒す術も彼女のものだ。',
-    origin: 'mesopotamia', rarity: 'rare',
+    origin: 'mesopotamia', rarity: 'common',
     type: 'earth', hp: 100, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'つちくれ', cost: ['earth'],
@@ -460,7 +460,7 @@ const THUNDER: readonly CreatureCard[] = [
   {
     id: 't004', name: 'トール', kind: 'creature',
     flavor: '赤髭の雷神。投げた槌は必ず手元に戻り、巨人の頭を砕き続ける。',
-    origin: 'norse', rarity: 'superRare',
+    origin: 'norse', rarity: 'rare',
     type: 'thunder', hp: 130, ex: false, retreatCost: 3, stage: 0,
     attacks: [
       { name: 'ミョルニル', cost: ['thunder', 'colorless'],
@@ -472,7 +472,7 @@ const THUNDER: readonly CreatureCard[] = [
   {
     id: 't005', name: 'アダド', kind: 'creature',
     flavor: '嵐と雨をもたらす神。恵みの雨も、都を沈める洪水も同じ手による。',
-    origin: 'mesopotamia', rarity: 'rare',
+    origin: 'mesopotamia', rarity: 'common',
     type: 'thunder', hp: 100, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'いなびかり', cost: ['thunder'],
@@ -560,7 +560,7 @@ const WATER: readonly CreatureCard[] = [
   {
     id: 'w004', name: 'ワタツミ', kind: 'creature',
     flavor: '海を治める龍神。潮の満ち引きを操る二つの珠を持つ。',
-    origin: 'japan', rarity: 'common',
+    origin: 'japan', rarity: 'rare',
     type: 'water', hp: 110, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'しおのたま', cost: ['water'],
@@ -660,7 +660,7 @@ const LIGHT: readonly CreatureCard[] = [
   {
     id: 'l004', name: 'バルドル', kind: 'creature',
     flavor: '万物に愛された光の神。ただ一つ誓いを立てなかった宿り木に倒れた。',
-    origin: 'norse', rarity: 'rare',
+    origin: 'norse', rarity: 'common',
     type: 'light', hp: 110, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'けがれなきひかり', cost: ['light'],
@@ -748,7 +748,7 @@ const DARK: readonly CreatureCard[] = [
   {
     id: 'd003', name: 'イザナミ', kind: 'creature',
     flavor: '国を生んだのち黄泉に堕ちた女神。日に千人を奪うと夫に告げた。',
-    origin: 'japan', rarity: 'superRare',
+    origin: 'japan', rarity: 'rare',
     type: 'dark', hp: 120, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'よもつしこめ', cost: ['dark'],
@@ -784,7 +784,7 @@ const DARK: readonly CreatureCard[] = [
   {
     id: 'd006', name: 'カーリー', kind: 'creature',
     flavor: '黒き時を意味する殺戮の女神。舞い始めれば世界すら踏み砕く。',
-    origin: 'india', rarity: 'superRare',
+    origin: 'india', rarity: 'rare',
     type: 'dark', hp: 110, ex: false, retreatCost: 1, stage: 0,
     attacks: [
       { name: 'けつえきのしたたり', cost: ['dark'],
@@ -846,7 +846,7 @@ const COLORLESS: readonly CreatureCard[] = [
   {
     id: 'n003', name: 'タオテツ', kind: 'creature',
     flavor: '何でも食らう伝説の悪獣。青銅器に刻まれ、貪欲そのものを表す。',
-    origin: 'china', rarity: 'rare',
+    origin: 'china', rarity: 'common',
     type: 'colorless', hp: 120, ex: false, retreatCost: 3, stage: 0,
     attacks: [
       { name: 'くらいつく', cost: ['colorless', 'colorless'],
@@ -858,7 +858,7 @@ const COLORLESS: readonly CreatureCard[] = [
   {
     id: 'n004', name: 'フェンリル', kind: 'creature',
     flavor: '神々に鎖で縛られた巨狼。終末の日に縛めを解き、天の光を呑む。',
-    origin: 'norse', rarity: 'rare',
+    origin: 'norse', rarity: 'common',
     type: 'colorless', hp: 110, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'かみつく', cost: ['colorless'],
@@ -906,7 +906,7 @@ const COLORLESS: readonly CreatureCard[] = [
   {
     id: 'n008', name: 'ショゴス', kind: 'creature',
     flavor: '無定形の原形質。創造主に反旗を翻し、いまも真似た声で鳴き続ける。',
-    origin: 'cthulhu', rarity: 'rare',
+    origin: 'cthulhu', rarity: 'common',
     type: 'colorless', hp: 110, ex: false, retreatCost: 2, stage: 0,
     attacks: [
       { name: 'げんけいしつ', cost: ['colorless'],

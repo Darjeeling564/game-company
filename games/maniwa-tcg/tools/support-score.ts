@@ -10,7 +10,7 @@
 import { ACTIONS, ITEMS } from '../src/data/support.ts'
 import { expectedDamage } from './ai.ts'
 
-for (const [title, group] of [['アイテム', ITEMS], ['行動', ACTIONS]] as const) {
+for (const [title, group] of [['神具', ITEMS], ['道標', ACTIONS]] as const) {
   console.log(`\n■ ${title}`)
   const rows = group
     .map((c) => ({ id: c.id, name: c.name, score: expectedDamage(c.effects) }))

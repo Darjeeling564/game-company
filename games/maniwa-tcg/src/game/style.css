@@ -206,12 +206,22 @@ body {
   background-repeat: no-repeat;
 }
 
+/*
+ * 絵の上に文字を載せるための下敷き。
+ * 以前は下側だけ暗くしていたが、名前は上端にあるので効いていなかった。
+ * ベンチは絵が明るいと名前が読めなくなるため、上端にも暗い帯を戻す。
+ */
 .card__body--art::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: 6px;
-  background: linear-gradient(rgba(0, 0, 0, 0.15) 30%, rgba(0, 0, 0, 0.72));
+  background: linear-gradient(
+    rgba(0, 0, 0, 0.62) 0%,
+    rgba(0, 0, 0, 0.28) 26%,
+    rgba(0, 0, 0, 0.18) 42%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
   pointer-events: none;
 }
 
@@ -241,12 +251,25 @@ body {
   cursor: default;
 }
 
+/*
+ * カード名。1行に収めようとすると、ベンチ（3枚並びで実効80px程度）では
+ * 「プリティヴィー」のような7文字の名前が切れる。2行まで折り返して、
+ * それを超えたぶんだけ切り詰める。属性の丸は float なので、
+ * 1行目は丸をよけ、2行目から幅いっぱいを使う。
+ */
 .card__name {
   font-size: 13px;
-  display: block;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+  /*
+   * 「ー」「ゃ」などを行頭に落とさない。禁則を切ると、7文字の名前が
+   * 「プリティヴィ」＋「ー」のように、2行目が1文字だけになる
+   */
+  line-break: strict;
   /*
    * 文字色はレアリティで決まるので、系統の地と同化しうる。縁取りの色を文字色と
    * 逆の明度にして（theme.ts の edge）、どの組み合わせでも読めるようにする。
@@ -254,18 +277,58 @@ body {
   text-shadow: 0 0 3px var(--card-edge);
 }
 
-/* 属性は色丸に白文字。丸の色だけが属性を表し、文字は常に白 */
+/*
+ * 絵の上の名前は縁取りを厚くする。
+ * コモンの文字色は黒なので、暗いイラストの上では下敷きを足しても沈んだままになる。
+ * 明るい縁（edge）を三重に重ねて、黒文字のまわりに光の輪を作る。
+ */
+.card__body--art .card__name {
+  text-shadow:
+    0 0 2px var(--card-edge),
+    0 0 4px var(--card-edge),
+    0 0 7px var(--card-edge);
+}
+
+/* ベンチは幅が無いので一段小さくする。バトル場は横長なので 13px のまま */
+.slots > .card:not(.card--active) .card__name {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+/*
+ * 属性は色丸に白文字。丸の色だけが属性を表し、文字は常に白。
+ *
+ * 立体感は「地の色を塗り替えず、白と黒の半透明を上に重ねる」で作る。
+ * --card-type は属性ごとに変わるので、色そのものを指定すると9属性ぶんの
+ * グラデーションを書く羽目になる。重ねる方式なら地の色相を保ったまま
+ * 同じ1つの指定で全属性に効く。
+ *
+ * 影の大きさは em で持たせる。バッジは 16px（カード上）と 40px（詳細のイラスト無し）で
+ * 使い回すため、px で書くと大きいほうで効きが薄くなる。
+ */
 .badge {
   display: inline-grid;
   place-items: center;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--card-type, var(--forest-light));
+  background:
+    /* 左上からの光 */
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.1) 45%, transparent 65%),
+    /* 右下の落ち込み */
+    radial-gradient(circle at 72% 84%, rgba(0, 0, 0, 0.4), transparent 58%),
+    var(--card-type, var(--forest-light));
+  box-shadow:
+    /* 上の縁のハイライトと下の縁の陰で、球の丸みを出す */
+    inset 0 0.1em 0.1em rgba(255, 255, 255, 0.5),
+    inset 0 -0.12em 0.16em rgba(0, 0, 0, 0.45),
+    /* 面から浮かせる */
+    0 0.1em 0.16em rgba(0, 0, 0, 0.45);
   color: #fff;
   font-size: 10px;
   line-height: 1;
-  text-shadow: none;
+  /* 文字は彫り込み。上を明るくしたぶん白文字が沈むので、影で輪郭を戻す */
+  text-shadow: 0 0.08em 0.08em rgba(0, 0, 0, 0.6);
 }
 
 .card .badge {
@@ -315,12 +378,28 @@ body {
   background: #f5f0e1;
 }
 
+/*
+ * ついているエネルギーの丸と状態異常。盤面は幅が無いので、丸は詳細画面より
+ * 一回り小さくする。4個以上ついたら折り返して、カードの外へはみ出させない。
+ */
 .card__tags {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.card__tags .badge {
+  width: 13px;
+  height: 13px;
+  font-size: 8px;
+}
+
+.card__status {
   color: #ffd9cf;
+  font-size: 11px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
@@ -525,11 +604,29 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
-.detail__attackCost {
+/*
+ * コストの丸の並び。見出しと丸、丸どうしが離れないよう1つの塊にする。
+ * ワザ名のとなりに置くとき、名前が長くて折り返しても丸だけが取り残されない。
+ */
+.badgeRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ワザ名の右に置くコスト。名前とくっつかないよう少し離す */
+.detail__attackName .badgeRow {
   margin-left: 6px;
-  font-size: 12px;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+/*
+ * 丸に落とした影が隣の丸に食い込んで見えるので、コスト内の丸だけ間隔を確保する。
+ * バッジ自体の影は立体感の要なので、ここでは詰めずに並びのほうを広げる
+ */
+.badgeRow .badge {
+  flex: none;
 }
 
 .detail__attackText {

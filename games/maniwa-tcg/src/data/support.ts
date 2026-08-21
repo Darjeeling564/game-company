@@ -27,7 +27,7 @@ export const ITEMS: readonly ItemCard[] = [
     effects: [{ type: 'draw', value: 2 }],
   },
   {
-    id: 'i003', name: '神託の石版', ruby: 'しんたくのせきばん', kind: 'item', origin: 'mesopotamia', rarity: 'rare',
+    id: 'i003', name: '神託の石版', ruby: 'しんたくのせきばん', kind: 'item', origin: 'mesopotamia', rarity: 'common',
     flavor: '運命が刻まれた粘土板。読み解けば、来たるべき者の名が浮かぶ。',
     effects: [{ type: 'searchCreature' }],
   },
@@ -37,7 +37,7 @@ export const ITEMS: readonly ItemCard[] = [
     effects: [{ type: 'gainEnergy' }],
   },
   {
-    id: 'i005', name: '護符の紐', ruby: 'ごふのひも', kind: 'item', origin: 'india', rarity: 'common',
+    id: 'i005', name: '護符の紐', ruby: 'ごふのひも', kind: 'item', origin: 'india', rarity: 'superRare',
     flavor: '手首に結ぶ祈りの紐。結び目のひとつひとつが力を宿す。',
     effects: [{ type: 'attachEnergy', target: 'ownActive', value: 1 }],
   },
@@ -52,7 +52,7 @@ export const ITEMS: readonly ItemCard[] = [
     effects: [{ type: 'damage', target: 'opponentActive', value: 10 }],
   },
   {
-    id: 'i008', name: '星辰の羅針', ruby: 'せいしんのらしん', kind: 'item', origin: 'cthulhu', rarity: 'rare',
+    id: 'i008', name: '星辰の羅針', ruby: 'せいしんのらしん', kind: 'item', origin: 'cthulhu', rarity: 'superRare',
     flavor: '星の位置が正しいときだけ針が動く。指す先を見た者は帰らない。',
     effects: [{ type: 'draw', value: 1 }, { type: 'gainEnergy' }],
   },
@@ -82,12 +82,12 @@ export const ITEMS: readonly ItemCard[] = [
 
 export const ACTIONS: readonly ActionCard[] = [
   {
-    id: 'a001', name: '天啓', ruby: 'てんけい', kind: 'action', origin: 'greece', rarity: 'rare',
+    id: 'a001', name: '天啓', ruby: 'てんけい', kind: 'action', origin: 'greece', rarity: 'common',
     flavor: '神託所に降りる啓示。問うた者の前に、進むべき道が三つ示される。',
     effects: [{ type: 'draw', value: 3 }],
   },
   {
-    id: 'a002', name: '招雷の儀', ruby: 'しょうらいのぎ', kind: 'action', origin: 'india', rarity: 'rare',
+    id: 'a002', name: '招雷の儀', ruby: 'しょうらいのぎ', kind: 'action', origin: 'india', rarity: 'ultra',
     flavor: '雷を呼び下ろす秘儀。触れた者の内に、二重の力が満ちる。',
     effects: [{ type: 'attachEnergy', target: 'ownActive', value: 2 }],
   },
@@ -97,17 +97,17 @@ export const ACTIONS: readonly ActionCard[] = [
     effects: [{ type: 'switchOpponent' }],
   },
   {
-    id: 'a004', name: '大癒しの祈り', ruby: 'おおいやしのいのり', kind: 'action', origin: 'egypt', rarity: 'superRare',
+    id: 'a004', name: '大癒しの祈り', ruby: 'おおいやしのいのり', kind: 'action', origin: 'egypt', rarity: 'rare',
     flavor: '女神が死者の体を繋ぎ合わせた祈り。裂けた傷も元の形に戻る。',
     effects: [{ type: 'heal', target: 'ownActive', value: 40 }],
   },
   {
-    id: 'a005', name: '招集の祈り', ruby: 'しょうしゅうのいのり', kind: 'action', origin: 'japan', rarity: 'rare',
+    id: 'a005', name: '招集の祈り', ruby: 'しょうしゅうのいのり', kind: 'action', origin: 'japan', rarity: 'common',
     flavor: '八百万を呼び集める祝詞。応じた者が一柱、列に加わる。',
     effects: [{ type: 'searchCreature' }, { type: 'draw', value: 1 }],
   },
   {
-    id: 'a006', name: '祟りの札', ruby: 'たたりのふだ', kind: 'action', origin: 'japan', rarity: 'rare',
+    id: 'a006', name: '祟りの札', ruby: 'たたりのふだ', kind: 'action', origin: 'japan', rarity: 'superRare',
     flavor: '恨みを封じた呪符。貼られた者は、じわじわと蝕まれてゆく。',
     effects: [
       { type: 'damage', target: 'opponentActive', value: 20 },
@@ -120,12 +120,12 @@ export const ACTIONS: readonly ActionCard[] = [
     effects: [{ type: 'discardEnergy', target: 'opponentActive', value: 2 }],
   },
   {
-    id: 'a008', name: '焦土の誓い', ruby: 'しょうどのちかい', kind: 'action', origin: 'mesopotamia', rarity: 'rare',
+    id: 'a008', name: '焦土の誓い', ruby: 'しょうどのちかい', kind: 'action', origin: 'mesopotamia', rarity: 'common',
     flavor: '進軍の前に土地を焼き払う誓い。控える者にまで熱が届く。',
     effects: [{ type: 'damage', target: 'opponentBenchAll', value: 10 }],
   },
   {
-    id: 'a009', name: '巫女の舞', ruby: 'みこのまい', kind: 'action', origin: 'japan', rarity: 'common',
+    id: 'a009', name: '巫女の舞', ruby: 'みこのまい', kind: 'action', origin: 'japan', rarity: 'superRare',
     flavor: '鈴を鳴らして舞う奉納。場が清まり、力の巡りが早くなる。',
     effects: [{ type: 'gainEnergy' }, { type: 'draw', value: 1 }],
   },
@@ -140,7 +140,7 @@ export const ACTIONS: readonly ActionCard[] = [
     effects: [{ type: 'selfDamage', value: 20 }, { type: 'draw', value: 3 }],
   },
   {
-    id: 'a012', name: '神罰', ruby: 'しんばつ', kind: 'action', origin: 'norse', rarity: 'superRare',
+    id: 'a012', name: '神罰', ruby: 'しんばつ', kind: 'action', origin: 'norse', rarity: 'rare',
     flavor: '天から下る裁き。避けようとした者にこそ、まっすぐ落ちる。',
     effects: [
       { type: 'coinFlip', count: 1, min: 1, then: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
