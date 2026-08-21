@@ -547,11 +547,29 @@ body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
 }
 
-.detail__attackCost {
+/*
+ * コストの丸の並び。見出しと丸、丸どうしが離れないよう1つの塊にする。
+ * ワザ名のとなりに置くとき、名前が長くて折り返しても丸だけが取り残されない。
+ */
+.badgeRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ワザ名の右に置くコスト。名前とくっつかないよう少し離す */
+.detail__attackName .badgeRow {
   margin-left: 6px;
-  font-size: 12px;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+/*
+ * 丸に落とした影が隣の丸に食い込んで見えるので、コスト内の丸だけ間隔を確保する。
+ * バッジ自体の影は立体感の要なので、ここでは詰めずに並びのほうを広げる
+ */
+.badgeRow .badge {
+  flex: none;
 }
 
 .detail__attackText {

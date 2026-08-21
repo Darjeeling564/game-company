@@ -181,6 +181,34 @@ function typeBadge(type: EnergyType): HTMLElement {
 }
 
 /**
+ * 「見出し ＋ 丸の並び」を1つの項目にまとめる。
+ * detail__facts は span を横に並べるだけなので、見出しと丸が離れて折り返さないよう
+ * ひとかたまりにしておく。
+ */
+function labelled(label: string, node: HTMLElement): HTMLElement {
+  const wrap = el('span', 'badgeRow')
+  wrap.append(el('span', undefined, label), node)
+  return wrap
+}
+
+/**
+ * コストを丸バッジの並びにする。1つのエネルギーにつき丸1つ。
+ *
+ * 「炎炎無」と字で書くと、同じ字が続いたときに数が読み取りにくい。丸にすると
+ * 数がそのまま個数として見えるうえ、属性の色が付くので何が要るかも一目でわかる。
+ * コストが無いカードは丸を出さず「なし」と書く（丸ゼロ個は不在と区別できない）。
+ */
+function costBadges(cost: readonly EnergyType[]): HTMLElement {
+  const row = el('span', 'badgeRow')
+  if (cost.length === 0) {
+    row.append(el('span', undefined, 'なし'))
+    return row
+  }
+  for (const type of cost) row.append(typeBadge(type))
+  return row
+}
+
+/**
  * 種別の丸。姫神以外は属性を持たないので、代わりにこれを出す。
  * 字は種別名の頭文字を取る（KIND_LABEL と対応させること）
  */
@@ -204,7 +232,7 @@ function attackNameNode(attack: AttackDef): HTMLElement {
     ruby.append(el('rt', undefined, attack.ruby))
     span.append(ruby)
   }
-  span.append(el('span', 'detail__attackCost', `[${formatCost(attack.cost)}]`))
+  span.append(costBadges(attack.cost))
   return span
 }
 
@@ -262,24 +290,32 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
   )
   box.append(foot)
 
-  const facts: string[] = [`種別 ${kindLabel(card.kind)}`, `レアリティ ${rarityLabel(card.rarity)}`]
+  const facts: (string | HTMLElement)[] = [
+    `種別 ${kindLabel(card.kind)}`,
+    `レアリティ ${rarityLabel(card.rarity)}`,
+  ]
   if (card.kind === 'creature') {
     const remaining = creature === null ? card.hp : Math.max(0, card.hp - creature.damage)
     facts.unshift(
       `HP ${remaining}/${card.hp}`,
       weakOf(card.type),
-      `にげる エネ${card.retreatCost}`,
+      labelled('にげる', costBadges(Array<EnergyType>(card.retreatCost).fill('colorless'))),
     )
     if (creature !== null && creature.attached.length > 0) {
-      facts.push(`ついているエネルギー ${creature.attached.map((e) => energyLabel(e)).join('')}`)
+      facts.push(labelled('ついているエネルギー', costBadges(creature.attached)))
     }
     if (creature !== null && creature.status.includes('poisoned')) facts.push('どく')
   }
   if (card.kind === 'ultimate') {
-    facts.unshift(`${requireCard(card.requires).name} がバトル場にいるとき`, `コスト ${formatCost(card.cost)}`)
+    facts.unshift(
+      `${requireCard(card.requires).name} がバトル場にいるとき`,
+      labelled('コスト', costBadges(card.cost)),
+    )
   }
   const factRow = el('div', 'detail__facts')
-  for (const fact of facts) factRow.append(el('span', undefined, fact))
+  for (const fact of facts) {
+    factRow.append(typeof fact === 'string' ? el('span', undefined, fact) : fact)
+  }
   box.append(factRow)
 
   if (card.kind === 'creature') {
