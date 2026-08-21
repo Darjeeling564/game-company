@@ -76,6 +76,22 @@ export const ITEMS: readonly ItemCard[] = [
     flavor: '汲んでも尽きぬ蜜酒の壺。控えの者たちにも等しく回される。',
     effects: [{ type: 'heal', target: 'ownBenchAll', value: 10 }],
   },
+  {
+    id: 'i013', name: '劫初の猛毒', ruby: 'ごうしょのもうどく', kind: 'item', origin: 'india', rarity: 'rare',
+    flavor: '乳海を攪拌したとき、甘露より先に湧き出た毒。世界を焼くまえに飲み干された。',
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 10 },
+      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+    ],
+  },
+  {
+    id: 'i014', name: '真理の羽根', ruby: 'しんりのはね', kind: 'item', origin: 'egypt', rarity: 'rare',
+    flavor: '死者の心臓と釣り合わせる一枚。偽りを載せた皿は、必ず重く傾く。',
+    effects: [
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
@@ -146,6 +162,21 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'coinFlip', count: 1, min: 1, then: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
     ],
   },
+  {
+    id: 'a013', name: '運命の三女神', ruby: 'モイライ', kind: 'action', origin: 'greece', rarity: 'superRare',
+    flavor: '糸を紡ぐ者、長さを測る者、断つ者。三姉妹の手が揃ったとき、寿命が決まる。',
+    effects: [
+      { type: 'damagePerHeads', target: 'opponentActive', value: 30, count: 3 },
+    ],
+  },
+  {
+    id: 'a014', name: '二羽の渡り', ruby: 'フギンとムニン', kind: 'action', origin: 'norse', rarity: 'rare',
+    flavor: '思考と記憶の名を持つ双烏。世界を巡り、見聞きしたすべてを主の耳に囁く。',
+    effects: [
+      { type: 'draw', value: 2 },
+      { type: 'searchCreature' },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
@@ -167,7 +198,10 @@ export const ULTIMATES: readonly UltimateCard[] = [
     flavor: '枝が天を覆い、根が泉を汲み上げる。傷つきながらも立ち続ける大樹の力。',
     cost: ['forest', 'forest', 'colorless'],
     effects: [
-      { type: 'damage', target: 'opponentActive', value: 90 },
+      // 90 だと対応キャラ（ユグドラシルEX）の最強ワザとの差が +2 しかなく、
+      // コストとターンを払って撃つ意味が無かった。他の絶技と同じ +10〜+20 に合わせる
+      // （u003 黄の印 が同じ理由で死に札になった実例がある。SPEC 16.5）
+      { type: 'damage', target: 'opponentActive', value: 100 },
       { type: 'heal', target: 'self', value: 20 },
     ],
   },
