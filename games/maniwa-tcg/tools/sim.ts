@@ -12,6 +12,7 @@ import type { Deck, EndReason, GameState, PlayerId } from '../src/core/types.ts'
 import { MAX_TURNS } from '../src/core/types.ts'
 import { CARDS } from '../src/data/cards.ts'
 import { DECKS } from '../src/data/decks.ts'
+import { buildPoolDecks } from '../src/data/pool-decks.ts'
 import type { Policy } from './ai.ts'
 import { POLICIES, greedyPolicy } from './ai.ts'
 
@@ -21,12 +22,22 @@ import { POLICIES, greedyPolicy } from './ai.ts'
 const SECONDS_PER_TURN = 12
 const MAX_STEPS = 20000
 
+type DeckMode = 'fixed' | 'pool'
+
 interface Options {
   readonly games: number
   readonly seed: number
   readonly policy: Policy
   readonly policyName: string
   readonly json: boolean
+  /** SPEC 3.1.1。fixed=基準デッキ（指標の基準線） / pool=プールから抽選（新カードの計測） */
+  readonly deckMode: DeckMode
+  /**
+   * 基準デッキの1枠を差し替える（`--swap=デッキ名:抜くID:入れるID`）。
+   * tools/card-value.ts が使う。decks.ts のファイルを書き換えると、失敗時に
+   * 書き換えたまま残るので、実行時のオプションで渡す
+   */
+  readonly swap: { readonly deck: string; readonly from: string; readonly to: string } | null
 }
 
 function parseOptions(argv: readonly string[]): Options {
@@ -39,7 +50,31 @@ function parseOptions(argv: readonly string[]): Options {
     policy: POLICIES[policyName] ?? greedyPolicy,
     policyName: POLICIES[policyName] === undefined ? 'greedy' : policyName,
     json: argv.includes('--json'),
+    deckMode: get('decks') === 'pool' ? 'pool' : 'fixed',
+    swap: parseSwap(get('swap')),
   }
+}
+
+function parseSwap(raw: string | undefined): Options['swap'] {
+  if (raw === undefined) return null
+  const [deck, from, to] = raw.split(':')
+  if (deck === undefined || from === undefined || to === undefined) {
+    throw new Error(`--swap の形式は デッキ名:抜くID:入れるID（受け取った値: ${raw}）`)
+  }
+  return { deck, from, to }
+}
+
+/** 指定デッキの1枠だけ差し替えた組を返す。該当が無ければそのまま返す */
+function applySwap(decks: readonly Deck[], swap: Options['swap']): readonly Deck[] {
+  if (swap === null) return decks
+  return decks.map((deck) => {
+    if (deck.name !== swap.deck) return deck
+    const index = deck.cards.indexOf(swap.from)
+    if (index < 0) throw new Error(`デッキ「${deck.name}」に ${swap.from} が無い`)
+    const cards = [...deck.cards]
+    cards[index] = swap.to
+    return { ...deck, cards }
+  })
 }
 
 // ---------------------------------------------------------------- 1試合
@@ -178,14 +213,14 @@ const options = parseOptions(process.argv.slice(2))
  * ミラーマッチ（先手勝率の測定用）と、デッキの全組み合わせ（相性の測定用）を作る。
  * デッキを増やしても、ここを触らずに対戦表が広がる。
  */
-function buildGroups(total: number): readonly { label: string; decks: readonly [Deck, Deck]; count: number; mirror: boolean }[] {
-  const mirrors = DECKS.map((deck) => ({
+function buildGroups(total: number, decks: readonly Deck[]): readonly { label: string; decks: readonly [Deck, Deck]; count: number; mirror: boolean }[] {
+  const mirrors = decks.map((deck) => ({
     label: `${deck.name} vs ${deck.name}`,
     decks: [deck, deck] as readonly [Deck, Deck],
     mirror: true,
   }))
-  const crosses = DECKS.flatMap((a, i) =>
-    DECKS.slice(i + 1).map((b) => ({
+  const crosses = decks.flatMap((a, i) =>
+    decks.slice(i + 1).map((b) => ({
       label: `${a.name} vs ${b.name}`,
       decks: [a, b] as readonly [Deck, Deck],
       mirror: false,
@@ -205,7 +240,20 @@ function buildGroups(total: number): readonly { label: string; decks: readonly [
   ]
 }
 
-const groups = buildGroups(options.games)
+/**
+ * pool は1つの抽選結果に固定すると、そのデッキに入ったカードしか測れない。
+ * 試合数をラウンドに割り、ラウンドごとに引き直すことでプール全体に行き渡らせる。
+ * ラウンド数は「1ラウンドあたりの試合数が対戦表を埋められる程度」を目安にした。
+ */
+const POOL_ROUNDS = 12
+
+const groups = options.deckMode === 'pool'
+  ? Array.from({ length: POOL_ROUNDS }, (_, round) =>
+      buildGroups(
+        Math.floor(options.games / POOL_ROUNDS) + (round === 0 ? options.games % POOL_ROUNDS : 0),
+        buildPoolDecks(options.seed + round * 104729),
+      )).flat()
+  : buildGroups(options.games, applySwap(DECKS, options.swap))
 
 const stats = new Map<string, CardStat>(
   CARDS.map((c) => [
@@ -318,7 +366,7 @@ if (options.json) {
   const line = (label: string, value: string) => console.log(`  ${label.padEnd(22, '　')} ${value}`)
 
   console.log(`\n=== maniwa-tcg バランスシミュレーション ===`)
-  console.log(`  ${options.games} 戦 / policy=${options.policyName} / seed=${options.seed}\n`)
+  console.log(`  ${options.games} 戦 / policy=${options.policyName} / seed=${options.seed} / decks=${options.deckMode}\n`)
 
   console.log('■ 先手勝率（ミラーマッチ ' + mirrorDecided + ' 戦で測定）')
   const verdict = firstRate >= 0.45 && firstRate <= 0.55 ? 'OK' : '★基準外（45〜55%）'
