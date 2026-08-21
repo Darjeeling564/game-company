@@ -79,11 +79,21 @@ interface Recipe {
 const NEUTRAL_A = COLORLESS_IDS.slice(0, 4)
 const NEUTRAL_B = COLORLESS_IDS.slice(4, 8)
 
+/**
+ * 基準デッキの専用キャラ枠。**プールが増えても20枚の内訳は変えない。**
+ *
+ * `r.main` は属性の全カード（FIRE_IDS など）なので、属性に9体目を足すと
+ * そのまま9枚入り、デッキが21枚になってデッキ不正で全試合が開始できなくなる。
+ * しかも validateDeck に弾かれた状態は「カード総数が 0」と表示され、
+ * 21枚が原因だと読み取れない（2026-08-20 に実際に踏んだ）。
+ */
+const MAIN_PER_DECK = 8
+
 function build(r: Recipe, index: number): Deck {
   return {
     name: r.name,
     cards: [
-      ...r.main,
+      ...r.main.slice(0, MAIN_PER_DECK),
       ...(index % 2 === 0 ? NEUTRAL_A : NEUTRAL_B),
       ...(ITEM_SETS[index] as readonly string[]),
       ...(ACTION_SETS[index] as readonly string[]),
