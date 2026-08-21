@@ -117,6 +117,21 @@ const FIRE: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
     ],
   },
+  {
+    id: 'f009', name: 'クトゥグア', kind: 'creature',
+    flavor: '炎の精を率いる旧支配者。這い寄る混沌を焼くために、星の彼方から呼ばれた。',
+    origin: 'cthulhu', rarity: 'common',
+    type: 'fire', hp: 90, ex: false, retreatCost: 1, stage: 0,
+    attacks: [
+      { name: 'ひのたま', cost: ['fire'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'せいなるほのお', cost: ['fire', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 40 },
+          { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 森
@@ -913,6 +928,18 @@ const COLORLESS: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
       { name: 'テケリ・リ', cost: ['colorless', 'colorless'],
         effects: [{ type: 'damagePerHeads', target: 'opponentActive', count: 2, value: 40 }] },
+    ],
+  },
+  {
+    id: 'n009', name: 'スレイプニル', kind: 'creature',
+    flavor: '八本の足で九つの世界を駆ける馬。地も空も海も、等しく地面として踏む。',
+    origin: 'norse', rarity: 'common',
+    type: 'colorless', hp: 100, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: 'かける', cost: ['colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'はっそくのしっそう', cost: ['colorless', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
     ],
   },
 ]
