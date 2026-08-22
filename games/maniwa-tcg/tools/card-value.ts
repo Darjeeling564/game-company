@@ -32,15 +32,32 @@ if (card.kind === 'creature') {
 
 const games = Number(rest.find((a) => a.startsWith('--games='))?.split('=')[1] ?? 10000)
 
-/** 対象と同じ種別のカードが入っているデッキを探し、その枠を差し替える */
+/**
+ * 対象と同じ種別のカードが入っているデッキを探し、その枠を差し替える。
+ *
+ * 絶技は対応する姫神が同じデッキにいないとデッキ不正になり、そのデッキの試合が
+ * まるごと開始できなくなる（validateDeck / SPEC 16.5）。しかも sim は落ちずに
+ * 「引き分け」として数えるので、気づかないまま無意味な数値が出る。
+ * 差し替え先を選ぶ時点で弾く。
+ */
 const candidates = DECKS.flatMap((deck) =>
   deck.cards
     .map((id, index) => ({ deck, id, index }))
-    .filter(({ id }) => id !== target && requireCard(id).kind === card.kind),
+    .filter(({ id }) => id !== target && requireCard(id).kind === card.kind)
+    .filter(() => card.kind !== 'ultimate' || deck.cards.includes(card.requires)),
 )
 
 if (candidates.length === 0) {
-  console.error(`${target} と同じ種別（${card.kind}）のカードが基準デッキに無く、差し替え先が決められない`)
+  if (card.kind === 'ultimate') {
+    const needs = requireCard(card.requires)
+    console.error(
+      `${target}（${card.name}）は ${card.requires} ${needs.name} を要求するが、` +
+      `その姫神が入っている基準デッキが無いため差し替えで測れない。\n` +
+      `プールデッキで測ること: npm run sim -- --decks=pool  （出力の ${target} の行を見る）`,
+    )
+  } else {
+    console.error(`${target} と同じ種別（${card.kind}）のカードが基準デッキに無く、差し替え先が決められない`)
+  }
   process.exit(2)
 }
 
