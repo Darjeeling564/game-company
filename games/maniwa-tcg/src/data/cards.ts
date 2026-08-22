@@ -734,13 +734,13 @@ const LIGHT: readonly CreatureCard[] = [
   },
   {
     id: 'l009', name: 'ダイワスカーレット', kind: 'creature',
-    flavor: '誰より速く駆けることだけを願う光の化身。並び立つ影を追い、競り合うほどに速さを増す。',
+    flavor: '誰より速く駆けることだけを目指す光の化身。夏をプールで満喫中。',
     origin: 'original', rarity: 'ultra',
     type: 'light', hp: 180, ex: true, retreatCost: 2, stage: 0,
     attacks: [
       { name: '夢の扉を開く者', ruby: 'ゆめのとびらをひらくもの', cost: ['light', 'light'],
         effects: [
-          { type: 'damage', target: 'opponentActive', value: 80 },
+          { type: 'damage', target: 'opponentActive', value: 60 },
           // 「行動不能にする」に相当する状態異常が無いので、エネルギーを奪って
           // 次のターンにワザを撃てなくする形に置き換えている
           { type: 'discardEnergy', target: 'opponentActive', value: 2 },
