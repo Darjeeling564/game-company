@@ -403,15 +403,31 @@ if (options.json) {
   line('余剰エネルギー', (totalWasted / options.games).toFixed(1))
   console.log('')
 
-  // レアリティが強さの目安として機能しているかを見る
+  /*
+   * レアリティが強さの目安として機能しているかを見る（SPEC 8.3 の健全性条件）。
+   *
+   * 数えられるのは「デッキに入ったカード」だけ。fixed は基準デッキが固定なので、
+   * あとから足したカードは一度も入らず、**この検査を一生通らない**。
+   * 黙って落とすと種類数だけ見て「プール全体を数えている」と誤読するので、
+   * 落とした数を必ず出す。健全性の判定は全種を数える pool 側で行うこと（SPEC 12章）。
+   */
   console.log('■ レアリティ別（種類数 / 平均使用率 / 平均勝率寄与）')
+  let skipped = 0
   for (const rarity of RARITY_ORDER) {
-    const group = [...stats.values()].filter((s) => s.rarity === rarity && s.inDeck > 0)
+    const all = [...stats.values()].filter((s) => s.rarity === rarity)
+    const group = all.filter((s) => s.inDeck > 0)
+    skipped += all.length - group.length
     if (group.length === 0) continue
     const usage = mean(group.map((s) => s.usedIn / s.inDeck))
     const contribution = mean(group.filter((s) => s.usedIn > 0).map((s) => s.winsWhenUsed / s.usedIn - overallWinRate))
+    const missing = all.length - group.length
     line(`${RARITY_MARK[rarity] ?? rarity} ${RARITY_LABEL[rarity] ?? rarity}`,
-      `${String(group.length).padStart(2)}種 / ${(usage * 100).toFixed(1)}% / ${contribution >= 0 ? '+' : ''}${(contribution * 100).toFixed(1)}pt`)
+      `${String(group.length).padStart(2)}種 / ${(usage * 100).toFixed(1)}% / ${contribution >= 0 ? '+' : ''}${(contribution * 100).toFixed(1)}pt` +
+      (missing > 0 ? `   （+${missing}種 デッキ未採用で対象外）` : ''))
+  }
+  if (skipped > 0) {
+    console.log(`  ※ デッキに入らなかった ${skipped} 種は数えていない。` +
+      '全種で判定するには --decks=pool を使う（SPEC 12章）')
   }
   console.log('')
 
