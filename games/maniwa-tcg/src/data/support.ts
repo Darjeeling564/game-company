@@ -268,4 +268,24 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
     ],
   },
+  {
+    id: 'u009', name: '光芒一閃', ruby: 'こうぼういっせん', kind: 'ultimate',
+    origin: 'original', rarity: 'ultra', requires: 'l009',
+    flavor: '影が追いつくより先に、光は直線を抜けきっている。並んだ者はもう見えない。',
+    cost: ['light', 'light', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 120 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
+  {
+    id: 'u010', name: '大地震', ruby: 'おおなゐ', kind: 'ultimate',
+    origin: 'greece', rarity: 'ultra', requires: 'w001',
+    flavor: '矛の先が海底を打つ。ひび割れは岸まで走り、立っていられる者はいない。',
+    cost: ['water', 'water', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 80 },
+      { type: 'damage', target: 'opponentBenchAll', value: 10 },
+    ],
+  },
 ]
