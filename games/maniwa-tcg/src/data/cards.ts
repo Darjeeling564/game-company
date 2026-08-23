@@ -232,6 +232,18 @@ const FOREST: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 60 }, { type: 'heal', target: 'self', value: 10 }] },
     ],
   },
+  {
+    id: 's009', name: 'ダフネ', kind: 'creature',
+    flavor: '追われて月桂樹に姿を変えた妖精。その葉は勝者の冠となり、枯れることがない。',
+    origin: 'greece', rarity: 'rare',
+    type: 'forest', hp: 110, ex: false, retreatCost: 1, stage: 0,
+    attacks: [
+      { name: 'わかばのまもり', cost: ['forest'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 20 }, { type: 'heal', target: 'self', value: 10 }] },
+      { name: 'げっけいのかんむり', cost: ['forest', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 風
@@ -847,6 +859,18 @@ const DARK: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
       { name: 'きりをおこす', cost: ['dark', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+    ],
+  },
+  {
+    id: 'd009', name: 'ラーフ', kind: 'creature',
+    flavor: '不死の甘露を盗み、首だけになった魔神。日と月を呑み込んでは、切り口から逃がす。',
+    origin: 'india', rarity: 'common',
+    type: 'dark', hp: 100, ex: false, retreatCost: 1, stage: 0,
+    attacks: [
+      { name: 'あぎとをひらく', cost: ['dark'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      { name: 'にっしょく', cost: ['dark', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 40 }, { type: 'discardEnergy', target: 'opponentActive', value: 1 }] },
     ],
   },
 ]
