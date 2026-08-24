@@ -76,27 +76,27 @@ export function describeEffect(effect: Effect): string {
     case 'coinFlip':
       return `コイン${effect.count}回・表${effect.min}つ以上で「${effect.then.map(describeEffect).join('・')}」`
     case 'heal':
-      return `自分を${effect.value}かいふく`
+      return `自分を${effect.value}回復`
     case 'selfDamage':
-      return `自分に${effect.value}のはんどう`
+      return `自分に${effect.value}の反動`
     case 'discardEnergy':
       return effect.target === 'self'
         ? `自分のエネルギーを${effect.value}つトラッシュ`
         : `相手のエネルギーを${effect.value}つトラッシュ`
     case 'applyStatus':
-      return effect.status === 'poisoned' ? '相手をどくにする' : String(effect.status)
+      return effect.status === 'poisoned' ? '相手を毒にする' : String(effect.status)
     case 'draw':
-      return `${effect.value}枚ひく`
+      return `${effect.value}枚引く`
     case 'gainEnergy':
-      return 'エネルギーをもう1回つけられる'
+      return 'エネルギーをもう1回付けられる'
     case 'attachEnergy':
       return effect.target === 'ownBenchAll'
-        ? `自分のベンチ全体にエネルギーを${effect.value}こつける`
-        : `エネルギーを${effect.value}こつける`
+        ? `自分のベンチ全体にエネルギーを${effect.value}個付ける`
+        : `エネルギーを${effect.value}個付ける`
     case 'switchOpponent':
-      return '相手のバトル場をベンチと入れかえる'
+      return '相手のバトル場をベンチと入れ替える'
     case 'searchCreature':
-      return '山札からキャラを1枚手札にくわえる'
+      return '山札から姫神を1枚手札に加える'
   }
 }
 
@@ -126,25 +126,25 @@ function formatLogEntry(kind: string, detail: string): string | null {
   const amount = detail.match(/\+(\d+)/)?.[1]
   switch (kind) {
     case 'attack':
-      return `こうげき「${detail}」`
+      return `攻撃「${detail}」`
     case 'damage':
-      return amount === undefined ? null : `${amount}ダメージをうけた`
+      return amount === undefined ? null : `${amount}ダメージを受けた`
     case 'selfDamage':
-      return amount === undefined ? null : `はんどうで${amount}うけた`
+      return amount === undefined ? null : `反動で${amount}受けた`
     case 'poison':
-      return amount === undefined ? null : `どくで${amount}うけた`
+      return amount === undefined ? null : `毒で${amount}受けた`
     case 'ko':
-      return `きぜつ（あいてに+${detail.match(/\+(\d+)$/)?.[1] ?? '?'}ポイント）`
+      return `気絶（相手に+${detail.match(/\+(\d+)$/)?.[1] ?? '?'}ポイント）`
     case 'coin':
       return `コイン ${detail}`
     case 'status':
-      return detail === 'poisoned' ? 'どくになった' : detail
+      return detail === 'poisoned' ? '毒になった' : detail
     case 'promote':
-      return 'バトル場にだした'
+      return 'バトル場に出した'
     case 'attachEnergy':
       return `エネルギーをつけた（${energyLabel(detail.split(' ')[0] ?? null)}）`
     case 'retreat':
-      return 'にげた'
+      return '逃げた'
     default:
       return null
   }
@@ -155,7 +155,7 @@ export function recentLog(state: GameState, count: number): readonly string[] {
   for (const entry of state.log) {
     const text = formatLogEntry(entry.kind, entry.detail)
     if (text === null) continue
-    lines.push(`${entry.player === HUMAN ? 'じぶん' : 'あいて'}: ${text}`)
+    lines.push(`${entry.player === HUMAN ? '自分' : '相手'}: ${text}`)
   }
   return lines.slice(-count)
 }
@@ -299,12 +299,12 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
     facts.unshift(
       `HP ${remaining}/${card.hp}`,
       weakOf(card.type),
-      labelled('にげる', costBadges(Array<EnergyType>(card.retreatCost).fill('colorless'))),
+      labelled('逃げる', costBadges(Array<EnergyType>(card.retreatCost).fill('colorless'))),
     )
     if (creature !== null && creature.attached.length > 0) {
-      facts.push(labelled('ついているエネルギー', costBadges(creature.attached)))
+      facts.push(labelled('付いているエネルギー', costBadges(creature.attached)))
     }
-    if (creature !== null && creature.status.includes('poisoned')) facts.push('どく')
+    if (creature !== null && creature.status.includes('poisoned')) facts.push('毒')
   }
   if (card.kind === 'ultimate') {
     facts.unshift(
@@ -464,7 +464,7 @@ function creatureCard(
   if (creature.attached.length > 0 || creature.status.includes('poisoned')) {
     const tags = el('span', 'card__tags')
     if (creature.attached.length > 0) tags.append(costBadges(creature.attached))
-    if (creature.status.includes('poisoned')) tags.append(el('span', 'card__status', 'どく'))
+    if (creature.status.includes('poisoned')) tags.append(el('span', 'card__status', '毒'))
     body.append(tags)
   }
 
@@ -488,7 +488,7 @@ function sideView(
   const side = el('div', 'side')
 
   const head = el('div', 'side__head')
-  head.append(el('span', undefined, id === HUMAN ? 'じぶん' : 'あいて'))
+  head.append(el('span', undefined, id === HUMAN ? '自分' : '相手'))
   const points = el('span', 'points', '●'.repeat(Math.min(3, player.points)) + '○'.repeat(Math.max(0, 3 - player.points)))
   head.append(points)
   head.append(el('span', 'muted', `手札${player.hand.length} 山札${player.deck.length}`))
@@ -584,10 +584,10 @@ function statusBanner(state: GameState): HTMLElement {
     return el('div', 'banner', 'バトル場とベンチにカードを出そう。手札をタップ。')
   }
   if (state.phase.kind === 'promote') {
-    const who = state.phase.queue[0] === HUMAN ? 'じぶん' : 'あいて'
+    const who = state.phase.queue[0] === HUMAN ? '自分' : '相手'
     return el('div', 'banner', `${who}のバトル場が空。ベンチから出す。`)
   }
-  const who = state.current === HUMAN ? 'じぶんのターン' : 'あいてのターン'
+  const who = state.current === HUMAN ? '自分のターン' : '相手のターン'
   return el('div', 'banner', `ターン${state.turn} / ${who}`)
 }
 
@@ -618,26 +618,26 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   const endTurn = mine.find((a) => a.type === 'endTurn')
   const setupDone = mine.find((a) => a.type === 'setupDone')
 
-  const attackBtn = el('button', 'btn', 'こうげき')
+  const attackBtn = el('button', 'btn', '攻撃')
   attackBtn.type = 'button'
   attackBtn.disabled = !canAttack
   attackBtn.addEventListener('click', handlers.onAttackMenu)
   controls.append(attackBtn)
 
   const retreatCost = player.active === null ? 0 : requireCreature(player.active.cardId).retreatCost
-  const retreatBtn = el('button', 'btn btn--ghost', `にげる（エネ${retreatCost}）`)
+  const retreatBtn = el('button', 'btn btn--ghost', `逃げる（エネ${retreatCost}）`)
   retreatBtn.type = 'button'
   retreatBtn.disabled = !canRetreat
   retreatBtn.addEventListener('click', handlers.onRetreatMenu)
   controls.append(retreatBtn)
 
   if (setupDone !== undefined) {
-    const doneBtn = el('button', 'btn', 'じゅんびかんりょう')
+    const doneBtn = el('button', 'btn', '準備完了')
     doneBtn.type = 'button'
     doneBtn.addEventListener('click', () => handlers.onAction(setupDone))
     controls.append(doneBtn)
   } else {
-    const endBtn = el('button', 'btn btn--ghost', 'ターンしゅうりょう')
+    const endBtn = el('button', 'btn btn--ghost', 'ターン終了')
     endBtn.type = 'button'
     endBtn.disabled = endTurn === undefined
     if (endTurn !== undefined) endBtn.addEventListener('click', () => handlers.onAction(endTurn))
