@@ -92,6 +92,21 @@ export const ITEMS: readonly ItemCard[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'i015', name: '亀甲の卜', ruby: 'きっこうのぼく', kind: 'item', origin: 'china', rarity: 'rare',
+    flavor: '亀の甲を焼き、生じた罅で吉凶を読む。王はこれに従って兵を出した。',
+    effects: [
+      { type: 'coinFlip', count: 1, min: 1, then: [{ type: 'gainEnergy' }, { type: 'draw', value: 1 }] },
+    ],
+  },
+  {
+    id: 'i016', name: '銀の鍵', ruby: 'ぎんのかぎ', kind: 'item', origin: 'cthulhu', rarity: 'rare',
+    flavor: '幾つもの門を開く鍵。持つ者は、いま立つ世界の外側へ踏み出せる。',
+    effects: [
+      { type: 'switchOpponent' },
+      { type: 'searchCreature' },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
