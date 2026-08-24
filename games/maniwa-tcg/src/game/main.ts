@@ -65,9 +65,9 @@ function showTitle(): void {
 
   const saved = load()
   screen.append(el('p', 'muted', `${saved.record.wins}勝 ${saved.record.losses}敗 ${saved.record.draws}分`))
-  if (saved.deckName !== null) screen.append(el('p', 'muted', `まえかいのデッキ: ${saved.deckName}`))
+  if (saved.deckName !== null) screen.append(el('p', 'muted', `前回のデッキ: ${saved.deckName}`))
 
-  const start = el('button', 'btn', 'たいせん')
+  const start = el('button', 'btn', '対戦')
   start.type = 'button'
   start.addEventListener('click', showDeckSelect)
   screen.append(start)
@@ -77,7 +77,7 @@ function showTitle(): void {
 function showDeckSelect(): void {
   root.replaceChildren()
   const screen = el('div', 'screen')
-  screen.append(el('h1', 'title', 'デッキをえらぶ'))
+  screen.append(el('h1', 'title', 'デッキを選ぶ'))
 
   for (const deck of DECKS) {
     const btn = el('button', 'btn deck-option')
@@ -88,7 +88,7 @@ function showDeckSelect(): void {
     screen.append(btn)
   }
 
-  const back = el('button', 'btn btn--ghost', 'もどる')
+  const back = el('button', 'btn btn--ghost', '戻る')
   back.type = 'button'
   back.addEventListener('click', showTitle)
   screen.append(back)
@@ -102,13 +102,13 @@ function showResult(): void {
 
   root.replaceChildren()
   const screen = el('div', 'screen')
-  screen.append(el('h1', 'title', outcome === 'win' ? 'かち！' : outcome === 'loss' ? 'まけ…' : 'ひきわけ'))
+  screen.append(el('h1', 'title', outcome === 'win' ? '勝ち！' : outcome === 'loss' ? '負け…' : '引き分け'))
   screen.append(
     el('p', 'muted', `ポイント ${state.players[HUMAN].points} - ${state.players[CPU].points} / ${state.turn}ターン`),
   )
-  screen.append(el('p', 'muted', `つうさん ${record.wins}勝 ${record.losses}敗 ${record.draws}分`))
+  screen.append(el('p', 'muted', `通算 ${record.wins}勝 ${record.losses}敗 ${record.draws}分`))
 
-  const again = el('button', 'btn', 'もういちど')
+  const again = el('button', 'btn', 'もう一度')
   again.type = 'button'
   again.addEventListener('click', showDeckSelect)
   screen.append(again)
@@ -208,7 +208,7 @@ function showAttackMenu(): void {
       action,
     }
   })
-  renderChoices(root, 'ワザをえらぶ', choices, apply, closeOverlay)
+  renderChoices(root, 'ワザを選ぶ', choices, apply, closeOverlay)
 }
 
 function showRetreatMenu(): void {
@@ -225,7 +225,7 @@ function showRetreatMenu(): void {
       action,
     }
   })
-  renderChoices(root, `いれかえる（エネルギー${cost}をトラッシュ）`, choices, apply, closeOverlay)
+  renderChoices(root, `入れ替える（エネルギー${cost}をトラッシュ）`, choices, apply, closeOverlay)
 }
 
 /** 場のカードをタップしたとき。相手のカードも中身を確認できるようにする */
@@ -242,9 +242,9 @@ function showCreatureDetail(owner: PlayerId, instanceId: number): void {
   const detail = cardDetailPanel(requireCard(creature.cardId), creature)
   const choices = legalActions(state)
     .filter((a) => a.type === 'attachEnergy' && a.player === HUMAN && a.target === instanceId)
-    .map((action) => ({ label: 'エネルギーをつける', action }))
+    .map((action) => ({ label: 'エネルギーを付ける', action }))
 
-  renderChoices(root, owner === HUMAN ? 'じぶんのカード' : 'あいてのカード', choices, apply, closeOverlay, detail)
+  renderChoices(root, owner === HUMAN ? '自分のカード' : '相手のカード', choices, apply, closeOverlay, detail)
 }
 
 /** 手札をタップしたとき。出す前に性能を確認できるようにする */
@@ -264,11 +264,11 @@ function showHandDetail(handIndex: number): void {
         a.handIndex === handIndex,
     )
     .map((action) => ({
-      label: state.players[HUMAN].active === null ? 'バトル場にだす' : 'ベンチにだす',
+      label: state.players[HUMAN].active === null ? 'バトル場に出す' : 'ベンチに出す',
       action,
     }))
 
-  renderChoices(root, 'てふだ', choices, apply, closeOverlay, detail)
+  renderChoices(root, '手札', choices, apply, closeOverlay, detail)
 }
 
 function showPromoteMenu(): void {
@@ -280,7 +280,7 @@ function showPromoteMenu(): void {
     const def = requireCreature(creature.cardId)
     return { label: `${def.name}（${def.hp - creature.damage}/${def.hp}）`, action }
   })
-  renderChoices(root, 'バトル場にだす', choices, apply, null)
+  renderChoices(root, 'バトル場に出す', choices, apply, null)
 }
 
 showTitle()
