@@ -177,6 +177,21 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'searchCreature' },
     ],
   },
+  {
+    id: 'a015', name: '死者の書', ruby: 'ししゃのしょ', kind: 'action', origin: 'egypt', rarity: 'rare',
+    flavor: '棺に納める道案内の巻物。冥界の門番の名と、通るための言葉が記してある。',
+    effects: [
+      { type: 'heal', target: 'ownBenchAll', value: 30 },
+      { type: 'searchCreature' },
+    ],
+  },
+  {
+    id: 'a016', name: 'イシュタルの門', ruby: 'イシュタルのもん', kind: 'action', origin: 'mesopotamia', rarity: 'common',
+    flavor: '冥界へ下る七つの門。くぐるたび、身に着けた物をひとつずつ奪われる。',
+    effects: [
+      { type: 'damage', target: 'opponentBenchRandom', value: 30 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
