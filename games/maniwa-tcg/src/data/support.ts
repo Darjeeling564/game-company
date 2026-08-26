@@ -288,4 +288,24 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'damage', target: 'opponentBenchAll', value: 10 },
     ],
   },
+  {
+    id: 'u011', name: '焼き払う剣', ruby: 'やきはらうつるぎ', kind: 'ultimate',
+    origin: 'norse', rarity: 'ultra', requires: 'f003',
+    flavor: '太陽より明るい炎の剣。振り抜いた跡には、燃やすものが何も残らない。',
+    cost: ['fire', 'fire', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 70 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
+  {
+    id: 'u012', name: '九歩の雷', ruby: 'きゅうほのいかずち', kind: 'ultimate',
+    origin: 'norse', rarity: 'ultra', requires: 't004',
+    flavor: '大蛇の頭を砕いた槌。返り血の毒を浴び、九歩あゆんで倒れると知りながら振るう。',
+    cost: ['thunder', 'thunder', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 90 },
+      { type: 'selfDamage', value: 10 },
+    ],
+  },
 ]
