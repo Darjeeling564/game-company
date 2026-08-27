@@ -429,16 +429,49 @@ export interface Handlers {
   readonly onHandTap: (handIndex: number) => void
 }
 
+/*
+ * 「引いた」「出した」に動きを付けるための追跡（SPEC 9.4）。
+ *
+ * renderBattle は毎回 root.replaceChildren() で作り直すので、CSS アニメーションを
+ * 素直に書くと**再描画のたびに全カードが動いてしまう**。前回の描画に居なかったものだけ
+ * にクラスを付ける必要があり、その差分をここで持つ。
+ *
+ * core の状態ではなく描画の都合なので、reduce には持ち込まない（CLAUDE.md 3章）。
+ */
+let prevHand: readonly string[] = []
+let prevBoard: ReadonlySet<number> = new Set()
+
+/** 手札のうち、前回の描画に居なかった位置。山札から引かれた枚数ぶん末尾に増える */
+function drawnIndices(hand: readonly string[]): ReadonlySet<number> {
+  const grew = hand.length - prevHand.length
+  if (grew <= 0) return new Set()
+  const fresh = new Set<number>()
+  for (let i = hand.length - grew; i < hand.length; i += 1) fresh.add(i)
+  return fresh
+}
+
+/** 盤面に居る全てのインスタンスID（バトル場＋ベンチ、両者ぶん） */
+function boardIds(state: GameState): ReadonlySet<number> {
+  const ids = new Set<number>()
+  for (const player of state.players) {
+    if (player.active !== null) ids.add(player.active.instanceId)
+    for (const c of player.bench) ids.add(c.instanceId)
+  }
+  return ids
+}
+
 function creatureCard(
   creature: Creature,
   isActive: boolean,
   selectable: boolean,
   onTap: () => void,
   onDetail: () => void,
+  entering = false,
 ): HTMLElement {
   const card = requireCreature(creature.cardId)
   const remaining = Math.max(0, card.hp - creature.damage)
-  const node = el('button', `card${isActive ? ' card--active' : ''}${selectable ? ' card--selectable' : ''}`)
+  const node = el('button', `card card--board${isActive ? ' card--active' : ''}`
+    + `${selectable ? ' card--selectable' : ''}${entering ? ' card--enter' : ''}`)
   node.type = 'button'
   applyCardTheme(node, card.origin, card.rarity, card.type)
 
@@ -468,14 +501,35 @@ function creatureCard(
     body.append(tags)
   }
 
+  /*
+   * バトル場のカードだけはワザまで出す（SPEC 9 の対戦画面レイアウト）。
+   * 「いま何を撃てるか」を長押しせずに読めるようにするため。
+   * ベンチは幅が無く、出すと絵が帯になって誰か分からなくなるので出さない。
+   */
+  if (isActive) {
+    const attacks = el('span', 'card__attacks')
+    for (const attack of card.attacks) {
+      const row = el('span', 'card__attack')
+      // 盤面はフリガナを出さない。152px 幅で2段になると絵が潰れる。
+      // 読みが要るときは長押しで詳細を開く（そちらには出る）
+      row.append(el('span', 'card__attackName', attack.name))
+      row.append(costBadges(attack.cost))
+      attacks.append(row)
+    }
+    body.append(attacks)
+  }
+
   node.append(body)
   bindTap(node, onTap, onDetail)
   return node
 }
 
-function emptySlot(label: string): HTMLElement {
-  const node = el('div', 'card card--empty', label)
-  return node
+/**
+ * 空きスロット。**盤面カードと同じ寸法クラスを付ける**のが要点で、
+ * これが無いと空き枠だけ帯になり、残りの幅を全部吸って隣のカードが潰れる。
+ */
+function emptySlot(label: string, isActive = false): HTMLElement {
+  return el('div', `card card--board card--empty${isActive ? ' card--active-slot' : ''}`, label)
 }
 
 function sideView(
@@ -483,9 +537,11 @@ function sideView(
   id: PlayerId,
   handlers: Handlers,
   attachTargets: ReadonlySet<number>,
+  placed: ReadonlySet<number>,
 ): HTMLElement {
   const player: PlayerState = state.players[id]
-  const side = el('div', 'side')
+  // 相手側は一回り小さくする。8枠ぶんを原寸で並べると縦が画面に収まらない（SPEC 9）
+  const side = el('div', `side side--${id === HUMAN ? 'human' : 'cpu'}`)
 
   const head = el('div', 'side__head')
   head.append(el('span', undefined, id === HUMAN ? '自分' : '相手'))
@@ -507,12 +563,12 @@ function sideView(
       creatureCard(creature, false, canAttach, canAttach
         ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId })
         : detail,
-      detail),
+      detail, placed.has(creature.instanceId)),
     )
   }
 
   const active = el('div', 'slots')
-  if (player.active === null) active.append(emptySlot('バトル場'))
+  if (player.active === null) active.append(emptySlot('バトル場', true))
   else {
     const creature = player.active
     const canAttach = attachTargets.has(creature.instanceId)
@@ -521,7 +577,7 @@ function sideView(
       creatureCard(creature, true, canAttach, canAttach
         ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId })
         : detail,
-      detail),
+      detail, placed.has(creature.instanceId)),
     )
   }
 
@@ -534,7 +590,7 @@ function sideView(
   return side
 }
 
-function handView(state: GameState, handlers: Handlers): HTMLElement {
+function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<number>): HTMLElement {
   const legal = legalActions(state)
   const playable = new Map<number, Action>()
   for (const action of legal) {
@@ -552,14 +608,22 @@ function handView(state: GameState, handlers: Handlers): HTMLElement {
     }
   }
 
-  const hand = el('div', 'hand')
   const cards = state.players[HUMAN].hand
+  /*
+   * 重ねるのは枚数が多いときだけ。常に重ねると、選べるカード（z-index で前に出る）が
+   * 隣のカードの名前を隠す。5枚までは 390px に並べて入る
+   */
+  const hand = el('div', `hand${cards.length > 5 ? ' hand--dense' : ''}`)
   if (cards.length === 0) hand.append(el('div', 'muted', '手札なし'))
   cards.forEach((cardId, index) => {
     const card = requireCard(cardId)
     const action = playable.get(index)
-    const node = el('button', `card${action !== undefined ? ' card--selectable' : ''}`)
+    const fresh = drawn.has(index)
+    const node = el('button', `card card--hand${action !== undefined ? ' card--selectable' : ''}`
+      + `${fresh ? ' card--draw' : ''}`)
     node.type = 'button'
+    // 同時に何枚も引いたとき（初手など）は少しずつ遅らせて、順に届くように見せる
+    if (fresh) node.style.setProperty('--draw-delay', `${Math.min(index, 6) * 60}ms`)
     applyCardTheme(node, card.origin, card.rarity, card.kind === 'creature' ? card.type : 'colorless')
     const body = el('span', 'card__body')
     const url = artUrl(card.id)
@@ -600,11 +664,17 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
     mine.filter((a) => a.type === 'attachEnergy').map((a) => (a.type === 'attachEnergy' ? a.target : -1)),
   )
 
+  // 動きを付ける対象を、前回の描画との差分で決める（SPEC 9.4）
+  const hand = state.players[HUMAN].hand
+  const drawn = drawnIndices(hand)
+  const ids = boardIds(state)
+  const placed = new Set([...ids].filter((id) => !prevBoard.has(id)))
+
   root.replaceChildren()
   const board = el('div', 'board')
   board.append(statusBanner(state))
-  board.append(sideView(state, CPU, handlers, new Set()))
-  board.append(sideView(state, HUMAN, handlers, attachTargets))
+  board.append(sideView(state, CPU, handlers, new Set(), placed))
+  board.append(sideView(state, HUMAN, handlers, attachTargets, placed))
 
   const energy = el('div', 'energy')
   const zone = state.players[HUMAN].energy
@@ -644,7 +714,7 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
     controls.append(endBtn)
   }
   board.append(controls)
-  board.append(handView(state, handlers))
+  board.append(handView(state, handlers, drawn))
 
   board.append(el('div', 'hint', 'カードを長押しすると、ワザや弱点を見られます'))
 
@@ -653,6 +723,10 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   board.append(logBox)
 
   root.append(board)
+
+  // 次の描画で「前回」として使う。ここを忘れると毎回すべてが新規扱いになる
+  prevHand = hand
+  prevBoard = ids
 }
 
 /** ワザ選択・ベンチ選択の共通モーダル */
