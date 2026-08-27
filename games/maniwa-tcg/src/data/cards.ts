@@ -432,6 +432,18 @@ const EARTH: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 90 }, { type: 'discardEnergy', target: 'opponentActive', value: 1 }] },
     ],
   },
+  {
+    id: 'e009', name: '女媧', ruby: 'じょか', kind: 'creature',
+    flavor: '人を土からこね上げた創造の女神。崩れた天の柱を、五色の石で繕った。',
+    origin: 'china', rarity: 'rare',
+    type: 'earth', hp: 120, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '土をこねる', ruby: 'つちをこねる', cost: ['earth', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
+      { name: '天を繕う', ruby: 'てんをつくろう', cost: ['earth', 'earth', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 70 }, { type: 'heal', target: 'self', value: 20 }] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 雷
@@ -530,6 +542,18 @@ const THUNDER: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
       { name: '風を渡る者', ruby: 'かぜをわたるもの', cost: ['thunder', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 50 }, { type: 'discardEnergy', target: 'opponentActive', value: 1 }] },
+    ],
+  },
+  {
+    id: 't009', name: 'マルドゥク', kind: 'creature',
+    flavor: '五十の名を持つ都市の主神。原初の海の竜を網に捕らえ、雷で討ち果たした。',
+    origin: 'mesopotamia', rarity: 'superRare',
+    type: 'thunder', hp: 130, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '天の網', ruby: 'てんのあみ', cost: ['thunder', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 30 }, { type: 'discardEnergy', target: 'opponentActive', value: 1 }] },
+      { name: '五十の名', ruby: 'ごじゅうのな', cost: ['thunder', 'thunder', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 80 }] },
     ],
   },
 ]
