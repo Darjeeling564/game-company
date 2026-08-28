@@ -94,6 +94,11 @@ export function validateDeck(deck: Deck): readonly string[] {
   const hasCreature = deck.cards.some((id) => findCard(id)?.kind === 'creature')
   if (!hasCreature) errors.push('クリーチャーを1枚以上入れる')
 
+  // コモンが0枚だと、引き直しを10回やっても配置フェーズに置けるカードが出ない（SPEC 3.1）
+  if (hasCreature && !deck.cards.some(isPlaceableAtSetup)) {
+    errors.push('コモンの姫神を1枚以上入れる（配置フェーズはコモンしか置けない）')
+  }
+
   // 絶技は撃てるキャラが同じデッキに無いと死に札になる（SPEC 16.5）
   const inDeck = new Set(deck.cards)
   for (const id of new Set(deck.cards)) {
@@ -109,6 +114,18 @@ export function validateDeck(deck: Deck): readonly string[] {
 
 // ---------------------------------------------------------------- 開始
 
+/**
+ * 配置フェーズ（ゲーム開始時）に伏せて置けるカードか。
+ *
+ * リリース元が場にいないので、レアリティ召喚（SPEC 3.3.1）の条件を満たせるのは
+ * リリース不要なコモンだけになる。引き直し条件・合法手・reduce の3箇所で
+ * 同じ判定を使う必要があるため、ここに一本化する
+ */
+function isPlaceableAtSetup(cardId: CardId): boolean {
+  const card = findCard(cardId)
+  return card?.kind === 'creature' && card.rarity === 'common'
+}
+
 function drawOpeningHand(
   rng: GameState['rng'],
   cards: readonly CardId[],
@@ -120,7 +137,9 @@ function drawOpeningHand(
     cur = shuffled.rng
     const hand = shuffled.items.slice(0, size)
     const deck = shuffled.items.slice(size)
-    if (hand.some((id) => findCard(id)?.kind === 'creature')) {
+    // 配置フェーズはコモンの姫神しか置けない（SPEC 3.3.1）。
+    // 「姫神が1枚でもあればよい」だと、レア以上しか無い手札で置けずに詰む
+    if (hand.some(isPlaceableAtSetup)) {
       return { rng: cur, deck, hand }
     }
   }
@@ -286,6 +305,10 @@ function reduceSetup(state: GameState, action: PlayerAction): GameState {
   switch (action.type) {
     case 'setupPlace': {
       const player = playerAt(state, id)
+      const cardId = player.hand[action.handIndex]
+      if (cardId !== undefined && !isPlaceableAtSetup(cardId)) {
+        return reject(state, action, '配置フェーズに置けるのはコモンの姫神だけ')
+      }
       const to = player.active === null ? 'active' : 'bench'
       const result = placeFromHand(state, id, action.handIndex, to)
       if (typeof result === 'string') return reject(state, action, result)
@@ -504,10 +527,9 @@ export function legalActions(state: GameState): readonly Action[] {
         const canPlace = player.active === null || player.bench.length < BENCH_SIZE
         if (canPlace) {
           player.hand.forEach((cardId, handIndex) => {
-            // 配置フェーズはレアリティ制限なし（SPEC 3.3.1）。
-            // コモン限定にすると、初手にコモンが無い 10.6% が詰み、
-            // 実測で引き分けが 18.9% になって終局保証テストが落ちる
-            if (findCard(cardId)?.kind === 'creature') out.push({ type: 'setupPlace', player: id, handIndex })
+            // 配置フェーズはコモンの姫神だけ（SPEC 3.3.1）。
+            // 詰みは引き直し条件（drawOpeningHand）と validateDeck で防いでいる
+            if (isPlaceableAtSetup(cardId)) out.push({ type: 'setupPlace', player: id, handIndex })
           })
         }
         if (player.active !== null) out.push({ type: 'setupDone', player: id })
