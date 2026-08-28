@@ -33,11 +33,13 @@ interface Options {
   /** SPEC 3.1.1。fixed=基準デッキ（指標の基準線） / pool=プールから抽選（新カードの計測） */
   readonly deckMode: DeckMode
   /**
-   * 基準デッキの1枠を差し替える（`--swap=デッキ名:抜くID:入れるID`）。
+   * 基準デッキの枠を差し替える（`--swap=デッキ名:抜くID:入れるID`）。
    * tools/card-value.ts が使う。decks.ts のファイルを書き換えると、失敗時に
-   * 書き換えたまま残るので、実行時のオプションで渡す
+   * 書き換えたまま残るので、実行時のオプションで渡す。
+   * 複数指定できる（`--swap=... --swap=...`）。デッキ地力の探索で、
+   * 2枠以上を同時に動かした配分を測るために必要（SPEC 17.6）
    */
-  readonly swap: { readonly deck: string; readonly from: string; readonly to: string } | null
+  readonly swaps: readonly { readonly deck: string; readonly from: string; readonly to: string }[]
 }
 
 function parseOptions(argv: readonly string[]): Options {
@@ -51,30 +53,37 @@ function parseOptions(argv: readonly string[]): Options {
     policyName: POLICIES[policyName] === undefined ? 'greedy' : policyName,
     json: argv.includes('--json'),
     deckMode: get('decks') === 'pool' ? 'pool' : 'fixed',
-    swap: parseSwap(get('swap')),
+    swaps: parseSwaps(argv),
   }
 }
 
-function parseSwap(raw: string | undefined): Options['swap'] {
-  if (raw === undefined) return null
-  const [deck, from, to] = raw.split(':')
-  if (deck === undefined || from === undefined || to === undefined) {
-    throw new Error(`--swap の形式は デッキ名:抜くID:入れるID（受け取った値: ${raw}）`)
-  }
-  return { deck, from, to }
+function parseSwaps(argv: readonly string[]): Options['swaps'] {
+  return argv
+    .filter((a) => a.startsWith('--swap='))
+    .map((a) => {
+      const raw = a.slice('--swap='.length)
+      const [deck, from, to] = raw.split(':')
+      if (deck === undefined || from === undefined || to === undefined) {
+        throw new Error(`--swap の形式は デッキ名:抜くID:入れるID（受け取った値: ${raw}）`)
+      }
+      return { deck, from, to }
+    })
 }
 
-/** 指定デッキの1枠だけ差し替えた組を返す。該当が無ければそのまま返す */
-function applySwap(decks: readonly Deck[], swap: Options['swap']): readonly Deck[] {
-  if (swap === null) return decks
-  return decks.map((deck) => {
-    if (deck.name !== swap.deck) return deck
-    const index = deck.cards.indexOf(swap.from)
-    if (index < 0) throw new Error(`デッキ「${deck.name}」に ${swap.from} が無い`)
-    const cards = [...deck.cards]
-    cards[index] = swap.to
-    return { ...deck, cards }
-  })
+/** 指定された差し替えを順に適用した組を返す。指定が無ければそのまま返す */
+function applySwaps(decks: readonly Deck[], swaps: Options['swaps']): readonly Deck[] {
+  return swaps.reduce<readonly Deck[]>(
+    (acc, swap) =>
+      acc.map((deck) => {
+        if (deck.name !== swap.deck) return deck
+        const index = deck.cards.indexOf(swap.from)
+        if (index < 0) throw new Error(`デッキ「${deck.name}」に ${swap.from} が無い`)
+        const cards = [...deck.cards]
+        cards[index] = swap.to
+        return { ...deck, cards }
+      }),
+    decks,
+  )
 }
 
 // ---------------------------------------------------------------- 1試合
@@ -253,7 +262,7 @@ const groups = options.deckMode === 'pool'
         Math.floor(options.games / POOL_ROUNDS) + (round === 0 ? options.games % POOL_ROUNDS : 0),
         buildPoolDecks(options.seed + round * 104729),
       )).flat()
-  : buildGroups(options.games, applySwap(DECKS, options.swap))
+  : buildGroups(options.games, applySwaps(DECKS, options.swaps))
 
 const stats = new Map<string, CardStat>(
   CARDS.map((c) => [

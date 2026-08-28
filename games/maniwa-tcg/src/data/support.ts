@@ -92,6 +92,19 @@ export const ITEMS: readonly ItemCard[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'i017', name: '筊杯', ruby: 'きょうはい', kind: 'item', origin: 'china', rarity: 'rare',
+    flavor: '神前に投げる三日月形の木片。表と裏の出方で神意を問い、吉と出た者にだけ力が下りる。',
+    effects: [
+      { type: 'coinFlip', count: 1, min: 1, then: [{ type: 'gainEnergy' }] },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'i018', name: '狂気の囁き', ruby: 'きょうきのささやき', kind: 'item', origin: 'cthulhu', rarity: 'rare',
+    flavor: '深海の底で眠る者が漏らす寝言。意味を成さない音だが、聞き取れた回数だけ正気が削れる。',
+    effects: [{ type: 'damagePerHeads', target: 'opponentActive', value: 20, count: 2 }],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
