@@ -645,7 +645,9 @@ function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<numbe
 
 function statusBanner(state: GameState): HTMLElement {
   if (state.phase.kind === 'setup') {
-    return el('div', 'banner', 'バトル場とベンチにカードを出そう。手札をタップ。')
+    // 置けるのはコモンの姫神だけ（SPEC 3.3.1）。手札の選べないカードは
+    // legalActions 由来で自動的に暗くなるが、理由は文で出さないと伝わらない
+    return el('div', 'banner', 'コモンの姫神をバトル場とベンチに出そう。手札をタップ。')
   }
   if (state.phase.kind === 'promote') {
     const who = state.phase.queue[0] === HUMAN ? '自分' : '相手'

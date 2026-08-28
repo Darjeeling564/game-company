@@ -247,6 +247,27 @@ function showCreatureDetail(owner: PlayerId, instanceId: number): void {
   renderChoices(root, owner === HUMAN ? '自分のカード' : '相手のカード', choices, apply, closeOverlay, detail)
 }
 
+/**
+ * 場に出す選択肢の見出し（SPEC 3.3.1）。
+ *
+ * レアリティ召喚では、1枚の手札に対して**リリース対象の数だけ**選択肢が出る。
+ * どれを選んだかで失う姫神が変わるので、名前と残りHPとエネルギー数を出す。
+ */
+function describePlacement(action: Action): string {
+  if (action.type !== 'playCreature' && action.type !== 'setupPlace') return '出す'
+  if (action.type === 'setupPlace' || action.release === null) {
+    return state.players[HUMAN].active === null ? 'バトル場に出す' : 'ベンチに出す'
+  }
+  const player = state.players[HUMAN]
+  const target = [player.active, ...player.bench].find(
+    (c) => c !== null && c !== undefined && c.instanceId === action.release,
+  )
+  if (target === undefined || target === null) return 'リリースして出す'
+  const def = requireCreature(target.cardId)
+  const where = player.active?.instanceId === action.release ? 'バトル場' : 'ベンチ'
+  return `${where}の ${def.name}（${def.hp - target.damage}/${def.hp}・エネ${target.attached.length}）をリリース`
+}
+
 /** 手札をタップしたとき。出す前に性能を確認できるようにする */
 function showHandDetail(handIndex: number): void {
   const cardId = state.players[HUMAN].hand[handIndex]
@@ -264,7 +285,7 @@ function showHandDetail(handIndex: number): void {
         a.handIndex === handIndex,
     )
     .map((action) => ({
-      label: state.players[HUMAN].active === null ? 'バトル場に出す' : 'ベンチに出す',
+      label: describePlacement(action),
       action,
     }))
 

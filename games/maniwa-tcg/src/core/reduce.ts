@@ -22,7 +22,7 @@ import {
   resolveInTurn,
   ultimateError,
 } from './rules.ts'
-import type { CardId, Creature, Deck, EnergyType, GameState, PlayerId, PlayerState } from './types.ts'
+import type { CardId, Creature, Deck, EnergyType, GameState, InstanceId, PlayerId, PlayerState } from './types.ts'
 import {
   BENCH_SIZE,
   DECK_SIZE,
@@ -94,6 +94,11 @@ export function validateDeck(deck: Deck): readonly string[] {
   const hasCreature = deck.cards.some((id) => findCard(id)?.kind === 'creature')
   if (!hasCreature) errors.push('クリーチャーを1枚以上入れる')
 
+  // コモンが0枚だと、引き直しを10回やっても配置フェーズに置けるカードが出ない（SPEC 3.1）
+  if (hasCreature && !deck.cards.some(isPlaceableAtSetup)) {
+    errors.push('コモンの姫神を1枚以上入れる（配置フェーズはコモンしか置けない）')
+  }
+
   // 絶技は撃てるキャラが同じデッキに無いと死に札になる（SPEC 16.5）
   const inDeck = new Set(deck.cards)
   for (const id of new Set(deck.cards)) {
@@ -109,17 +114,32 @@ export function validateDeck(deck: Deck): readonly string[] {
 
 // ---------------------------------------------------------------- 開始
 
+/**
+ * 配置フェーズ（ゲーム開始時）に伏せて置けるカードか。
+ *
+ * リリース元が場にいないので、レアリティ召喚（SPEC 3.3.1）の条件を満たせるのは
+ * リリース不要なコモンだけになる。引き直し条件・合法手・reduce の3箇所で
+ * 同じ判定を使う必要があるため、ここに一本化する
+ */
+function isPlaceableAtSetup(cardId: CardId): boolean {
+  const card = findCard(cardId)
+  return card?.kind === 'creature' && card.rarity === 'common'
+}
+
 function drawOpeningHand(
   rng: GameState['rng'],
   cards: readonly CardId[],
+  size: number,
 ): { readonly rng: GameState['rng']; readonly deck: readonly CardId[]; readonly hand: readonly CardId[] } {
   let cur = rng
   for (let attempt = 0; attempt < MAX_MULLIGAN; attempt += 1) {
     const shuffled = shuffle(cur, cards)
     cur = shuffled.rng
-    const hand = shuffled.items.slice(0, HAND_SIZE_AT_START)
-    const deck = shuffled.items.slice(HAND_SIZE_AT_START)
-    if (hand.some((id) => findCard(id)?.kind === 'creature')) {
+    const hand = shuffled.items.slice(0, size)
+    const deck = shuffled.items.slice(size)
+    // 配置フェーズはコモンの姫神しか置けない（SPEC 3.3.1）。
+    // 「姫神が1枚でもあればよい」だと、レア以上しか無い手札で置けずに詰む
+    if (hand.some(isPlaceableAtSetup)) {
       return { rng: cur, deck, hand }
     }
   }
@@ -127,8 +147,8 @@ function drawOpeningHand(
   const shuffled = shuffle(cur, cards)
   return {
     rng: shuffled.rng,
-    deck: shuffled.items.slice(HAND_SIZE_AT_START),
-    hand: shuffled.items.slice(0, HAND_SIZE_AT_START),
+    deck: shuffled.items.slice(size),
+    hand: shuffled.items.slice(0, size),
   }
 }
 
@@ -147,8 +167,10 @@ function startGame(state: GameState, action: Extract<Action, { type: 'start' }>)
   let rng = createRng(action.seed)
   const players: PlayerState[] = []
 
-  for (const deck of action.decks) {
-    const opening = drawOpeningHand(rng, deck.cards)
+  for (const [index, deck] of action.decks.entries()) {
+    // 後手は初期手札を1枚多く引く（SPEC 3.3.1・先手対策）
+    const size = index === action.firstPlayer ? HAND_SIZE_AT_START : HAND_SIZE_AT_START + 1
+    const opening = drawOpeningHand(rng, deck.cards, size)
     rng = opening.rng
     const rolled = pickEnergy(rng, deck.energy)
     rng = rolled.rng
@@ -183,6 +205,53 @@ function makeCreature(state: GameState, cardId: CardId): Creature {
     status: [],
     placedTurn: state.turn,
   }
+}
+
+/**
+ * レアリティ召喚（SPEC 3.3.1）: レアリティごとに必要な「リリース元のエネルギー数」。
+ * C=0 / R=1 / SR=2 / UR=3。エネルギーの種類は問わず、個数だけを見る。
+ */
+const RELEASE_COST: Readonly<Record<string, number>> = {
+  common: 0, rare: 1, superRare: 2, ultra: 3,
+}
+
+/**
+ * リリースした姫神のエネルギーを引き継いで場に出す（SPEC 3.3.1）。
+ *
+ * 引き継がないと「3ターン貯める → 捨てる → また3ターン貯め直す」で1体に
+ * 6ターン以上かかる。絶技10種のうち9種は対応姫神が UR EX なので、
+ * 引き継ぎが無い設計は絶技を全滅させる。実測で確認済み。
+ */
+function releaseAndPlace(
+  state: GameState,
+  id: PlayerId,
+  handIndex: number,
+  release: InstanceId,
+): GameState | string {
+  const player = playerAt(state, id)
+  const cardId = player.hand[handIndex]
+  if (cardId === undefined) return '手札の範囲外'
+  const card = findCard(cardId)
+  if (card === undefined || card.kind !== 'creature') return 'クリーチャーではない'
+
+  const need = RELEASE_COST[card.rarity] ?? 0
+  const target = allCreatures(player).find((c) => c.instanceId === release)
+  if (target === undefined) return 'リリース対象がいない'
+  if (target.attached.length < need) return `リリース元のエネルギーが足りない（${need}個必要）`
+
+  // 出す姫神は、リリース元のエネルギーとダメージ0で登場する（案B）
+  const placed: Creature = { ...makeCreature(state, cardId), attached: target.attached }
+  const hand = [...player.hand.slice(0, handIndex), ...player.hand.slice(handIndex + 1)]
+  // エネルギーはカードではない（別ゾーン）。トラッシュに入れると総数20枚の不変条件が壊れる
+  const discard = [...player.discard, target.cardId]
+
+  // リリース元がバトル場ならバトル場に、ベンチならその枠に置く（SPEC 3.3.1）
+  const inActive = player.active !== null && player.active.instanceId === release
+  const updated: PlayerState = inActive
+    ? { ...player, hand, active: placed, discard }
+    : { ...player, hand, discard, bench: player.bench.map((c) => (c.instanceId === release ? placed : c)) }
+
+  return withPlayer({ ...state, nextInstanceId: state.nextInstanceId + 1 }, id, updated)
 }
 
 function placeFromHand(
@@ -236,6 +305,10 @@ function reduceSetup(state: GameState, action: PlayerAction): GameState {
   switch (action.type) {
     case 'setupPlace': {
       const player = playerAt(state, id)
+      const cardId = player.hand[action.handIndex]
+      if (cardId !== undefined && !isPlaceableAtSetup(cardId)) {
+        return reject(state, action, '配置フェーズに置けるのはコモンの姫神だけ')
+      }
       const to = player.active === null ? 'active' : 'bench'
       const result = placeFromHand(state, id, action.handIndex, to)
       if (typeof result === 'string') return reject(state, action, result)
@@ -282,7 +355,9 @@ function reduceMain(state: GameState, action: PlayerAction): GameState {
 
   switch (action.type) {
     case 'playCreature': {
-      const result = placeFromHand(state, id, action.handIndex, 'bench')
+      const result = action.release === null
+        ? placeFromHand(state, id, action.handIndex, 'bench')
+        : releaseAndPlace(state, id, action.handIndex, action.release)
       if (typeof result === 'string') return reject(state, action, result)
       return log(result, id, 'playCreature', '')
     }
@@ -452,7 +527,9 @@ export function legalActions(state: GameState): readonly Action[] {
         const canPlace = player.active === null || player.bench.length < BENCH_SIZE
         if (canPlace) {
           player.hand.forEach((cardId, handIndex) => {
-            if (findCard(cardId)?.kind === 'creature') out.push({ type: 'setupPlace', player: id, handIndex })
+            // 配置フェーズはコモンの姫神だけ（SPEC 3.3.1）。
+            // 詰みは引き直し条件（drawOpeningHand）と validateDeck で防いでいる
+            if (isPlaceableAtSetup(cardId)) out.push({ type: 'setupPlace', player: id, handIndex })
           })
         }
         if (player.active !== null) out.push({ type: 'setupDone', player: id })
@@ -471,11 +548,27 @@ export function legalActions(state: GameState): readonly Action[] {
       const player = playerAt(state, id)
       const out: Action[] = []
 
-      if (player.bench.length < BENCH_SIZE) {
-        player.hand.forEach((cardId, handIndex) => {
-          if (findCard(cardId)?.kind === 'creature') out.push({ type: 'playCreature', player: id, handIndex })
-        })
-      }
+      // レアリティ召喚（SPEC 3.3.1）: コモンは空きベンチへ、レア以上はリリース元と組で出す
+      player.hand.forEach((cardId, handIndex) => {
+        const card = findCard(cardId)
+        if (card?.kind !== 'creature') return
+        const need = RELEASE_COST[card.rarity] ?? 0
+        if (need === 0) {
+          if (player.bench.length < BENCH_SIZE) {
+            out.push({ type: 'playCreature', player: id, handIndex, release: null })
+          }
+          return
+        }
+        // 先攻1ターン目はリリースできない（SPEC 3.3.1・案c）。
+        // 先手が先に貯めてリリースできるぶん有利になるのを抑える。
+        // 既存の「先攻1ターン目は攻撃できない」（3.3）と同じ形にそろえてある
+        if (state.turn === 1 && id === state.firstPlayer) return
+        for (const c of allCreatures(player)) {
+          if (c.attached.length >= need) {
+            out.push({ type: 'playCreature', player: id, handIndex, release: c.instanceId })
+          }
+        }
+      })
 
       if (!player.attachedThisTurn && player.energy.current !== null) {
         for (const c of allCreatures(player)) out.push({ type: 'attachEnergy', player: id, target: c.instanceId })

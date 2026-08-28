@@ -162,13 +162,24 @@ export const greedyPolicy: Policy = (state, rng, only) => {
   const player = state.players[id]
 
   // --- ベンチを埋める（HP の高い順） ---
-  const plays = legal.filter((a) => a.type === 'playCreature')
+  /*
+   * レアリティ召喚（SPEC 3.3.1）: レア以上はリリースを伴うので、HP だけで選ぶと
+   * 育てた姫神を捨てて弱いものを出す。**HP が増えるときだけ**リリースする。
+   */
+  const onField = new Map<number, number>()
+  for (const c of [player.active, ...player.bench]) {
+    if (c !== null && c !== undefined) onField.set(c.instanceId, requireCreature(c.cardId).hp)
+  }
+  const gainOf = (x: Action): number => {
+    if (x.type !== 'playCreature') return -Infinity
+    const hp = requireCreature(player.hand[x.handIndex] as string).hp
+    if (x.release === null) return hp
+    const lost = onField.get(x.release) ?? 0
+    return hp > lost ? hp - lost : -Infinity
+  }
+  const plays = legal.filter((a) => a.type === 'playCreature' && gainOf(a) > -Infinity)
   if (plays.length > 0) {
-    const best = plays.reduce((a, b) => {
-      const hpOf = (x: typeof a) =>
-        x.type === 'playCreature' ? requireCreature(player.hand[x.handIndex] as string).hp : 0
-      return hpOf(b) > hpOf(a) ? b : a
-    })
+    const best = plays.reduce((a, b) => (gainOf(b) > gainOf(a) ? b : a))
     return { rng, action: best }
   }
 
