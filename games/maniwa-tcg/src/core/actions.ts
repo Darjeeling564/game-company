@@ -18,7 +18,12 @@ export type Action =
   | { readonly type: 'setupPlace'; readonly player: PlayerId; readonly handIndex: number }
   | { readonly type: 'setupDone'; readonly player: PlayerId }
   // --- メイン ---
-  | { readonly type: 'playCreature'; readonly player: PlayerId; readonly handIndex: number }
+  /**
+   * 実験（レアリティ召喚）: レア以上は場の姫神をリリースして出す。
+   * release はリリース対象のインスタンスID。コモンは null。
+   */
+  | { readonly type: 'playCreature'; readonly player: PlayerId; readonly handIndex: number;
+      readonly release: InstanceId | null }
   | { readonly type: 'attachEnergy'; readonly player: PlayerId; readonly target: InstanceId }
   | { readonly type: 'retreat'; readonly player: PlayerId; readonly benchIndex: number }
   | { readonly type: 'attack'; readonly player: PlayerId; readonly attackIndex: number }
@@ -42,7 +47,7 @@ export function describeAction(action: Action): string {
     case 'setupDone':
       return `setupDone p${action.player}`
     case 'playCreature':
-      return `playCreature p${action.player} hand[${action.handIndex}]`
+      return `playCreature p${action.player} hand[${action.handIndex}]${action.release === null ? '' : ` release#${action.release}`}`
     case 'attachEnergy':
       return `attachEnergy p${action.player} -> #${action.target}`
     case 'retreat':

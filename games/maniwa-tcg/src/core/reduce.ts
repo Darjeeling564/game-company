@@ -22,7 +22,7 @@ import {
   resolveInTurn,
   ultimateError,
 } from './rules.ts'
-import type { CardId, Creature, Deck, EnergyType, GameState, PlayerId, PlayerState } from './types.ts'
+import type { CardId, Creature, Deck, EnergyType, GameState, InstanceId, PlayerId, PlayerState } from './types.ts'
 import {
   BENCH_SIZE,
   DECK_SIZE,
@@ -185,6 +185,52 @@ function makeCreature(state: GameState, cardId: CardId): Creature {
   }
 }
 
+/**
+ * 実験（レアリティ召喚）: レアリティごとに必要な「リリース元のエネルギー数」。
+ * 提案どおり C=0 / R=1 / SR=2 / UR=3。エネルギーの種類は問わない。
+ */
+const RELEASE_COST: Readonly<Record<string, number>> = {
+  common: 0, rare: 1, superRare: 2, ultra: 3,
+}
+
+/**
+ * 実験（レアリティ召喚・案B）: リリースした姫神のエネルギーを引き継いで場に出す。
+ *
+ * 引き継がないと「3ターン貯める → 捨てる → また3ターン貯める」で
+ * 6ターン以上かかり、絶技が撃てなくなる。案B はそこを埋める。
+ */
+function releaseAndPlace(
+  state: GameState,
+  id: PlayerId,
+  handIndex: number,
+  release: InstanceId,
+): GameState | string {
+  const player = playerAt(state, id)
+  const cardId = player.hand[handIndex]
+  if (cardId === undefined) return '手札の範囲外'
+  const card = findCard(cardId)
+  if (card === undefined || card.kind !== 'creature') return 'クリーチャーではない'
+
+  const need = RELEASE_COST[card.rarity] ?? 0
+  const target = allCreatures(player).find((c) => c.instanceId === release)
+  if (target === undefined) return 'リリース対象がいない'
+  if (target.attached.length < need) return `リリース元のエネルギーが足りない（${need}個必要）`
+
+  // 出す姫神は、リリース元のエネルギーとダメージ0で登場する（案B）
+  const placed: Creature = { ...makeCreature(state, cardId), attached: target.attached }
+  const hand = [...player.hand.slice(0, handIndex), ...player.hand.slice(handIndex + 1)]
+  // エネルギーはカードではない（別ゾーン）。トラッシュに入れると総数20枚の不変条件が壊れる
+  const discard = [...player.discard, target.cardId]
+
+  // 提案どおり「メインをリリースしたらメインに、バックならバックに置く」
+  const inActive = player.active !== null && player.active.instanceId === release
+  const updated: PlayerState = inActive
+    ? { ...player, hand, active: placed, discard }
+    : { ...player, hand, discard, bench: player.bench.map((c) => (c.instanceId === release ? placed : c)) }
+
+  return withPlayer({ ...state, nextInstanceId: state.nextInstanceId + 1 }, id, updated)
+}
+
 function placeFromHand(
   state: GameState,
   id: PlayerId,
@@ -282,7 +328,9 @@ function reduceMain(state: GameState, action: PlayerAction): GameState {
 
   switch (action.type) {
     case 'playCreature': {
-      const result = placeFromHand(state, id, action.handIndex, 'bench')
+      const result = action.release === null
+        ? placeFromHand(state, id, action.handIndex, 'bench')
+        : releaseAndPlace(state, id, action.handIndex, action.release)
       if (typeof result === 'string') return reject(state, action, result)
       return log(result, id, 'playCreature', '')
     }
@@ -452,6 +500,8 @@ export function legalActions(state: GameState): readonly Action[] {
         const canPlace = player.active === null || player.bench.length < BENCH_SIZE
         if (canPlace) {
           player.hand.forEach((cardId, handIndex) => {
+            // 実験: 配置フェーズはレアリティ制限なし（案A）。
+            // コモン限定にすると引き分けが 18.9% に跳ね上がり、終局保証テストが落ちる
             if (findCard(cardId)?.kind === 'creature') out.push({ type: 'setupPlace', player: id, handIndex })
           })
         }
@@ -471,11 +521,23 @@ export function legalActions(state: GameState): readonly Action[] {
       const player = playerAt(state, id)
       const out: Action[] = []
 
-      if (player.bench.length < BENCH_SIZE) {
-        player.hand.forEach((cardId, handIndex) => {
-          if (findCard(cardId)?.kind === 'creature') out.push({ type: 'playCreature', player: id, handIndex })
-        })
-      }
+      // 実験（レアリティ召喚）: コモンは空きベンチへそのまま、レア以上はリリース元と組で出す
+      player.hand.forEach((cardId, handIndex) => {
+        const card = findCard(cardId)
+        if (card?.kind !== 'creature') return
+        const need = RELEASE_COST[card.rarity] ?? 0
+        if (need === 0) {
+          if (player.bench.length < BENCH_SIZE) {
+            out.push({ type: 'playCreature', player: id, handIndex, release: null })
+          }
+          return
+        }
+        for (const c of allCreatures(player)) {
+          if (c.attached.length >= need) {
+            out.push({ type: 'playCreature', player: id, handIndex, release: c.instanceId })
+          }
+        }
+      })
 
       if (!player.attachedThisTurn && player.energy.current !== null) {
         for (const c of allCreatures(player)) out.push({ type: 'attachEnergy', player: id, target: c.instanceId })
