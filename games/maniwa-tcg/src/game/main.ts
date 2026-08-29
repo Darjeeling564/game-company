@@ -23,9 +23,49 @@ import {
   renderFinish,
 } from './view.ts'
 import { load, recordResult, save } from './storage.ts'
+import { hasSfx, isMuted, play, setMuted } from './sound.ts'
 
 const root = document.getElementById('app') as HTMLElement
 const CPU_DELAY_MS = 450
+
+setMuted(load().muted)
+
+/*
+ * 押した瞬間に鳴らす。描画のたびに個々のボタンへ付けると付け忘れが出るので、
+ * document で1回だけ拾う。capture 段で拾い、途中で止められても鳴るようにする
+ */
+document.addEventListener('pointerdown', (event) => {
+  const target = event.target
+  if (!(target instanceof Element)) return
+  const button = target.closest('button')
+  if (button === null || button.disabled) return
+  play(button.classList.contains('btn--ghost') ? 'back' : 'tap')
+}, true)
+
+/**
+ * 対戦中の音は core のログから作る。
+ * ログ種別と効果音の名前をそろえてあるので、対応があるものだけ鳴る。
+ * ここを増やさなくても、core が新しい種別を吐けば sound.ts の定義追加だけで鳴る
+ */
+let soundedLog = 0
+let soundedHand = 0
+
+function playFromLog(next: GameState): void {
+  const fresh = next.log.slice(soundedLog)
+  soundedLog = next.log.length
+  for (const entry of fresh) {
+    if (entry.kind === 'ko') {
+      play('ko')
+      play('point')
+      continue
+    }
+    if (hasSfx(entry.kind)) play(entry.kind)
+  }
+  // ドローはログに残らないので手札の増減で見る（自分のぶんだけ）
+  const hand = next.players[HUMAN].hand.length
+  if (hand > soundedHand && next.phase.kind !== 'setup') play('draw')
+  soundedHand = hand
+}
 
 let state: GameState = EMPTY_STATE
 let cpuRng: Rng = createRng(1)
@@ -72,7 +112,22 @@ function showTitle(): void {
   start.type = 'button'
   start.addEventListener('click', showDeckSelect)
   screen.append(start)
+  screen.append(soundToggle(showTitle))
   root.append(screen)
+}
+
+/** 効果音の入切。押した結果をその場で鳴らして、切り替わったことを耳で分かるようにする */
+function soundToggle(redraw: () => void): HTMLElement {
+  const btn = el('button', 'btn btn--ghost', isMuted() ? '効果音: オフ' : '効果音: オン')
+  btn.type = 'button'
+  btn.addEventListener('click', () => {
+    const next = !isMuted()
+    setMuted(next)
+    save({ ...load(), muted: next })
+    if (!next) play('tap')
+    redraw()
+  })
+  return btn
 }
 
 function showDeckSelect(): void {
@@ -118,6 +173,7 @@ function showResult(): void {
   back.type = 'button'
   back.addEventListener('click', showTitle)
   screen.append(back)
+  screen.append(soundToggle(showResult))
   root.append(screen)
 }
 
@@ -125,6 +181,8 @@ function showResult(): void {
 
 function startBattle(deck: Deck): void {
   finishShown = false
+  soundedLog = 0
+  soundedHand = 0
   save({ ...load(), deckName: deck.name })
   // 起動時刻をシードにする。core は純粋なままで、乱数の入口はここだけ
   const seed = Date.now() >>> 0
@@ -137,7 +195,11 @@ function startBattle(deck: Deck): void {
 }
 
 function commit(action: Action): void {
+  const before = state
   state = reduce(state, action)
+  // リリースを伴う配置は、ただ出したときと音を変える（入れ替えが起きたと分かるように）
+  if (action.type === 'playCreature' && action.release !== null && state !== before) play('release')
+  playFromLog(state)
   render()
 }
 
@@ -170,6 +232,7 @@ function render(): void {
       return
     }
     finishShown = true
+    play(state.winner === null ? 'draw_game' : state.winner === HUMAN ? 'win' : 'lose')
     renderBattle(root, state, {
       onAction: () => undefined,
       onAttackMenu: () => undefined,
