@@ -674,14 +674,20 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
 
   root.replaceChildren()
   const board = el('div', 'board')
-  board.append(statusBanner(state))
-  board.append(sideView(state, CPU, handlers, new Set(), placed))
-  board.append(sideView(state, HUMAN, handlers, attachTargets, placed))
+  /*
+   * 盤面は縦に伸びるが、操作するのは下の2段（ボタンと手札）である。
+   * 画面が足りないときに切れるのが下からだと操作できなくなるので、
+   * 盤面だけを内側でスクロールさせ、ボタンと手札は必ず見える位置に置く
+   */
+  const field = el('div', 'field')
+  field.append(statusBanner(state))
+  field.append(sideView(state, CPU, handlers, new Set(), placed))
+  field.append(sideView(state, HUMAN, handlers, attachTargets, placed))
 
   const energy = el('div', 'energy')
   const zone = state.players[HUMAN].energy
   energy.append(el('span', undefined, `エネルギー: ${energyLabel(zone.current)}（次: ${energyLabel(zone.next)}）`))
-  board.append(energy)
+  field.append(energy)
 
   const player = state.players[HUMAN]
   const controls = el('div', 'row')
@@ -715,15 +721,18 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
     if (endTurn !== undefined) endBtn.addEventListener('click', () => handlers.onAction(endTurn))
     controls.append(endBtn)
   }
-  board.append(controls)
-  board.append(handView(state, handlers, drawn))
-
-  board.append(el('div', 'hint', 'カードを長押しすると、ワザや弱点を見られます'))
+  field.append(el('div', 'hint', 'カードを長押しすると、ワザや弱点を見られます'))
 
   const logBox = el('div', 'log')
   for (const line of recentLog(state, 4)) logBox.append(el('div', undefined, line))
-  board.append(logBox)
+  field.append(logBox)
 
+  const dock = el('div', 'dock')
+  dock.append(controls)
+  dock.append(handView(state, handlers, drawn))
+
+  board.append(field)
+  board.append(dock)
   root.append(board)
 
   // 次の描画で「前回」として使う。ここを忘れると毎回すべてが新規扱いになる

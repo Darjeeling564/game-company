@@ -34,6 +34,13 @@ body {
   max-width: 480px;
   margin: 0 auto;
   padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  /*
+   * 画面の高さに合わせて閉じる。はみ出したぶんが下から切れると、
+   * ボタンと手札が押せなくなる（Artifact の枠でも実機でも起きた）
+   */
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ---------------- 共通パーツ ---------------- */
@@ -115,6 +122,10 @@ body {
  */
 .board,
 .board > *,
+.field,
+.field > *,
+.dock,
+.dock > *,
 .side,
 .side > *,
 .side__head,
@@ -128,6 +139,26 @@ body {
 }
 
 .board {
+  display: grid;
+  gap: 7px;
+  /* 盤面（可変・内側でスクロール）＋ 操作段（固定） */
+  grid-template-rows: minmax(0, 1fr) auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 高さが足りないときはここだけがスクロールする */
+.field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 常に見えていてほしい操作段。ここは縮めない */
+.dock {
   display: grid;
   gap: 7px;
 }
