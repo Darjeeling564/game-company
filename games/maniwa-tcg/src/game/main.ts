@@ -239,6 +239,7 @@ function render(): void {
       onRetreatMenu: () => undefined,
       onCreatureTap: (owner, id) => openOverlay(() => showCreatureDetail(owner, id)),
       onHandTap: (index) => openOverlay(() => showHandDetail(index)),
+      onHandPlace: () => undefined,
     })
     renderFinish(root, state, showResult)
     return
@@ -250,6 +251,7 @@ function render(): void {
     onRetreatMenu: () => openOverlay(showRetreatMenu),
     onCreatureTap: (owner, id) => openOverlay(() => showCreatureDetail(owner, id)),
     onHandTap: (index) => openOverlay(() => showHandDetail(index)),
+    onHandPlace: (index) => openOverlay(() => showPlacementMenu(index)),
   })
 
   // 自分の入れ替えが必要なら、選ぶまで他の操作をさせない
@@ -351,6 +353,50 @@ function describePlacement(action: Action): string {
   return `${where}の ${def.name}（${def.hp - target.damage}/${def.hp}・エネ${target.attached.length}）をリリース`
 }
 
+/** その手札の「出し方」の一覧。リリース先が違えば別の選択肢になる */
+function placementChoices(handIndex: number): readonly { label: string; sub?: string; action: Action }[] {
+  return legalActions(state)
+    .filter(
+      (a) =>
+        (a.type === 'playCreature' || a.type === 'setupPlace') &&
+        a.player === HUMAN &&
+        a.handIndex === handIndex,
+    )
+    .map((action) => {
+      const sub = describeLanding(action)
+      // exactOptionalPropertyTypes を有効にしているので、undefined を混ぜず鍵ごと落とす
+      return sub === undefined
+        ? { label: describePlacement(action), action }
+        : { label: describePlacement(action), sub, action }
+    })
+}
+
+/**
+ * リリース先を選ぶ。
+ *
+ * 1枚の手札に対して出し方が複数あるとき、タップで勝手に決めてはいけない。
+ * バトル場をリリースするかベンチをリリースするかで、出す先も失うものも変わる
+ */
+function showPlacementMenu(handIndex: number): void {
+  const choices = placementChoices(handIndex)
+  if (choices.length === 0) {
+    overlay = null
+    return
+  }
+  const cardId = state.players[HUMAN].hand[handIndex]
+  const name = cardId === undefined ? '姫神' : requireCard(cardId).name
+  renderChoices(root, `${name} を出す`, choices, apply, closeOverlay)
+}
+
+/** どこに出るか。リリース元の場所をそのまま引き継ぐ（SPEC 3.3.1） */
+function describeLanding(action: Action): string | undefined {
+  if (action.type !== 'playCreature' || action.release === null) return undefined
+  const player = state.players[HUMAN]
+  return player.active?.instanceId === action.release
+    ? 'バトル場に出る。エネルギーを引き継ぐ'
+    : 'そのベンチ枠に出る。エネルギーを引き継ぐ'
+}
+
 /** 手札をタップしたとき。出す前に性能を確認できるようにする */
 function showHandDetail(handIndex: number): void {
   const cardId = state.players[HUMAN].hand[handIndex]
@@ -360,19 +406,7 @@ function showHandDetail(handIndex: number): void {
   }
 
   const detail = cardDetailPanel(requireCard(cardId), null)
-  const choices = legalActions(state)
-    .filter(
-      (a) =>
-        (a.type === 'playCreature' || a.type === 'setupPlace') &&
-        a.player === HUMAN &&
-        a.handIndex === handIndex,
-    )
-    .map((action) => ({
-      label: describePlacement(action),
-      action,
-    }))
-
-  renderChoices(root, '手札', choices, apply, closeOverlay, detail)
+  renderChoices(root, '手札', placementChoices(handIndex), apply, closeOverlay, detail)
 }
 
 function showPromoteMenu(): void {

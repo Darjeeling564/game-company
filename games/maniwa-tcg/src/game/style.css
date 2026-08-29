@@ -735,6 +735,28 @@ body {
   background: var(--danger);
 }
 
+/*
+ * 出し方が複数あるカードの目印。タップすると選択が出ることを予告する。
+ * これが無いと、リリース先が勝手に決まったように見える
+ */
+.card__choices {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: rgba(20, 28, 20, 0.82);
+  color: #ffd678;
+  font-size: 10px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.hand > .card--choices {
+  outline: 2px dashed #ffd678;
+  outline-offset: 1px;
+}
+
 /* ---------------- ポイント ---------------- */
 
 .points {

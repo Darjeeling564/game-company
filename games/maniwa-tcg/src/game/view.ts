@@ -427,6 +427,8 @@ export interface Handlers {
   readonly onRetreatMenu: () => void
   readonly onCreatureTap: (owner: PlayerId, instanceId: number) => void
   readonly onHandTap: (handIndex: number) => void
+  /** 出し方が複数あるとき（リリース先を選ぶとき）に開く */
+  readonly onHandPlace: (handIndex: number) => void
 }
 
 /*
@@ -651,7 +653,12 @@ function sideView(
 
 function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<number>): HTMLElement {
   const legal = legalActions(state)
-  const playable = new Map<number, Action>()
+  /*
+   * 1枚の手札に対して出し方が複数あることがある。レアリティ召喚では
+   * 「バトル場をリリース」「ベンチのどれをリリース」で結果が別物になるので、
+   * **1つに畳んではいけない**。畳むと勝手に選ばれてしまう
+   */
+  const playable = new Map<number, Action[]>()
   for (const action of legal) {
     if (action.type === 'start' || action.player !== HUMAN) continue
     switch (action.type) {
@@ -660,7 +667,7 @@ function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<numbe
       case 'playItem':
       case 'playAction':
       case 'useUltimate':
-        playable.set(action.handIndex, action)
+        playable.set(action.handIndex, [...(playable.get(action.handIndex) ?? []), action])
         break
       default:
         break
@@ -676,9 +683,11 @@ function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<numbe
   if (cards.length === 0) hand.append(el('div', 'muted', '手札なし'))
   cards.forEach((cardId, index) => {
     const card = requireCard(cardId)
-    const action = playable.get(index)
+    const options = playable.get(index) ?? []
+    const action = options[0]
     const fresh = drawn.has(index)
     const node = el('button', `card card--hand${action !== undefined ? ' card--selectable' : ''}`
+      + `${options.length > 1 ? ' card--choices' : ''}`
       + `${fresh ? ' card--draw' : ''}`)
     node.type = 'button'
     // 同時に何枚も引いたとき（初手など）は少しずつ遅らせて、順に届くように見せる
@@ -694,9 +703,20 @@ function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<numbe
     body.append(el('span', 'card__name', displayName(card.name, card.kind === 'creature' && card.ex)))
     // キャラは HP、それ以外は種別を出す。手札で何が使えるか一目で分かるようにする
     body.append(el('span', 'card__hp', card.kind === 'creature' ? `HP${card.hp}` : kindLabel(card.kind)))
+    // 出し方が複数あるカードは、選ぶ必要があると分かる目印を出す
+    if (options.length > 1) body.append(el('span', 'card__choices', `${options.length}通り`))
     node.append(body)
     const detail = (): void => handlers.onHandTap(index)
-    bindTap(node, action === undefined ? detail : () => handlers.onAction(action), detail)
+    /*
+     * 出し方が1つだけならタップで即出す（コモンを置く速さを落とさない）。
+     * 複数あるならリリース先を選ばせる。長押しは今までどおり詳細
+     */
+    const tap = action === undefined
+      ? detail
+      : options.length > 1
+        ? (): void => handlers.onHandPlace(index)
+        : (): void => handlers.onAction(action)
+    bindTap(node, tap, detail)
     hand.append(node)
   })
   return hand
