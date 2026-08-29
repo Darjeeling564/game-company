@@ -458,6 +458,8 @@ interface Fx {
   readonly charged: ReadonlySet<number>
   /** 今回場に出た個体 */
   readonly placed: ReadonlySet<number>
+  /** 直前に絶技を撃った側。バトル場の姫神を一回転させる */
+  readonly ultimate: PlayerId | null
 }
 
 function boardCreatures(state: GameState): readonly Creature[] {
@@ -469,6 +471,12 @@ function boardCreatures(state: GameState): readonly Creature[] {
   return out
 }
 
+/** 直前の1手が絶技だったか。ログの末尾だけを見る */
+function lastUltimate(state: GameState): PlayerId | null {
+  const last = state.log.at(-1)
+  return last !== undefined && last.kind === 'ultimate' ? last.player : null
+}
+
 function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
   const hit = new Map<number, number>()
   const charged = new Set<number>()
@@ -478,7 +486,7 @@ function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
     const energy = prevEnergy.get(c.instanceId)
     if (energy !== undefined && c.attached.length > energy) charged.add(c.instanceId)
   }
-  return { hit, charged, placed }
+  return { hit, charged, placed, ultimate: lastUltimate(state) }
 }
 
 function rememberBoard(state: GameState): void {
@@ -518,6 +526,7 @@ function creatureCard(
   onTap: () => void,
   onDetail: () => void,
   fx: Fx,
+  owner: PlayerId,
 ): HTMLElement {
   const card = requireCreature(creature.cardId)
   const remaining = Math.max(0, card.hp - creature.damage)
@@ -527,7 +536,8 @@ function creatureCard(
     + `${fx.placed.has(creature.instanceId) ? ' card--enter' : ''}`
     + `${damage !== undefined ? ' card--hit' : ''}`
     + `${fx.charged.has(creature.instanceId) ? ' card--charged' : ''}`
-    + `${remaining <= card.hp / 2 ? ' card--wounded' : ''}`)
+    + `${remaining <= card.hp / 2 ? ' card--wounded' : ''}`
+    + `${isActive && fx.ultimate === owner ? ' card--ultimate' : ''}`)
   node.type = 'button'
   applyCardTheme(node, card.origin, card.rarity, card.type)
 
@@ -624,11 +634,13 @@ function sideView(
       creatureCard(creature, false, canAttach, canAttach
         ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId })
         : detail,
-      detail, fx),
+      detail, fx, id),
     )
   }
 
-  const active = el('div', 'slots')
+  // バトル場は列ごと手前に出す。カード側に置くと、被弾や配置の
+  // transform アニメーションと打ち消し合う（SPEC 9.7）
+  const active = el('div', 'slots slots--active')
   if (player.active === null) active.append(emptySlot('バトル場', true))
   else {
     const creature = player.active
@@ -638,7 +650,7 @@ function sideView(
       creatureCard(creature, true, canAttach, canAttach
         ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId })
         : detail,
-      detail, fx),
+      detail, fx, id),
     )
   }
 

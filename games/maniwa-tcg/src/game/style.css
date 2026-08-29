@@ -183,11 +183,56 @@ body {
   font-size: 16px;
 }
 
+/*
+ * 盤面のカードは「厚みのある板」として置く（SPEC 9.7）。
+ *
+ * **静止状態では傾けない。** 盤面を寝かせる案を実装して比べたところ、
+ * 3D 変換された面はテクスチャに焼かれてから遠近で縮むため、
+ * 86px のカードに載るワザ名やHPが目に見えてにじんだ。
+ * この game は文字が主役の密度なので、常時の傾きは割に合わない。
+ *
+ * 立体感は「厚み（box-shadow の重ね掛け）」と「落ち影の深さ」で出し、
+ * 実際の 3D 回転は**動いている間だけ**使う（引く・出す・撃つ）。
+ * 動いている最中のにじみは見えないので、そこでは自由に回せる。
+ */
 .slots {
   display: flex;
   gap: 6px;
   justify-content: center;
+  transform-style: preserve-3d;
+  perspective: 700px;
 }
+
+/*
+ * SR / UR には斜めの光沢を載せる。傾いた面に沿って走るので、
+ * 平面のときより「板が光っている」ように読める
+ */
+.card--sr .card__body::after,
+.card--ur .card__body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    108deg,
+    transparent 34%,
+    rgba(255, 255, 255, 0.16) 46%,
+    transparent 58%
+  );
+}
+
+.card--ur .card__body::after {
+  background: linear-gradient(
+    108deg,
+    transparent 28%,
+    rgba(180, 240, 255, 0.14) 40%,
+    rgba(255, 210, 255, 0.16) 50%,
+    rgba(255, 240, 180, 0.14) 60%,
+    transparent 72%
+  );
+}
+
+
 
 /*
  * カードの体裁: 枠=レアリティ / 地=系統 / 属性=色丸に白文字 / 文字色=レアリティ。
@@ -211,6 +256,18 @@ body {
   line-height: 1.35;
   cursor: pointer;
   overflow: hidden;
+  /*
+   * 厚みは box-shadow の重ね掛けで出す（SPEC 9.7）。
+   * 実際の側面を要素で作るには preserve-3d が要るが、.card は overflow: hidden で
+   * 子を平面化するので側面が消える。傾いたときに見えるのは下端だけなので、
+   * 下方向へ実線の影を数枚積めば厚みとして読める。
+   */
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.3),
+    0 2px 0 rgba(0, 0, 0, 0.42),
+    0 3px 0 rgba(0, 0, 0, 0.38),
+    0 4px 0 rgba(0, 0, 0, 0.32),
+    0 10px 12px -6px rgba(0, 0, 0, 0.55);
 }
 
 .card__body {
@@ -248,6 +305,15 @@ body {
   width: 36%;
   max-width: 132px;
   aspect-ratio: 5 / 7.4;
+  /* 厚みを増す。手前に出すのは列側（.slots--active）で行う */
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.34),
+    0 2px 0 rgba(0, 0, 0, 0.44),
+    0 3px 0 rgba(0, 0, 0, 0.42),
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    0 5px 0 rgba(0, 0, 0, 0.36),
+    0 6px 0 rgba(0, 0, 0, 0.3),
+    0 18px 22px -8px rgba(0, 0, 0, 0.6);
 }
 
 /*
@@ -538,6 +604,8 @@ body {
   justify-content: center;
   gap: 4px;
   padding-top: 4px;
+  transform-style: preserve-3d;
+  perspective: 600px;
 }
 
 .hand > .card {
@@ -558,10 +626,18 @@ body {
 }
 
 /* 選べるカードは重なりの上に出す。押せるものが隠れないようにする */
+/* 選べるカードは持ち上げる。落ち影を深くして、板が浮いていると分かるようにする */
 .hand > .card--selectable {
   position: relative;
   z-index: 1;
-  transform: translateY(-4px);
+  transform: translateY(-6px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.34),
+    0 2px 0 rgba(0, 0, 0, 0.44),
+    0 3px 0 rgba(0, 0, 0, 0.42),
+    0 4px 0 rgba(0, 0, 0, 0.38),
+    0 5px 0 rgba(0, 0, 0, 0.34),
+    0 16px 18px -7px rgba(0, 0, 0, 0.62);
 }
 
 .hand .card__name {
@@ -690,13 +766,14 @@ body {
   animation: cardHit 0.42s ease-out;
 }
 
+/* 被弾。板が殴られて奥へ煽られるように、Y 軸で振ってから戻す */
 @keyframes cardHit {
-  0%   { transform: translateX(0); filter: none; }
-  15%  { transform: translateX(-4px); filter: brightness(1.7) saturate(0.6); }
-  35%  { transform: translateX(4px); filter: brightness(1.4); }
-  55%  { transform: translateX(-2px); }
-  75%  { transform: translateX(2px); }
-  100% { transform: translateX(0); filter: none; }
+  0%   { transform: none; filter: none; }
+  15%  { transform: translateX(-5px) rotateY(16deg); filter: brightness(1.7) saturate(0.6); }
+  35%  { transform: translateX(5px) rotateY(-12deg); filter: brightness(1.4); }
+  55%  { transform: translateX(-2px) rotateY(6deg); }
+  75%  { transform: translateX(2px) rotateY(-3deg); }
+  100% { transform: none; filter: none; }
 }
 
 /* 受けたダメージの数字。0.9秒で消える */
@@ -728,6 +805,20 @@ body {
   0%   { box-shadow: 0 0 0 0 rgba(255, 214, 120, 0.9); }
   40%  { box-shadow: 0 0 14px 5px rgba(255, 214, 120, 0.75); }
   100% { box-shadow: 0 0 0 0 rgba(255, 214, 120, 0); }
+}
+
+/* 絶技を撃った姫神。板ごと一回転させて、通常の攻撃と段を変える */
+.card--ultimate {
+  animation: cardUltimate 0.72s cubic-bezier(0.3, 0, 0.2, 1);
+  z-index: 2;
+}
+
+@keyframes cardUltimate {
+  0%   { transform: none; }
+  25%  { transform: rotateY(-24deg) scale(1.08); filter: brightness(1.3); }
+  60%  { transform: rotateY(196deg) scale(1.14); filter: brightness(1.6); }
+  85%  { transform: rotateY(352deg) scale(1.04); }
+  100% { transform: none; }
 }
 
 /* 半分以下まで削れた個体は、絵の差し替えに加えて枠でも分かるようにする */
@@ -862,6 +953,7 @@ body {
   .card__pop,
   .card--charged,
   .points__pip--on,
+  .card--ultimate,
   .finish,
   .finish__inner,
   .finish--win::before {
@@ -1097,13 +1189,24 @@ body {
  * 変形は transform と opacity だけに絞る。レイアウトを動かす性質のプロパティを
  * 使うと、盤面全体の再計算が毎フレーム走って Android で落ちる。
  */
+/*
+ * 引く・出すは 3D で回す（SPEC 9.7）。
+ *
+ * 静止状態を傾けると文字がにじむので、回すのは**動いている間だけ**にした。
+ * 0.2〜0.4秒で終わるうえ、その間は目が形を追っていて字を読んでいないので、
+ * にじみは見えない。終端は必ず rotate 0 に戻し、静止したら平面になる。
+ */
 @keyframes cardDraw {
-  from {
+  0% {
     opacity: 0;
-    /* 山札は手札の右にあるので、そちらから滑り込ませる */
-    transform: translate(28px, 26px) scale(0.82);
+    /* 山札は手札の右にあるので、そちらから。裏返った状態で飛んでくる */
+    transform: translate(28px, 26px) rotateY(-88deg) scale(0.82);
   }
-  to {
+  60% {
+    opacity: 1;
+    transform: translate(4px, 4px) rotateY(-24deg) scale(0.98);
+  }
+  100% {
     opacity: 1;
     transform: none;
   }
@@ -1112,11 +1215,15 @@ body {
 @keyframes cardPlace {
   0% {
     opacity: 0;
-    transform: translateY(14px) scale(0.7);
+    /* 手札から盤面へ、奥に倒れ込みながら着地する */
+    transform: translateY(18px) rotateX(62deg) scale(0.78);
   }
-  70% {
+  65% {
     opacity: 1;
-    transform: translateY(0) scale(1.06);
+    transform: translateY(0) rotateX(-12deg) scale(1.05);
+  }
+  85% {
+    transform: rotateX(5deg) scale(1.01);
   }
   100% {
     opacity: 1;
