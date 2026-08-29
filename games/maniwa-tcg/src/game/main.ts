@@ -20,6 +20,7 @@ import {
   formatCost,
   renderBattle,
   renderChoices,
+  renderFinish,
 } from './view.ts'
 import { load, recordResult, save } from './storage.ts'
 
@@ -123,6 +124,7 @@ function showResult(): void {
 // ---------------------------------------------------------------- 対戦
 
 function startBattle(deck: Deck): void {
+  finishShown = false
   save({ ...load(), deckName: deck.name })
   // 起動時刻をシードにする。core は純粋なままで、乱数の入口はここだけ
   const seed = Date.now() >>> 0
@@ -153,11 +155,29 @@ function cpuShouldMove(): boolean {
   return state.current === CPU
 }
 
+/**
+ * 決着した盤面を1回見せてから結果画面へ進む。
+ * ボタンを押した瞬間に画面が変わると、何が起きて終わったのか読めない
+ */
+let finishShown = false
+
 function render(): void {
   clearTimer()
 
   if (isOver(state)) {
-    showResult()
+    if (finishShown) {
+      showResult()
+      return
+    }
+    finishShown = true
+    renderBattle(root, state, {
+      onAction: () => undefined,
+      onAttackMenu: () => undefined,
+      onRetreatMenu: () => undefined,
+      onCreatureTap: (owner, id) => openOverlay(() => showCreatureDetail(owner, id)),
+      onHandTap: (index) => openOverlay(() => showHandDetail(index)),
+    })
+    renderFinish(root, state, showResult)
     return
   }
 

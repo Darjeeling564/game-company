@@ -572,11 +572,280 @@ body {
   font-size: 10px;
 }
 
+/* ---------------- エネルギーゾーンの表示 ---------------- */
+
+/*
+ * 「今ターンぶんを置いたか、まだか」を丸の見た目で分ける。
+ * 文字だけだと読み飛ばされる（実際に分かりづらいと指摘された）
+ */
 .energy {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 240, 225, 0.18);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.energy--ready {
+  border-color: rgba(255, 214, 120, 0.75);
+  background: rgba(255, 214, 120, 0.12);
+}
+
+.energy--used {
+  opacity: 0.6;
+}
+
+.energy__orb {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: #10180f;
+  background: var(--orb, #9aa79c);
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* まだ置いていないときだけ脈打たせる。置いたら止まるので、静止＝完了と分かる */
+.energy--ready .energy__orb {
+  animation: orbPulse 1.5s ease-in-out infinite;
+}
+
+.energy--used .energy__orb {
+  background: rgba(245, 240, 225, 0.3);
+  color: var(--cream);
+  box-shadow: none;
+}
+
+.energy__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.energy__next {
+  flex: none;
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); box-shadow: inset 0 -2px 4px rgba(0,0,0,.3), 0 0 0 0 rgba(255,214,120,.55); }
+  50%      { transform: scale(1.12); box-shadow: inset 0 -2px 4px rgba(0,0,0,.3), 0 0 0 7px rgba(255,214,120,0); }
+}
+
+/* 属性ごとの色。丸と、エネルギーを置ける姫神の破線で共有する */
+:root {
+  --energy-fire: #e2703a;
+  --energy-forest: #6ba368;
+  --energy-wind: #8fc7c0;
+  --energy-earth: #c1a06a;
+  --energy-thunder: #e6c34a;
+  --energy-water: #5b9dd9;
+  --energy-light: #f0e3b0;
+  --energy-dark: #b795e0;
+  --energy-colorless: #cfd3ca;
+}
+
+.energy__orb--fire     { --orb: #e2703a; }
+.energy__orb--forest   { --orb: #6ba368; }
+.energy__orb--wind     { --orb: #8fc7c0; }
+.energy__orb--earth    { --orb: #c1a06a; }
+.energy__orb--thunder  { --orb: #e6c34a; }
+.energy__orb--water    { --orb: #5b9dd9; }
+.energy__orb--light    { --orb: #f0e3b0; }
+.energy__orb--dark     { --orb: #9b7fc0; }
+.energy__orb--colorless{ --orb: #cfd3ca; }
+.energy__orb--none     { --orb: rgba(245, 240, 225, 0.22); }
+
+/* ---------------- 盤面の演出 ---------------- */
+
+/*
+ * エネルギーを置ける先。押す場所が分かるよう、ふちを脈打たせる。
+ * outline は card__body の overflow: hidden に切られないので、枠の演出はこちらで持つ。
+ *
+ * **破線にするのが要点。** バトル場のカードは実線の金枠（.card--active）なので、
+ * 同じ実線で光らせると「バトル場だから光っている」と読めてしまう。
+ * 色は今つけようとしているエネルギーの属性色にして、丸と置き先を結び付ける
+ */
+.card--attachable {
+  position: relative;
+  z-index: 1;
+  outline: 3px dashed var(--energy-color, var(--cream));
+  outline-offset: 2px;
+  animation: attachPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes attachPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 240, 225, 0.5); outline-offset: 2px; }
+  50%      { box-shadow: 0 0 14px 4px rgba(245, 240, 225, 0.4); outline-offset: 5px; }
+}
+
+/* 被弾。揺らして赤く差す */
+.card--hit {
+  animation: cardHit 0.42s ease-out;
+}
+
+@keyframes cardHit {
+  0%   { transform: translateX(0); filter: none; }
+  15%  { transform: translateX(-4px); filter: brightness(1.7) saturate(0.6); }
+  35%  { transform: translateX(4px); filter: brightness(1.4); }
+  55%  { transform: translateX(-2px); }
+  75%  { transform: translateX(2px); }
+  100% { transform: translateX(0); filter: none; }
+}
+
+/* 受けたダメージの数字。0.9秒で消える */
+.card__pop {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  color: #ffd9d0;
+  text-shadow: 0 0 6px #000, 0 2px 0 #7d2418;
+  pointer-events: none;
+  animation: popRise 0.9s ease-out forwards;
+}
+
+@keyframes popRise {
+  0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
+  25%  { opacity: 1; transform: translate(-50%, -2px) scale(1.15); }
+  70%  { opacity: 1; transform: translate(-50%, -12px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -24px) scale(0.95); }
+}
+
+/* エネルギーが乗った瞬間 */
+.card--charged {
+  animation: cardCharge 0.5s ease-out;
+}
+
+@keyframes cardCharge {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 214, 120, 0.9); }
+  40%  { box-shadow: 0 0 14px 5px rgba(255, 214, 120, 0.75); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 214, 120, 0); }
+}
+
+/* 半分以下まで削れた個体は、絵の差し替えに加えて枠でも分かるようにする */
+.card--wounded .card__bar span {
+  background: var(--danger);
+}
+
+/* ---------------- ポイント ---------------- */
+
+.points {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.points__pip {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(245, 240, 225, 0.6);
+  background: transparent;
+}
+
+.points__pip--on {
+  background: #ffd678;
+  border-color: #ffd678;
+  box-shadow: 0 0 7px rgba(255, 214, 120, 0.8);
+  animation: pipOn 0.45s ease-out;
+}
+
+@keyframes pipOn {
+  0%   { transform: scale(0.4); box-shadow: 0 0 0 0 rgba(255, 214, 120, 0.9); }
+  55%  { transform: scale(1.4); box-shadow: 0 0 12px 5px rgba(255, 214, 120, 0.6); }
+  100% { transform: scale(1); }
+}
+
+/* ---------------- 決着の幕 ---------------- */
+
+.finish {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at 50% 42%, rgba(8, 16, 10, 0.45), rgba(8, 16, 10, 0.82) 70%);
+  backdrop-filter: blur(2px);
+  animation: veilIn 0.5s ease-out both;
+}
+
+/* 勝ったときだけ、題字の後ろに光を回す */
+.finish--win::before {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 214, 120, 0.35), transparent 62%);
+  animation: winGlow 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes winGlow {
+  0%, 100% { transform: scale(0.9); opacity: 0.7; }
+  50%      { transform: scale(1.12); opacity: 1; }
+}
+
+.finish__inner {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  animation: finishIn 0.6s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  animation-delay: 0.15s;
+}
+
+.finish__title {
+  position: relative;
+  font-size: 52px;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+  color: var(--cream);
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.9), 0 3px 0 rgba(0, 0, 0, 0.55);
+}
+
+.finish--win .finish__title { color: #ffd678; text-shadow: 0 0 22px rgba(255, 214, 120, 0.7), 0 3px 0 rgba(0,0,0,.5); }
+.finish--loss .finish__title { color: #f0b6a8; }
+
+.finish__inner > * { position: relative; }
+
+.finish__score { font-size: 18px; }
+.finish__reason { font-size: 13px; opacity: 0.8; }
+.finish__next { margin-top: 8px; }
+
+@keyframes veilIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes finishIn {
+  from { opacity: 0; transform: scale(0.72) translateY(14px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 動きを減らす設定を尊重する（CLAUDE.md 6章のタッチ前提と同じく、環境に合わせる） */
+@media (prefers-reduced-motion: reduce) {
+  .energy--ready .energy__orb,
+  .card--attachable,
+  .card--hit,
+  .card__pop,
+  .card--charged,
+  .points__pip--on,
+  .finish,
+  .finish__inner,
+  .finish--win::before {
+    animation: none;
+  }
+  .card__pop { opacity: 1; }
 }
 
 .hint {
