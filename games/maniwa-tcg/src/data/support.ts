@@ -177,6 +177,22 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'searchCreature' },
     ],
   },
+  {
+    id: 'a017', name: '星からの色', ruby: 'ほしからのいろ', kind: 'action', origin: 'cthulhu', rarity: 'rare',
+    flavor: '隕石とともに落ちてきた、名前のない色。畑の隅から順に、生きているものの色が抜けていく。',
+    effects: [
+      { type: 'damage', target: 'opponentBenchRandom', value: 40 },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'a018', name: '七つの門', ruby: 'ななつのもん', kind: 'action', origin: 'mesopotamia', rarity: 'rare',
+    flavor: '冥界へ下るには七つの門をくぐる。門番は一つくぐるごとに、身につけたものを一つ剥ぎ取る。',
+    effects: [
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+      { type: 'switchOpponent' },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
