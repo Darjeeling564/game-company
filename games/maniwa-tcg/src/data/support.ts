@@ -92,6 +92,34 @@ export const ITEMS: readonly ItemCard[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'i015', name: '亀甲の卜', ruby: 'きっこうのぼく', kind: 'item', origin: 'china', rarity: 'rare',
+    flavor: '亀の甲を焼き、生じた罅で吉凶を読む。王はこれに従って兵を出した。',
+    effects: [
+      { type: 'coinFlip', count: 1, min: 1, then: [{ type: 'gainEnergy' }, { type: 'draw', value: 1 }] },
+    ],
+  },
+  {
+    id: 'i016', name: '銀の鍵', ruby: 'ぎんのかぎ', kind: 'item', origin: 'cthulhu', rarity: 'rare',
+    flavor: '幾つもの門を開く鍵。持つ者は、いま立つ世界の外側へ踏み出せる。',
+    effects: [
+      { type: 'switchOpponent' },
+      { type: 'searchCreature' },
+    ],
+  },
+  {
+    id: 'i017', name: '筊杯', ruby: 'きょうはい', kind: 'item', origin: 'china', rarity: 'rare',
+    flavor: '神前に投げる三日月形の木片。表と裏の出方で神意を問い、吉と出た者にだけ力が下りる。',
+    effects: [
+      { type: 'coinFlip', count: 1, min: 1, then: [{ type: 'gainEnergy' }] },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'i018', name: '狂気の囁き', ruby: 'きょうきのささやき', kind: 'item', origin: 'cthulhu', rarity: 'rare',
+    flavor: '深海の底で眠る者が漏らす寝言。意味を成さない音だが、聞き取れた回数だけ正気が削れる。',
+    effects: [{ type: 'damagePerHeads', target: 'opponentActive', value: 20, count: 2 }],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
@@ -175,6 +203,37 @@ export const ACTIONS: readonly ActionCard[] = [
     effects: [
       { type: 'draw', value: 2 },
       { type: 'searchCreature' },
+    ],
+  },
+  {
+    id: 'a015', name: '死者の書', ruby: 'ししゃのしょ', kind: 'action', origin: 'egypt', rarity: 'rare',
+    flavor: '棺に納める道案内の巻物。冥界の門番の名と、通るための言葉が記してある。',
+    effects: [
+      { type: 'heal', target: 'ownBenchAll', value: 30 },
+      { type: 'searchCreature' },
+    ],
+  },
+  {
+    id: 'a016', name: 'イシュタルの門', ruby: 'イシュタルのもん', kind: 'action', origin: 'mesopotamia', rarity: 'common',
+    flavor: '冥界へ下る七つの門。くぐるたび、身に着けた物をひとつずつ奪われる。',
+    effects: [
+      { type: 'damage', target: 'opponentBenchRandom', value: 30 },
+    ],
+  },
+  {
+    id: 'a017', name: '星からの色', ruby: 'ほしからのいろ', kind: 'action', origin: 'cthulhu', rarity: 'rare',
+    flavor: '隕石とともに落ちてきた、名前のない色。畑の隅から順に、生きているものの色が抜けていく。',
+    effects: [
+      { type: 'damage', target: 'opponentBenchRandom', value: 40 },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'a018', name: '七つの門', ruby: 'ななつのもん', kind: 'action', origin: 'mesopotamia', rarity: 'rare',
+    flavor: '冥界へ下るには七つの門をくぐる。門番は一つくぐるごとに、身につけたものを一つ剥ぎ取る。',
+    effects: [
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+      { type: 'switchOpponent' },
     ],
   },
 ]
@@ -286,6 +345,26 @@ export const ULTIMATES: readonly UltimateCard[] = [
     effects: [
       { type: 'damage', target: 'opponentActive', value: 80 },
       { type: 'damage', target: 'opponentBenchAll', value: 10 },
+    ],
+  },
+  {
+    id: 'u011', name: '焼き払う剣', ruby: 'やきはらうつるぎ', kind: 'ultimate',
+    origin: 'norse', rarity: 'ultra', requires: 'f003',
+    flavor: '太陽より明るい炎の剣。振り抜いた跡には、燃やすものが何も残らない。',
+    cost: ['fire', 'fire', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 70 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
+  {
+    id: 'u012', name: '九歩の雷', ruby: 'きゅうほのいかずち', kind: 'ultimate',
+    origin: 'norse', rarity: 'ultra', requires: 't004',
+    flavor: '大蛇の頭を砕いた槌。返り血の毒を浴び、九歩あゆんで倒れると知りながら振るう。',
+    cost: ['thunder', 'thunder', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 90 },
+      { type: 'selfDamage', value: 10 },
     ],
   },
 ]
