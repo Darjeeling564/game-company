@@ -3,10 +3,11 @@
  * ルールの判定はすべて core に委ね、ここは「見せる」「受け取る」だけを担当する。
  */
 import type { Action } from '../core/actions.ts'
-import { EMPTY_STATE, isOver, legalActions, reduce } from '../core/reduce.ts'
+import { EMPTY_STATE, isOver, legalActions, reduce, validateDeck } from '../core/reduce.ts'
 import type { Rng } from '../core/rng.ts'
 import { createRng } from '../core/rng.ts'
-import type { Deck, GameState, PlayerId } from '../core/types.ts'
+import type { Deck, EnergyType, GameState, PlayerId } from '../core/types.ts'
+import { DECK_SIZE, MAX_SAME_NAME } from '../core/types.ts'
 import { CARDS, requireCard, requireCreature } from '../data/cards.ts'
 import { DECKS } from '../data/decks.ts'
 // 方策はシミュレータと共有する。CPU の打ち筋とバランス測定を一致させるため
@@ -16,6 +17,8 @@ import {
   HUMAN,
   cardDetailPanel,
   describeAttack,
+  energyLabel,
+  kindLabel,
   rarityCode,
   el,
   formatCost,
@@ -23,6 +26,7 @@ import {
   renderChoices,
   renderFinish,
 } from './view.ts'
+import type { CustomDeck } from './storage.ts'
 import { load, recordResult, save } from './storage.ts'
 import { artUrl } from './art.ts'
 import { applyCardTheme } from './theme.ts'
@@ -170,7 +174,7 @@ function soundToggle(redraw: () => void): HTMLElement {
 
 // ---------------------------------------------------------------- タブ
 
-type Tab = 'home' | 'gallery' | 'battle'
+type Tab = 'home' | 'gallery' | 'decks' | 'battle'
 
 /**
  * 下部のタブ（SPEC 9.8）。参考にした画面と同じく、常に同じ位置に置く。
@@ -179,6 +183,7 @@ type Tab = 'home' | 'gallery' | 'battle'
 const TABS: readonly { readonly id: Tab; readonly label: string; readonly mark: string }[] = [
   { id: 'home', label: 'ホーム', mark: '社' },
   { id: 'gallery', label: '図鑑', mark: '巻' },
+  { id: 'decks', label: 'デッキ', mark: '組' },
   { id: 'battle', label: '対戦', mark: '闘' },
 ]
 
@@ -192,6 +197,7 @@ function tabBar(current: Tab): HTMLElement {
     btn.addEventListener('click', () => {
       if (tab.id === 'home') showHome()
       else if (tab.id === 'gallery') showGallery()
+      else if (tab.id === 'decks') showDeckList()
       else showBattleSelect()
     })
     bar.append(btn)
@@ -383,6 +389,215 @@ function showHowTo(): void {
   shell('home', '遊びかた', body)
 }
 
+// ---------------------------------------------------------------- デッキ編集
+
+/**
+ * 自作デッキ（SPEC 9.9）。
+ *
+ * **合法かどうかの判断は core の `validateDeck` に任せる。** 画面側で
+ * 「20枚か」「同名2枚まで」を書き直すと、ルールが2箇所に分かれて必ずずれる。
+ */
+/** デッキに指定できるエネルギー。colorless は供給されないので選ばせない（SPEC 17.1） */
+const ENERGY_CHOICES: readonly EnergyType[] = [
+  'fire', 'forest', 'wind', 'earth', 'thunder', 'water', 'light', 'dark',
+]
+
+function toDeck(custom: CustomDeck): Deck {
+  return { name: custom.name, cards: custom.cards, energy: custom.energy as EnergyType[] }
+}
+
+function saveDecks(decks: readonly CustomDeck[]): void {
+  save({ ...load(), decks })
+}
+
+function showDeckList(): void {
+  const body = el('div', 'decks')
+
+  const make = el('button', 'btn', '新しいデッキを作る')
+  make.type = 'button'
+  make.addEventListener('click', () => {
+    const id = `d${Date.now().toString(36)}`
+    const fresh: CustomDeck = { id, name: '新しいデッキ', energy: ['fire'], cards: [] }
+    saveDecks([...load().decks, fresh])
+    showDeckEdit(id)
+  })
+  body.append(make)
+
+  const mine = load().decks
+  if (mine.length === 0) {
+    body.append(el('div', 'muted', 'まだ自作デッキはありません。20枚ちょうどで組むと対戦で選べます。'))
+  }
+  for (const deck of mine) {
+    const errors = validateDeck(toDeck(deck))
+    const row = el('button', 'deck-row')
+    row.type = 'button'
+    const head = el('div', 'deck-row__head')
+    head.append(el('span', 'deck-row__name', deck.name))
+    head.append(el('span', `deck-row__state${errors.length === 0 ? ' is-ok' : ''}`,
+      errors.length === 0 ? '対戦で使える' : `あと${errors.length}件`))
+    row.append(head)
+    row.append(el('div', 'muted', `${deck.cards.length}/${DECK_SIZE}枚 ・ ${deck.energy.map((e) => energyLabel(e)).join('')}`))
+    row.addEventListener('click', () => showDeckEdit(deck.id))
+    body.append(row)
+  }
+
+  body.append(el('div', 'muted', `※ 基準デッキ8種（${DECKS.map((d) => d.name).join(' / ')}）は編集できません。対戦画面ではそちらも選べます。`))
+  shell('decks', 'デッキ', body)
+}
+
+/** 編集画面のどちら側を出しているか。画面を出ると忘れる */
+let deckEditPane: 'in' | 'add' = 'in'
+
+function showDeckEdit(id: string): void {
+  const deck = load().decks.find((d) => d.id === id)
+  if (deck === undefined) {
+    showDeckList()
+    return
+  }
+  const errors = validateDeck(toDeck(deck))
+  const body = el('div', 'deck-edit')
+
+  // 名前
+  const name = el('input', 'field') as HTMLInputElement
+  name.type = 'text'
+  name.value = deck.name
+  name.maxLength = 20
+  name.addEventListener('change', () => {
+    update(id, (d) => ({ ...d, name: name.value.trim() === '' ? '名前なし' : name.value.trim() }))
+  })
+  const nameBox = el('div', 'panel')
+  nameBox.append(el('div', 'panel__title', 'デッキ名'))
+  nameBox.append(name)
+  body.append(nameBox)
+
+  // エネルギータイプ（1〜3種）
+  const energyBox = el('div', 'panel')
+  energyBox.append(el('div', 'panel__title', `エネルギー（1〜3種・今 ${deck.energy.length}種）`))
+  const chips = el('div', 'chips')
+  for (const type of ENERGY_CHOICES) {
+    const on = deck.energy.includes(type)
+    const chip = el('button', `chip${on ? ' is-on' : ''}`, energyLabel(type))
+    chip.type = 'button'
+    chip.addEventListener('click', () => {
+      update(id, (d) => {
+        if (on) return { ...d, energy: d.energy.filter((e) => e !== type) }
+        return d.energy.length >= 3 ? d : { ...d, energy: [...d.energy, type] }
+      })
+    })
+    chips.append(chip)
+  }
+  energyBox.append(chips)
+  body.append(energyBox)
+
+  // 検証結果。core の validateDeck をそのまま出す
+  const state = el('div', `panel${errors.length === 0 ? ' panel--ok' : ' panel--warn'}`)
+  state.append(el('div', 'panel__title', `${deck.cards.length} / ${DECK_SIZE} 枚`))
+  if (errors.length === 0) state.append(el('div', undefined, 'このデッキは対戦で使えます。'))
+  else for (const e of errors) state.append(el('div', 'deck-edit__error', `・${e}`))
+  body.append(state)
+
+  // 中身 / 追加 の切り替え
+  const panes = el('div', 'chips')
+  for (const [pane, label] of [['in', '入っているカード'], ['add', 'カードを追加']] as const) {
+    const chip = el('button', `chip${deckEditPane === pane ? ' is-on' : ''}`, label)
+    chip.type = 'button'
+    chip.addEventListener('click', () => { deckEditPane = pane; showDeckEdit(id) })
+    panes.append(chip)
+  }
+  body.append(panes)
+
+  if (deckEditPane === 'add' && deck.cards.length >= DECK_SIZE) {
+    // 全部が沈んで見えるので、なぜ押せないのかを書く
+    body.append(el('div', 'muted', `もう${DECK_SIZE}枚あります。入れ替えるには「入っているカード」から減らしてください。`))
+  }
+  body.append(deckEditPane === 'in' ? deckContents(deck) : deckPicker(deck))
+
+  const del = el('button', 'btn btn--ghost', 'このデッキを削除')
+  del.type = 'button'
+  del.addEventListener('click', () => {
+    saveDecks(load().decks.filter((d) => d.id !== id))
+    showDeckList()
+  })
+  body.append(del)
+
+  const back = el('button', 'btn btn--ghost', 'デッキ一覧へ')
+  back.type = 'button'
+  back.addEventListener('click', showDeckList)
+  body.append(back)
+
+  shell('decks', 'デッキを編集', body)
+
+  function update(target: string, fn: (d: CustomDeck) => CustomDeck): void {
+    saveDecks(load().decks.map((d) => (d.id === target ? fn(d) : d)))
+    showDeckEdit(target)
+  }
+}
+
+/** 入っているカードを種類ごとにまとめて出す。タップで1枚減らす */
+function deckContents(deck: CustomDeck): HTMLElement {
+  const box = el('div', 'deck-edit__list')
+  if (deck.cards.length === 0) {
+    box.append(el('div', 'muted', 'まだ1枚も入っていません。「カードを追加」から選んでください。'))
+    return box
+  }
+  const counts = new Map<string, number>()
+  for (const id of deck.cards) counts.set(id, (counts.get(id) ?? 0) + 1)
+  for (const [cardId, n] of counts) {
+    const card = requireCard(cardId)
+    const row = el('button', 'deck-item')
+    row.type = 'button'
+    applyCardTheme(row, card.origin, card.rarity, card.kind === 'creature' ? card.type : 'colorless')
+    const thumb = el('span', 'deck-item__thumb')
+    const url = artUrl(card.id)
+    if (url !== null) thumb.style.backgroundImage = `url(${JSON.stringify(url)})`
+    row.append(thumb)
+    const text = el('span', 'deck-item__text')
+    text.append(el('span', 'deck-item__name', card.name))
+    text.append(el('span', 'deck-item__sub', `${kindLabel(card.kind)} ・ ${rarityCode(card.rarity)}`))
+    row.append(text)
+    row.append(el('span', 'deck-item__count', `×${n}`))
+    row.append(el('span', 'deck-item__minus', '−'))
+    row.addEventListener('click', () => {
+      const at = deck.cards.lastIndexOf(cardId)
+      const cards = [...deck.cards.slice(0, at), ...deck.cards.slice(at + 1)]
+      saveDecks(load().decks.map((d) => (d.id === deck.id ? { ...d, cards } : d)))
+      showDeckEdit(deck.id)
+    })
+    box.append(row)
+  }
+  return box
+}
+
+/** 追加するカードを選ぶ。図鑑と同じ並びを使い、入っている枚数を重ねて出す */
+function deckPicker(deck: CustomDeck): HTMLElement {
+  const box = el('div', 'gallery__grid')
+  const counts = new Map<string, number>()
+  for (const id of deck.cards) counts.set(id, (counts.get(id) ?? 0) + 1)
+  for (const card of CARDS) {
+    // 同名2枚までは core の規則。ここでは押せる／押せないの見た目にだけ使う
+    const sameName = deck.cards.filter((cid: string) => requireCard(cid).name === card.name).length
+    const full = sameName >= MAX_SAME_NAME || deck.cards.length >= DECK_SIZE
+    const cell = el('button', `gallery__cell${full ? ' is-full' : ''}`)
+    cell.type = 'button'
+    cell.disabled = full
+    applyCardTheme(cell, card.origin, card.rarity, card.kind === 'creature' ? card.type : 'colorless')
+    const face = el('span', 'gallery__face')
+    const url = artUrl(card.id)
+    if (url !== null) face.style.backgroundImage = `url(${JSON.stringify(url)})`
+    face.append(el('span', 'gallery__name', card.name))
+    cell.append(face)
+    cell.append(el('span', 'gallery__rarity', rarityCode(card.rarity)))
+    const have = counts.get(card.id) ?? 0
+    if (have > 0) cell.append(el('span', 'gallery__have', `×${have}`))
+    cell.addEventListener('click', () => {
+      saveDecks(load().decks.map((d) => (d.id === deck.id ? { ...d, cards: [...d.cards, card.id] } : d)))
+      showDeckEdit(deck.id)
+    })
+    box.append(cell)
+  }
+  return box
+}
+
 // ---------------------------------------------------------------- 対戦選択
 
 function showBattleSelect(): void {
@@ -410,24 +625,49 @@ function showBattleSelect(): void {
 }
 
 function showDeckSelect(): void {
-  root.replaceChildren()
-  const screen = el('div', 'screen')
-  screen.append(el('h1', 'title', 'デッキを選ぶ'))
+  const body = el('div', 'decks')
 
+  /*
+   * 自作デッキを先に出す。**合法なものだけ**を並べる。
+   * 20枚に足りないデッキを選べてしまうと、対戦の開始時に弾かれて
+   * 何が悪いのか分からない。編集画面へ誘導するほうが早い（SPEC 9.9）
+   */
+  const mine = load().decks
+  const usable = mine.filter((d) => validateDeck(toDeck(d)).length === 0)
+  if (usable.length > 0) {
+    body.append(el('div', 'panel__title', '自作デッキ'))
+    for (const deck of usable) {
+      const btn = el('button', 'btn deck-option')
+      btn.type = 'button'
+      btn.append(el('span', 'deck-option__name', deck.name))
+      btn.append(el('span', 'muted', `${deck.cards.length}枚 / ${new Set(deck.cards).size}種 ・ ${deck.energy.map((e) => energyLabel(e)).join('')}`))
+      btn.addEventListener('click', () => startBattle(toDeck(deck)))
+      body.append(btn)
+    }
+  }
+  const broken = mine.length - usable.length
+  if (broken > 0) {
+    const fix = el('button', 'btn btn--ghost', `未完成のデッキが${broken}件あります（編集する）`)
+    fix.type = 'button'
+    fix.addEventListener('click', showDeckList)
+    body.append(fix)
+  }
+
+  body.append(el('div', 'panel__title', '基準デッキ'))
   for (const deck of DECKS) {
     const btn = el('button', 'btn deck-option')
     btn.type = 'button'
     btn.append(el('span', 'deck-option__name', deck.name))
     btn.append(el('span', 'muted', `${deck.cards.length}枚 / ${new Set(deck.cards).size}種`))
     btn.addEventListener('click', () => startBattle(deck))
-    screen.append(btn)
+    body.append(btn)
   }
 
   const back = el('button', 'btn btn--ghost', '戻る')
   back.type = 'button'
-  back.addEventListener('click', showTitle)
-  screen.append(back)
-  root.append(screen)
+  back.addEventListener('click', showBattleSelect)
+  body.append(back)
+  shell('battle', 'デッキを選ぶ', body)
 }
 
 function showResult(): void {
