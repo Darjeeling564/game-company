@@ -54,12 +54,14 @@ function playFromLog(next: GameState): void {
   const fresh = next.log.slice(soundedLog)
   soundedLog = next.log.length
   for (const entry of fresh) {
+    // 相手の行動は左へ寄せる。誰が動いたのかが音だけで分かる（SPEC 9.6.1）
+    const pan = entry.player === HUMAN ? 0.1 : -0.32
     if (entry.kind === 'ko') {
-      play('ko')
-      play('point')
+      play('ko', pan)
+      play('point', -pan)
       continue
     }
-    if (hasSfx(entry.kind)) play(entry.kind)
+    if (hasSfx(entry.kind)) play(entry.kind, pan)
   }
   // ドローはログに残らないので手札の増減で見る（自分のぶんだけ）
   const hand = next.players[HUMAN].hand.length
