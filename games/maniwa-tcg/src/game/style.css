@@ -214,6 +214,8 @@ body {
  */
 .slots--active {
   position: relative;
+  /* バトル場は帯の数字が大きいので、上の余白も広く取る */
+  margin-top: 20px;
 }
 
 .slots--active::before {
@@ -221,7 +223,11 @@ body {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 200%;
+  /*
+   * 幅は必ず頭打ちにする。割合だけにすると広い画面で巨大な円になり、
+   * 絶対配置でもスクロール領域を押し広げた（900px幅で 4800px になった）
+   */
+  width: min(200%, 300px);
   aspect-ratio: 1;
   transform: translate(-50%, -50%) perspective(500px) rotateX(62deg);
   border-radius: 50%;
@@ -229,15 +235,23 @@ body {
   background: radial-gradient(circle, rgba(245, 240, 225, 0.16), transparent 58%);
   box-shadow: 0 0 24px rgba(245, 240, 225, 0.12);
   pointer-events: none;
-  z-index: -1;
+  /*
+   * 負の z-index にすると .slots--active が独自の重なり文脈を作り、
+   * その中に閉じ込められた残りHPの帯が隣の列に切られる（実装中に踏んだ）。
+   * 0 のままでも DOM 順でカードより先に描かれるので、背面に回る
+   */
+  z-index: 0;
 }
 
+
+
 .side--cpu .slots--active::before {
-  width: 240%;
+  width: min(240%, 250px);
   border-color: rgba(245, 240, 225, 0.13);
 }
 
-/* 席は下敷きの上に置く。背景は下敷きに任せて透かす */
+/* 席は下敷きの上に置く。背景は下敷きに任せて透かす。
+   position: relative は山札・トラッシュの積みの基準を兼ねる */
 .side {
   position: relative;
   z-index: 1;
@@ -258,6 +272,8 @@ body {
   border-radius: 999px;
   background: rgba(16, 34, 22, 0.55);
   border: 1px solid rgba(245, 240, 225, 0.12);
+  position: relative;
+  z-index: 0;
 }
 
 .points {
@@ -281,8 +297,14 @@ body {
   display: flex;
   gap: 6px;
   justify-content: center;
-  transform-style: preserve-3d;
-  perspective: 700px;
+  /*
+   * ここに perspective / transform-style は置かない。
+   * 3D 空間になると中の要素が z-index ではなく奥行きで並び替えられ、
+   * カードの外へ出した残りHPの帯がカード本体の裏へ回る（実装中に踏んだ）。
+   * 遠近は動かすとき（keyframes）に perspective() で個別に与える
+   */
+  /* 上にはみ出す残りHPの帯ぶん（SPEC 9.7.2）。足りないと名前の帯に潜り込む */
+  margin-top: 14px;
 }
 
 /*
@@ -337,8 +359,11 @@ body {
   text-align: left;
   line-height: 1.35;
   cursor: pointer;
-  overflow: hidden;
+  position: relative;
   /*
+   * overflow は切らない。残りHPの帯を上端から外へはみ出させるため（SPEC 9.7.2）。
+   * 角の丸めは .card__body 側が自前で持っているので、ここで切らなくても崩れない。
+   *
    * 厚みは box-shadow の重ね掛けで出す（SPEC 9.7）。
    * 実際の側面を要素で作るには preserve-3d が要るが、.card は overflow: hidden で
    * 子を平面化するので側面が消える。傾いたときに見えるのは下端だけなので、
@@ -686,11 +711,12 @@ body {
   justify-content: center;
   gap: 4px;
   padding-top: 4px;
-  transform-style: preserve-3d;
-  perspective: 600px;
 }
 
 .hand > .card {
+  /* 束に見せるため弧に並べる（SPEC 9.7.2）。回転の軸は下端 */
+  transform: rotate(var(--fan-angle, 0deg)) translateY(var(--fan-lift, 0));
+  transform-origin: 50% 130%;
   /* 長押しでiOSの吹き出しや文字選択が出ないようにする */
   -webkit-touch-callout: none;
   touch-action: manipulation;
@@ -712,7 +738,7 @@ body {
 .hand > .card--selectable {
   position: relative;
   z-index: 1;
-  transform: translateY(-6px);
+  transform: rotate(var(--fan-angle, 0deg)) translateY(calc(var(--fan-lift, 0px) - 7px));
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.34),
     0 2px 0 rgba(0, 0, 0, 0.44),
@@ -851,10 +877,10 @@ body {
 /* 被弾。板が殴られて奥へ煽られるように、Y 軸で振ってから戻す */
 @keyframes cardHit {
   0%   { transform: none; filter: none; }
-  15%  { transform: translateX(-5px) rotateY(16deg); filter: brightness(1.7) saturate(0.6); }
-  35%  { transform: translateX(5px) rotateY(-12deg); filter: brightness(1.4); }
-  55%  { transform: translateX(-2px) rotateY(6deg); }
-  75%  { transform: translateX(2px) rotateY(-3deg); }
+  15%  { transform: perspective(600px) translateX(-5px) rotateY(16deg); filter: brightness(1.7) saturate(0.6); }
+  35%  { transform: perspective(600px) translateX(5px) rotateY(-12deg); filter: brightness(1.4); }
+  55%  { transform: perspective(600px) translateX(-2px) rotateY(6deg); }
+  75%  { transform: perspective(600px) translateX(2px) rotateY(-3deg); }
   100% { transform: none; filter: none; }
 }
 
@@ -897,9 +923,9 @@ body {
 
 @keyframes cardUltimate {
   0%   { transform: none; }
-  25%  { transform: rotateY(-24deg) scale(1.08); filter: brightness(1.3); }
-  60%  { transform: rotateY(196deg) scale(1.14); filter: brightness(1.6); }
-  85%  { transform: rotateY(352deg) scale(1.04); }
+  25%  { transform: perspective(700px) rotateY(-24deg) scale(1.08); filter: brightness(1.3); }
+  60%  { transform: perspective(700px) rotateY(196deg) scale(1.14); filter: brightness(1.6); }
+  85%  { transform: perspective(700px) rotateY(352deg) scale(1.04); }
   100% { transform: none; }
 }
 
@@ -928,6 +954,139 @@ body {
 .hand > .card--choices {
   outline: 2px dashed #ffd678;
   outline-offset: 1px;
+}
+
+/* ---------------- 残りHPの帯（カードの外） ---------------- */
+
+/*
+ * 参考画面（ポケモンTCGポケット）と同じく、残りHPをカードの上端に半分かけて出す。
+ * カードの中に置いていたときより絵の面積が広くなり、数字も大きく読める。
+ * 上へ出るのは高さの半分なので、1枠あたりの増分は10px程度で済む
+ */
+.meter {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  /*
+   * translateZ を足すのが要点。.slots は transform-style: preserve-3d なので、
+   * 中の要素は z-index ではなく3D上の位置で前後が決まる。
+   * Z を持たないとカード本体と同じ深さになり、描画順で負けて潜り込む
+   */
+  transform: translate(-50%, -52%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(14, 30, 19, 0.92);
+  border: 1px solid rgba(245, 240, 225, 0.35);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  /* 名前の帯や隣の列より必ず前に出す。後ろに回ると数字が読めなくなる */
+  z-index: 5;
+  white-space: nowrap;
+}
+
+.meter__hp {
+  font-size: 13px;
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter__bar {
+  display: block;
+  width: 30px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(245, 240, 225, 0.22);
+  overflow: hidden;
+}
+
+.meter__bar > span {
+  display: block;
+  height: 100%;
+  background: #8fd18f;
+}
+
+.meter__bar > span.is-low {
+  background: var(--danger);
+}
+
+/* バトル場は主役なので数字を一回り大きく */
+.card--active .meter__hp { font-size: 16px; }
+.card--active .meter__bar { width: 44px; height: 5px; }
+
+/* 相手側は小さく。読めればよい */
+.side--cpu .meter { padding: 0 5px; }
+.side--cpu .meter__hp { font-size: 11px; }
+.side--cpu .meter__bar { width: 22px; height: 3px; }
+
+/* ---------------- 山札とトラッシュの積み ---------------- */
+
+/*
+ * 卓の左右に置く。裏面はCSSだけで描き、画像を足さない（配布サイズを増やさない）。
+ * 位置は .side を基準にした絶対配置。列の中に入れると、カードの幅計算に混ざる
+ */
+.pile {
+  position: absolute;
+  width: 34px;
+  aspect-ratio: 5 / 7;
+  border-radius: 4px;
+  border: 1px dashed rgba(245, 240, 225, 0.22);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/*
+ * カードは中央に寄せて並ぶので、左右は空いている。そこへ縦中央で置く。
+ * 割合で上下に置くと、盤面の高さが変わるたびにカードと重なった（実装中に踏んだ）
+ */
+.pile {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.pile--deck { right: 2px; }
+.pile--discard { left: 2px; }
+
+/* 相手側は左右を入れ替えて、卓を挟んで向かい合っているように見せる */
+.side--cpu .pile--deck { left: 2px; right: auto; }
+.side--cpu .pile--discard { right: 2px; left: auto; }
+.side--cpu .pile { width: 26px; }
+
+/* 裏面。3枚まで重ねて、ずらしながら厚みを出す */
+.pile__card {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 240, 225, 0.3);
+  background:
+    radial-gradient(circle at 50% 46%, rgba(245, 240, 225, 0.22), transparent 52%),
+    linear-gradient(150deg, #3f7452, #1e3d29);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.pile__card:nth-child(2) { transform: translate(-1.5px, -1.5px); }
+.pile__card:nth-child(3) { transform: translate(-3px, -3px); }
+
+/* トラッシュは表を上にして捨てる場所なので、地を沈ませて山札と区別する */
+.pile--discard .pile__card {
+  background: linear-gradient(150deg, rgba(30, 61, 41, 0.9), rgba(12, 24, 16, 0.95));
+}
+
+.pile__count {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(14, 30, 19, 0.92);
+  border: 1px solid rgba(245, 240, 225, 0.28);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ---------------- ポイント ---------------- */
@@ -1282,11 +1441,11 @@ body {
   0% {
     opacity: 0;
     /* 山札は手札の右にあるので、そちらから。裏返った状態で飛んでくる */
-    transform: translate(28px, 26px) rotateY(-88deg) scale(0.82);
+    transform: perspective(600px) translate(28px, 26px) rotateY(-88deg) scale(0.82);
   }
   60% {
     opacity: 1;
-    transform: translate(4px, 4px) rotateY(-24deg) scale(0.98);
+    transform: perspective(600px) translate(4px, 4px) rotateY(-24deg) scale(0.98);
   }
   100% {
     opacity: 1;
@@ -1298,14 +1457,14 @@ body {
   0% {
     opacity: 0;
     /* 手札から盤面へ、奥に倒れ込みながら着地する */
-    transform: translateY(18px) rotateX(62deg) scale(0.78);
+    transform: perspective(600px) translateY(18px) rotateX(62deg) scale(0.78);
   }
   65% {
     opacity: 1;
-    transform: translateY(0) rotateX(-12deg) scale(1.05);
+    transform: perspective(600px) translateY(0) rotateX(-12deg) scale(1.05);
   }
   85% {
-    transform: rotateX(5deg) scale(1.01);
+    transform: perspective(600px) rotateX(5deg) scale(1.01);
   }
   100% {
     opacity: 1;

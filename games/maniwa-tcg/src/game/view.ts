@@ -550,13 +550,6 @@ function creatureCard(
   }
   body.append(typeBadge(card.type))
   body.append(el('span', 'card__name', displayName(card.name, card.ex)))
-  body.append(el('span', 'card__hp', `${remaining}/${card.hp}`))
-
-  const bar = el('div', 'card__bar')
-  const fill = el('span')
-  fill.style.width = `${(remaining / card.hp) * 100}%`
-  bar.append(fill)
-  body.append(bar)
 
   // ついているエネルギーは丸で出す。詳細画面のコスト表記と同じ見た目にそろえ、
   // 「あと何個で撃てるか」をカードの行き来なしに数えられるようにする
@@ -588,8 +581,35 @@ function creatureCard(
   // 受けたダメージを一瞬だけ浮かせる。ログを読まなくても何が起きたか分かるように
   if (damage !== undefined) body.append(el('span', 'card__pop', `-${damage}`))
   node.append(body)
+
+  /*
+   * 残りHPはカードの外に出す（SPEC 9.7.2）。上端に半分かけるので、
+   * 縦に増えるのは1枠あたり10px程度で済み、絵の面積も広くなる
+   */
+  const meter = el('span', 'meter')
+  meter.append(el('span', 'meter__hp', String(remaining)))
+  const bar = el('span', 'meter__bar')
+  const fill = el('span')
+  fill.style.width = `${(remaining / card.hp) * 100}%`
+  if (remaining * 2 <= card.hp) fill.classList.add('is-low')
+  bar.append(fill)
+  meter.append(bar)
+  node.append(meter)
+
   bindTap(node, onTap, onDetail)
   return node
+}
+
+/**
+ * 山札とトラッシュの積み。裏面はCSSだけで描く（画像を足さない）。
+ * 卓の左右に置いて、盤面が「カードゲームの卓」に見えるようにする（SPEC 9.7.2）
+ */
+function pileView(kind: 'deck' | 'discard', count: number): HTMLElement {
+  const pile = el('div', `pile pile--${kind}`)
+  // 3枚まで重ねて厚みを出す。0枚なら枠だけ残して「置き場所」を示す
+  for (let i = 0; i < Math.min(3, count); i += 1) pile.append(el('span', 'pile__card'))
+  pile.append(el('span', 'pile__count', String(count)))
+  return pile
 }
 
 /**
@@ -618,7 +638,7 @@ function sideView(
     points.append(el('span', `points__pip${i < player.points ? ' points__pip--on' : ''}`))
   }
   head.append(points)
-  head.append(el('span', 'muted', `手札${player.hand.length} 山札${player.deck.length}`))
+  head.append(el('span', 'muted', `手札${player.hand.length}`))
   side.append(head)
 
   const bench = el('div', 'slots')
@@ -653,6 +673,9 @@ function sideView(
       detail, fx, id),
     )
   }
+
+  side.append(pileView('deck', player.deck.length))
+  side.append(pileView('discard', player.discard.length))
 
   // 相手側はベンチを上、バトル場を下に置いて向かい合わせる
   if (id === CPU) {
@@ -701,6 +724,15 @@ function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<numbe
     const node = el('button', `card card--hand${action !== undefined ? ' card--selectable' : ''}`
       + `${options.length > 1 ? ' card--choices' : ''}`
       + `${fresh ? ' card--draw' : ''}`)
+    /*
+     * 手札は弧に並べる（SPEC 9.7.2）。中央を0として左右に開く。
+     * **角度は浅く保つ。** 傾けるほど文字が読みにくくなるので、
+     * 端でも6度までにして、束に見える最小限に留める
+     */
+    const center = (cards.length - 1) / 2
+    const spread = cards.length <= 1 ? 0 : Math.min(6, 14 / cards.length)
+    node.style.setProperty('--fan-angle', `${(index - center) * spread}deg`)
+    node.style.setProperty('--fan-lift', `${Math.abs(index - center) * 1.6}px`)
     node.type = 'button'
     // 同時に何枚も引いたとき（初手など）は少しずつ遅らせて、順に届くように見せる
     if (fresh) node.style.setProperty('--draw-delay', `${Math.min(index, 6) * 60}ms`)
