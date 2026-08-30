@@ -33,6 +33,18 @@ export function energyLabel(type: string | null): string {
   return type === null ? '—' : (ENERGY_LABEL[type] ?? type)
 }
 
+/**
+ * コスト欄での表記（SPEC 9.1.1）。
+ *
+ * **コストの colorless は「全」と書く。** 属性としての無（そのカードが無属性）と
+ * 同じ「無」を出していたため、「無エネルギーが要る」と読めてしまっていた。
+ * 実際は**どの属性のエネルギーでも1個で払える**ので、「全」のほうが実態に近い。
+ * 無エネルギーは供給されないので（17.1）、コストの無は必ず他の属性で払われる。
+ */
+function costLabel(type: EnergyType): string {
+  return type === 'colorless' ? '全' : energyLabel(type)
+}
+
 const ORIGIN_LABEL: Readonly<Record<Origin, string>> = {
   japan: '日本神話',
   egypt: 'エジプト神話',
@@ -61,7 +73,7 @@ export function rarityLabel(rarity: Rarity): string {
 
 /** コストを「炎炎無」の形にする */
 export function formatCost(cost: readonly EnergyType[]): string {
-  return cost.length === 0 ? 'なし' : cost.map((e) => energyLabel(e)).join('')
+  return cost.length === 0 ? 'なし' : cost.map((e) => costLabel(e)).join('')
 }
 
 /** 効果を日本語1行にする。ワザの威力を読めるようにするのが目的 */
@@ -173,9 +185,14 @@ function weakOf(type: EnergyType): string {
   return `弱点 ${attackers.map((a) => energyLabel(a)).join('・')}（+${bonus}）`
 }
 
-/** 属性を色丸に白文字で示す。丸の色は theme.ts の TYPE_COLOR */
-function typeBadge(type: EnergyType): HTMLElement {
-  const badge = el('span', 'badge', energyLabel(type))
+/**
+ * 属性を色丸に白文字で示す。丸の色は theme.ts の TYPE_COLOR。
+ *
+ * `asCost` はコスト欄かどうか。同じ colorless でも、属性なら「無」、
+ * コストなら「全」と書き分ける（SPEC 9.1.1）
+ */
+function typeBadge(type: EnergyType, asCost = false): HTMLElement {
+  const badge = el('span', 'badge', asCost ? costLabel(type) : energyLabel(type))
   badge.style.setProperty('--card-type', TYPE_COLOR[type])
   return badge
 }
@@ -204,7 +221,18 @@ function costBadges(cost: readonly EnergyType[]): HTMLElement {
     row.append(el('span', undefined, 'なし'))
     return row
   }
-  for (const type of cost) row.append(typeBadge(type))
+  for (const type of cost) row.append(typeBadge(type, true))
+  return row
+}
+
+/**
+ * 実際に付いているエネルギーの丸。こちらはコストではないので「全」にしない。
+ * 無エネルギーは供給されないため（17.1）ここに colorless は現れないが、
+ * コスト欄と取り違えないよう関数を分けておく
+ */
+function attachedBadges(attached: readonly EnergyType[]): HTMLElement {
+  const row = el('span', 'badgeRow')
+  for (const type of attached) row.append(typeBadge(type))
   return row
 }
 
@@ -302,7 +330,7 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
       labelled('逃げる', costBadges(Array<EnergyType>(card.retreatCost).fill('colorless'))),
     )
     if (creature !== null && creature.attached.length > 0) {
-      facts.push(labelled('付いているエネルギー', costBadges(creature.attached)))
+      facts.push(labelled('付いているエネルギー', attachedBadges(creature.attached)))
     }
     if (creature !== null && creature.status.includes('poisoned')) facts.push('毒')
   }
@@ -555,7 +583,7 @@ function creatureCard(
   // 「あと何個で撃てるか」をカードの行き来なしに数えられるようにする
   if (creature.attached.length > 0 || creature.status.includes('poisoned')) {
     const tags = el('span', 'card__tags')
-    if (creature.attached.length > 0) tags.append(costBadges(creature.attached))
+    if (creature.attached.length > 0) tags.append(attachedBadges(creature.attached))
     if (creature.status.includes('poisoned')) tags.append(el('span', 'card__status', '毒'))
     body.append(tags)
   }
