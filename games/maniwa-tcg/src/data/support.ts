@@ -367,4 +367,28 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'selfDamage', value: 10 },
     ],
   },
+  {
+    id: 'u013', name: '五色の石', ruby: 'ごしきのいし', kind: 'ultimate',
+    origin: 'china', rarity: 'ultra', requires: 'e009',
+    flavor: '崩れた天の裂け目を、練り上げた五色の石で塞ぐ。世界が繕われるあいだ、己の傷もまた閉じていく。',
+    cost: ['earth', 'earth', 'colorless'],
+    effects: [
+      // 女媧の最強ワザ「天を繕う」は効率 27.33。ここを 30.67 にして比 1.122 に置く。
+      // 中国系統はこれが初の絶技で、SPEC 16.5.2 が「作れない」としていた4系統のひとつ
+      { type: 'damage', target: 'opponentActive', value: 80 },
+      { type: 'heal', target: 'self', value: 20 },
+    ],
+  },
+  {
+    id: 'u014', name: '四方の風', ruby: 'しほうのかぜ', kind: 'ultimate',
+    origin: 'mesopotamia', rarity: 'ultra', requires: 't009',
+    flavor: '四方から呼んだ風で大蛇の腹を膨らませ、動けなくしてから射抜く。裂けた体は天と地に分けられた。',
+    cost: ['thunder', 'thunder', 'colorless'],
+    effects: [
+      // マルドゥクの最強ワザ「五十の名」は効率 26.67。ここを 30.83 にして比 1.156 に置く。
+      // 中東系統もこれが初の絶技
+      { type: 'damage', target: 'opponentActive', value: 70 },
+      { type: 'damage', target: 'opponentBenchAll', value: 15 },
+    ],
+  },
 ]
