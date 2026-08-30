@@ -776,6 +776,13 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
    */
   const field = el('div', 'field')
   field.append(statusBanner(state))
+  /*
+   * 盤面の下敷き（SPEC 9.7.1）。カードは平面のまま、**下敷きだけ**を寝かせて
+   * 奥行きを出す。文字を載せない要素なので、傾けてもにじまない
+   */
+  const mat = el('div', 'mat')
+  mat.append(el('div', 'mat__face'))
+  field.append(mat)
   field.append(sideView(state, CPU, handlers, new Set(), fx))
   field.append(sideView(state, HUMAN, handlers, attachTargets, fx))
 
