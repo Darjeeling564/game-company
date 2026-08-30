@@ -79,10 +79,10 @@ const N = {
 const SFX: Readonly<Record<string, Sfx>> = {
   // --- UI ---
   tap: [
-    { wave: 'triangle', from: N.a5, to: N.d6, time: 0.05, gain: 0.10, cutoff: 4200, cutoffTo: 7000, space: 0.1 },
+    { wave: 'triangle', from: N.a5, to: N.d6, time: 0.05, gain: 0.3, cutoff: 4200, cutoffTo: 7000, space: 0.1 },
   ],
   back: [
-    { wave: 'triangle', from: N.f5, to: N.a4, time: 0.08, gain: 0.10, cutoff: 3400, cutoffTo: 1400, space: 0.1 },
+    { wave: 'triangle', from: N.f5, to: N.a4, time: 0.08, gain: 0.3, cutoff: 3400, cutoffTo: 1400, space: 0.1 },
   ],
   draw: [
     // 紙が擦れる音をノイズで、札の実体を三角波で
@@ -92,13 +92,13 @@ const SFX: Readonly<Record<string, Sfx>> = {
 
   // --- 盤面 ---
   setupPlace: [
-    { noise: true, from: 0, band: 1200, bandTo: 500, time: 0.09, gain: 0.09 },
-    { wave: 'triangle', from: N.d4, to: N.d3, time: 0.13, gain: 0.13, cutoff: 1800, cutoffTo: 500, attack: 0.002 },
+    { noise: true, from: 0, band: 1200, bandTo: 500, time: 0.09, gain: 0.18 },
+    { wave: 'triangle', from: N.d4, to: N.d3, time: 0.13, gain: 0.26, cutoff: 1800, cutoffTo: 500, attack: 0.002 },
   ],
   playCreature: [
-    { noise: true, from: 0, band: 1500, bandTo: 600, time: 0.10, gain: 0.10 },
-    { wave: 'triangle', from: N.f4, to: N.f3, time: 0.15, gain: 0.14, cutoff: 2200, cutoffTo: 600, attack: 0.002 },
-    { wave: 'sine', from: N.f5, time: 0.09, gain: 0.05, delay: 0.02, space: 0.3 },
+    { noise: true, from: 0, band: 1500, bandTo: 600, time: 0.10, gain: 0.18 },
+    { wave: 'triangle', from: N.f4, to: N.f3, time: 0.15, gain: 0.252, cutoff: 2200, cutoffTo: 600, attack: 0.002 },
+    { wave: 'sine', from: N.f5, time: 0.09, gain: 0.09, delay: 0.02, space: 0.3 },
   ],
   /** リリースして上位を出した。沈んでから昇る2段で、入れ替わったと分かるようにする */
   release: [
@@ -110,8 +110,8 @@ const SFX: Readonly<Record<string, Sfx>> = {
     { wave: 'triangle', from: N.f4, to: N.d5, time: 0.16, gain: 0.13, cutoff: 1400, cutoffTo: 4800, detune: 6, space: 0.26 },
   ],
   retreat: [
-    { noise: true, from: 0, band: 2000, bandTo: 700, time: 0.13, gain: 0.07 },
-    { wave: 'triangle', from: N.a4, to: N.f4, time: 0.13, gain: 0.10, cutoff: 2400, cutoffTo: 900 },
+    { noise: true, from: 0, band: 2000, bandTo: 700, time: 0.13, gain: 0.14 },
+    { wave: 'triangle', from: N.a4, to: N.f4, time: 0.13, gain: 0.2, cutoff: 2400, cutoffTo: 900 },
   ],
 
   // --- エネルギー ---
@@ -122,32 +122,32 @@ const SFX: Readonly<Record<string, Sfx>> = {
     { wave: 'triangle', from: N.d5, to: N.d6, time: 0.1, gain: 0.08, cutoff: 3000, cutoffTo: 9000, detune: 11 },
   ],
   gainEnergy: [
-    { wave: 'sine', from: N.a5, to: N.d6, time: 0.14, gain: 0.09, space: 0.4 },
+    { wave: 'sine', from: N.a5, to: N.d6, time: 0.14, gain: 0.144, space: 0.4 },
   ],
 
   // --- 支援カード ---
   item: [
-    { noise: true, from: 0, band: 3200, bandTo: 1400, time: 0.09, gain: 0.06 },
-    { wave: 'triangle', from: N.f5, to: N.a5, time: 0.13, gain: 0.11, cutoff: 2400, cutoffTo: 5200, detune: 8, space: 0.24 },
+    { noise: true, from: 0, band: 3200, bandTo: 1400, time: 0.09, gain: 0.078 },
+    { wave: 'triangle', from: N.f5, to: N.a5, time: 0.13, gain: 0.143, cutoff: 2400, cutoffTo: 5200, detune: 8, space: 0.24 },
   ],
   action: [
-    { wave: 'triangle', from: N.d5, to: N.f5, time: 0.14, gain: 0.11, cutoff: 1800, cutoffTo: 5000, detune: 8, space: 0.28 },
-    { wave: 'sine', from: N.a5, to: N.d6, time: 0.16, gain: 0.07, delay: 0.07, space: 0.36 },
+    { wave: 'triangle', from: N.d5, to: N.f5, time: 0.14, gain: 0.143, cutoff: 1800, cutoffTo: 5000, detune: 8, space: 0.28 },
+    { wave: 'sine', from: N.a5, to: N.d6, time: 0.16, gain: 0.091, delay: 0.07, space: 0.36 },
   ],
 
   // --- 戦闘 ---
   /** 打撃。低い胴と、掃けるノイズの2枚重ね */
   attack: [
-    { noise: true, from: 0, band: 3400, bandTo: 700, time: 0.13, gain: 0.15, attack: 0.001 },
-    { wave: 'sawtooth', from: 190, to: 52, time: 0.19, gain: 0.15, cutoff: 3000, cutoffTo: 260, attack: 0.001 },
-    { wave: 'sine', from: 88, to: 44, time: 0.24, gain: 0.11, attack: 0.001, space: 0.24 },
+    { noise: true, from: 0, band: 3400, bandTo: 700, time: 0.13, gain: 0.225, attack: 0.001 },
+    { wave: 'sawtooth', from: 190, to: 52, time: 0.19, gain: 0.225, cutoff: 3000, cutoffTo: 260, attack: 0.001 },
+    { wave: 'sine', from: 88, to: 44, time: 0.24, gain: 0.165, attack: 0.001, space: 0.24 },
   ],
   damage: [
-    { noise: true, from: 0, band: 1500, bandTo: 420, time: 0.11, gain: 0.11, attack: 0.001 },
-    { wave: 'triangle', from: 150, to: 70, time: 0.13, gain: 0.08, cutoff: 1200, cutoffTo: 300 },
+    { noise: true, from: 0, band: 1500, bandTo: 420, time: 0.11, gain: 0.286, attack: 0.001 },
+    { wave: 'triangle', from: 150, to: 70, time: 0.13, gain: 0.208, cutoff: 1200, cutoffTo: 300 },
   ],
   selfDamage: [
-    { wave: 'triangle', from: 210, to: 120, time: 0.15, gain: 0.09, cutoff: 1000, cutoffTo: 380 },
+    { wave: 'triangle', from: 210, to: 120, time: 0.15, gain: 0.198, cutoff: 1000, cutoffTo: 380 },
   ],
   poison: [
     { wave: 'sine', from: 330, to: 262, time: 0.2, gain: 0.08, space: 0.4 },
@@ -182,7 +182,7 @@ const SFX: Readonly<Record<string, Sfx>> = {
     { wave: 'triangle', from: N.d6, time: 0.1, gain: 0.05, delay: 0.1, cutoff: 6000, detune: 12 },
   ],
   beginTurn: [
-    { wave: 'sine', from: N.d4, to: N.a4, time: 0.16, gain: 0.08, space: 0.4 },
+    { wave: 'sine', from: N.d4, to: N.a4, time: 0.16, gain: 0.24, space: 0.4 },
   ],
 
   // --- 決着 ---
@@ -254,16 +254,25 @@ function context(): AudioContext | null {
  * コンプレッサを挟むのは、効果音が重なったときに歪ませないため。
  */
 function buildBus(audio: AudioContext): void {
+  /*
+   * Web Audio のコンプレッサは**メイクアップゲインを持たない。**
+   * 掛けたぶん素直に小さくなるので、後段で取り戻す。
+   * 入れずに書き出したら、ボタン音のピークが 0.019（-34dB）まで落ちていた
+   */
+  const makeup = audio.createGain()
+  makeup.gain.setValueAtTime(2.2, 0)
+  makeup.connect(audio.destination)
+
   const comp = audio.createDynamicsCompressor()
-  comp.threshold.setValueAtTime(-18, 0)
-  comp.knee.setValueAtTime(24, 0)
-  comp.ratio.setValueAtTime(3.2, 0)
+  comp.threshold.setValueAtTime(-14, 0)
+  comp.knee.setValueAtTime(10, 0)
+  comp.ratio.setValueAtTime(3, 0)
   comp.attack.setValueAtTime(0.004, 0)
   comp.release.setValueAtTime(0.2, 0)
-  comp.connect(audio.destination)
+  comp.connect(makeup)
 
   bus = audio.createGain()
-  bus.gain.setValueAtTime(0.9, 0)
+  bus.gain.setValueAtTime(1, 0)
   bus.connect(comp)
 
   const reverb = audio.createConvolver()
