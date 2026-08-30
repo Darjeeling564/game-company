@@ -34,6 +34,13 @@ body {
   max-width: 480px;
   margin: 0 auto;
   padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  /*
+   * 画面の高さに合わせて閉じる。はみ出したぶんが下から切れると、
+   * ボタンと手札が押せなくなる（Artifact の枠でも実機でも起きた）
+   */
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ---------------- 共通パーツ ---------------- */
@@ -94,6 +101,448 @@ body {
   padding-top: 32px;
 }
 
+/* ================ タイトル画面（SPEC 9.8） ================ */
+
+.title-screen {
+  position: relative;
+  height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 18px;
+  overflow: hidden;
+}
+
+/* 奥から手前へ差す光。題字の後ろに芯を作る */
+.title-screen::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255, 214, 120, 0.22), transparent 46%),
+    radial-gradient(circle at 50% 46%, rgba(120, 173, 139, 0.28), transparent 62%);
+  pointer-events: none;
+}
+
+/* 漂うカード。既にある絵を使い回すので素材を足さない */
+.drift {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.drift__card {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 84px;
+  aspect-ratio: 5 / 7;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center 22%;
+  border: 1px solid rgba(245, 240, 225, 0.25);
+  box-shadow: 0 8px 18px -6px rgba(0, 0, 0, 0.7);
+  opacity: calc(0.28 + var(--s) * 0.34);
+  transform: scale(var(--s)) rotate(var(--r));
+  animation: driftUp var(--t) ease-in-out var(--d) infinite alternate;
+}
+
+@keyframes driftUp {
+  from { transform: scale(var(--s)) rotate(var(--r)) translateY(10px); }
+  to   { transform: scale(var(--s)) rotate(calc(var(--r) * -0.6)) translateY(-14px); }
+}
+
+.logo {
+  position: relative;
+  text-align: center;
+}
+
+.logo__main {
+  font-size: clamp(44px, 15vw, 64px);
+  letter-spacing: 0.1em;
+  color: #ffd678;
+  text-shadow:
+    0 0 24px rgba(255, 214, 120, 0.55),
+    0 3px 0 rgba(30, 61, 41, 0.9),
+    0 6px 14px rgba(0, 0, 0, 0.7);
+}
+
+.logo__sub {
+  margin-top: 4px;
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  color: rgba(245, 240, 225, 0.7);
+}
+
+.title-screen__start {
+  position: relative;
+  border: 0;
+  background: none;
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  padding: 12px 20px;
+  min-height: var(--tap);
+  cursor: pointer;
+  animation: blink 1.9s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+.title-screen__foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ================ タブのある画面 ================ */
+
+.page {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.page__head {
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  padding: 4px 2px 8px;
+  border-bottom: 1px solid rgba(245, 240, 225, 0.16);
+}
+
+.page__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tabbar {
+  display: flex;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(245, 240, 225, 0.16);
+}
+
+.tabbar__item {
+  flex: 1 1 0;
+  min-height: var(--tap);
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 5px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(245, 240, 225, 0.6);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tabbar__item.is-on {
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--cream);
+}
+
+.tabbar__mark {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 13px;
+}
+
+.tabbar__item.is-on .tabbar__mark {
+  background: #ffd678;
+  border-color: #ffd678;
+  color: var(--forest-dark);
+}
+
+.tabbar__label { font-size: 11px; }
+
+/* ================ ホーム ================ */
+
+.home, .battle-select, .howto, .gallery {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.panel {
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(245, 240, 225, 0.12);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.panel__title {
+  font-size: 14px;
+  color: #ffd678;
+  letter-spacing: 0.06em;
+}
+
+.record { display: flex; gap: 18px; }
+
+.record__cell { display: flex; align-items: baseline; gap: 3px; }
+
+.record__num {
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+}
+
+.record__label { font-size: 12px; opacity: 0.7; }
+
+/* ================ 対戦選択 ================ */
+
+.hero {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center 24%;
+  border: 1px solid rgba(245, 240, 225, 0.2);
+  display: grid;
+  align-content: end;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 35%, rgba(10, 22, 14, 0.88));
+}
+
+/* 影の帯（::after）は通常フローの子より後に描かれるので、文字は前に出す */
+.hero__title, .hero__sub { position: relative; z-index: 1; }
+.hero__title { font-size: 30px; letter-spacing: 0.12em; }
+.hero__sub { font-size: 12px; opacity: 0.8; }
+
+/* ================ カード図鑑 ================ */
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 240, 225, 0.28);
+  background: transparent;
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip.is-on {
+  background: #ffd678;
+  border-color: #ffd678;
+  color: var(--forest-dark);
+}
+
+.chip__count { font-size: 11px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+.gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.gallery__cell {
+  position: relative;
+  padding: 2px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--card-frame, var(--cream));
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4), 0 6px 10px -5px rgba(0, 0, 0, 0.6);
+}
+
+.gallery__face {
+  display: block;
+  position: relative;
+  aspect-ratio: 5 / 7;
+  border-radius: 5px;
+  background: linear-gradient(var(--card-bg), var(--card-deep));
+  background-size: cover;
+  background-position: center 20%;
+  overflow: hidden;
+}
+
+.gallery__name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 4px 3px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+  color: var(--cream);
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.gallery__none {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: rgba(245, 240, 225, 0.5);
+}
+
+.gallery__rarity {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(14, 30, 19, 0.85);
+  color: var(--cream);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+/* ================ デッキ編集（SPEC 9.9） ================ */
+
+.decks, .deck-edit { display: grid; gap: 10px; padding-bottom: 8px; }
+
+.deck-row {
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  padding: 11px 13px;
+  min-height: var(--tap);
+  border-radius: 10px;
+  border: 1px solid rgba(245, 240, 225, 0.18);
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--cream);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.deck-row__head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.deck-row__name { font-size: 16px; }
+
+.deck-row__state {
+  flex: none;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--danger);
+  color: #f0b6a8;
+}
+
+.deck-row__state.is-ok { border-color: #8fd18f; color: #8fd18f; }
+
+.panel--ok { border-color: rgba(143, 209, 143, 0.5); }
+.panel--warn { border-color: rgba(180, 71, 46, 0.6); }
+
+.deck-edit__error { font-size: 12.5px; color: #f0b6a8; line-height: 1.6; }
+
+.field {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 11px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 240, 225, 0.3);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.deck-edit__list { display: grid; gap: 6px; }
+
+/* 入っているカード1行。タップで1枚減らす */
+.deck-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 9px 5px 5px;
+  min-height: var(--tap);
+  border: 0;
+  border-radius: 8px;
+  background: var(--card-frame, var(--cream));
+  color: var(--card-text, var(--forest-dark));
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.deck-item__thumb {
+  flex: none;
+  width: 30px;
+  aspect-ratio: 5 / 7;
+  border-radius: 4px;
+  background: linear-gradient(var(--card-bg), var(--card-deep));
+  background-size: cover;
+  background-position: center 18%;
+}
+
+.deck-item__text { flex: 1 1 auto; min-width: 0; display: grid; }
+.deck-item__name { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deck-item__sub { font-size: 10.5px; opacity: 0.75; }
+.deck-item__count { flex: none; font-size: 14px; font-variant-numeric: tabular-nums; }
+
+.deck-item__minus {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--cream);
+  font-size: 17px;
+  line-height: 1;
+}
+
+/* 追加側。もう入れられないカードは沈ませる */
+.gallery__cell.is-full { opacity: 0.34; cursor: default; }
+
+.gallery__have {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: #ffd678;
+  color: var(--forest-dark);
+  font-size: 10px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ================ 遊びかた ================ */
+
+.howto__line {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.howto__line strong { color: #ffd678; }
+
 .deck-option {
   display: grid;
   gap: 4px;
@@ -115,6 +564,10 @@ body {
  */
 .board,
 .board > *,
+.field,
+.field > *,
+.dock,
+.dock > *,
 .side,
 .side > *,
 .side__head,
@@ -130,21 +583,139 @@ body {
 .board {
   display: grid;
   gap: 7px;
+  /* 盤面（可変・内側でスクロール）＋ 操作段（固定） */
+  grid-template-rows: minmax(0, 1fr) auto;
+  flex: 1;
+  min-height: 0;
 }
 
+/* 高さが足りないときはここだけがスクロールする */
+.field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 常に見えていてほしい操作段。ここは縮めない */
+.dock {
+  display: grid;
+  gap: 7px;
+}
+
+/*
+ * 盤面の下敷き（SPEC 9.7.1）。
+ *
+ * カードは平面のまま、下敷きだけを寝かせて奥行きを出す。
+ * **文字を1文字も載せない要素**なので、傾けてもにじみが起きない。
+ * 9.7 で「カードを傾けると文字が潰れる」と分かったのを、ここで回避している。
+ */
+.field {
+  position: relative;
+}
+
+.mat {
+  position: absolute;
+  inset: 30px 0 -8px;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/*
+ * 楕円の卓。**縁が盤面を横切らないよう、上下にはみ出させる。**
+ * 見えるのは左右の曲線と、手前へ広がる床だけになる。
+ * 奥（相手側）を暗く、手前（自分側）を明るくして、遠近を色でも支える
+ */
+.mat__face {
+  position: absolute;
+  /* 上を大きく外へ逃がす。楕円の縁が盤面を横切ると、卓ではなく「輪」に見える */
+  inset: -96% -38% -16%;
+  transform: perspective(760px) rotateX(54deg);
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 76%, rgba(150, 200, 168, 0.26), transparent 55%),
+    linear-gradient(
+      rgba(22, 46, 31, 0.95) 18%,
+      rgba(38, 76, 52, 0.8) 44%,
+      rgba(64, 118, 84, 0.66) 68%,
+      rgba(86, 142, 105, 0.6)
+    );
+  box-shadow:
+    inset 0 0 0 3px rgba(245, 240, 225, 0.14),
+    inset 0 0 0 18px rgba(22, 46, 31, 0.4),
+    inset 0 0 0 21px rgba(245, 240, 225, 0.07),
+    inset 0 0 120px 40px rgba(0, 0, 0, 0.3);
+}
+
+/*
+ * バトル場の席。**輪はマットではなく列に置く。**
+ * マット側の割合で置くと、盤面の高さが変わるたびにカードとずれる
+ */
+.slots--active {
+  position: relative;
+  /* バトル場は帯の数字が大きいので、上の余白も広く取る */
+  margin-top: 20px;
+}
+
+.slots--active::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  /*
+   * 幅は必ず頭打ちにする。割合だけにすると広い画面で巨大な円になり、
+   * 絶対配置でもスクロール領域を押し広げた（900px幅で 4800px になった）
+   */
+  width: min(200%, 300px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) perspective(500px) rotateX(62deg);
+  border-radius: 50%;
+  border: 2px solid rgba(245, 240, 225, 0.3);
+  background: radial-gradient(circle, rgba(245, 240, 225, 0.16), transparent 58%);
+  box-shadow: 0 0 24px rgba(245, 240, 225, 0.12);
+  pointer-events: none;
+  /*
+   * 負の z-index にすると .slots--active が独自の重なり文脈を作り、
+   * その中に閉じ込められた残りHPの帯が隣の列に切られる（実装中に踏んだ）。
+   * 0 のままでも DOM 順でカードより先に描かれるので、背面に回る
+   */
+  z-index: 0;
+}
+
+
+
+.side--cpu .slots--active::before {
+  width: min(240%, 250px);
+  border-color: rgba(245, 240, 225, 0.13);
+}
+
+/* 席は下敷きの上に置く。背景は下敷きに任せて透かす。
+   position: relative は山札・トラッシュの積みの基準を兼ねる */
 .side {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 4px;
   padding: 6px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.12);
+  background: transparent;
 }
 
+/* 名前の帯。卓の上に浮かせるので、下敷きが透けない程度の地を敷く */
 .side__head {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(16, 34, 22, 0.55);
+  border: 1px solid rgba(245, 240, 225, 0.12);
+  position: relative;
+  z-index: 0;
 }
 
 .points {
@@ -152,11 +723,62 @@ body {
   font-size: 16px;
 }
 
+/*
+ * 盤面のカードは「厚みのある板」として置く（SPEC 9.7）。
+ *
+ * **静止状態では傾けない。** 盤面を寝かせる案を実装して比べたところ、
+ * 3D 変換された面はテクスチャに焼かれてから遠近で縮むため、
+ * 86px のカードに載るワザ名やHPが目に見えてにじんだ。
+ * この game は文字が主役の密度なので、常時の傾きは割に合わない。
+ *
+ * 立体感は「厚み（box-shadow の重ね掛け）」と「落ち影の深さ」で出し、
+ * 実際の 3D 回転は**動いている間だけ**使う（引く・出す・撃つ）。
+ * 動いている最中のにじみは見えないので、そこでは自由に回せる。
+ */
 .slots {
   display: flex;
   gap: 6px;
   justify-content: center;
+  /*
+   * ここに perspective / transform-style は置かない。
+   * 3D 空間になると中の要素が z-index ではなく奥行きで並び替えられ、
+   * カードの外へ出した残りHPの帯がカード本体の裏へ回る（実装中に踏んだ）。
+   * 遠近は動かすとき（keyframes）に perspective() で個別に与える
+   */
+  /* 上にはみ出す残りHPの帯ぶん（SPEC 9.7.2）。足りないと名前の帯に潜り込む */
+  margin-top: 14px;
 }
+
+/*
+ * SR / UR には斜めの光沢を載せる。傾いた面に沿って走るので、
+ * 平面のときより「板が光っている」ように読める
+ */
+.card--sr .card__body::after,
+.card--ur .card__body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    108deg,
+    transparent 34%,
+    rgba(255, 255, 255, 0.16) 46%,
+    transparent 58%
+  );
+}
+
+.card--ur .card__body::after {
+  background: linear-gradient(
+    108deg,
+    transparent 28%,
+    rgba(180, 240, 255, 0.14) 40%,
+    rgba(255, 210, 255, 0.16) 50%,
+    rgba(255, 240, 180, 0.14) 60%,
+    transparent 72%
+  );
+}
+
+
 
 /*
  * カードの体裁: 枠=レアリティ / 地=系統 / 属性=色丸に白文字 / 文字色=レアリティ。
@@ -179,7 +801,22 @@ body {
   text-align: left;
   line-height: 1.35;
   cursor: pointer;
-  overflow: hidden;
+  position: relative;
+  /*
+   * overflow は切らない。残りHPの帯を上端から外へはみ出させるため（SPEC 9.7.2）。
+   * 角の丸めは .card__body 側が自前で持っているので、ここで切らなくても崩れない。
+   *
+   * 厚みは box-shadow の重ね掛けで出す（SPEC 9.7）。
+   * 実際の側面を要素で作るには preserve-3d が要るが、.card は overflow: hidden で
+   * 子を平面化するので側面が消える。傾いたときに見えるのは下端だけなので、
+   * 下方向へ実線の影を数枚積めば厚みとして読める。
+   */
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.3),
+    0 2px 0 rgba(0, 0, 0, 0.42),
+    0 3px 0 rgba(0, 0, 0, 0.38),
+    0 4px 0 rgba(0, 0, 0, 0.32),
+    0 10px 12px -6px rgba(0, 0, 0, 0.55);
 }
 
 .card__body {
@@ -217,6 +854,15 @@ body {
   width: 36%;
   max-width: 132px;
   aspect-ratio: 5 / 7.4;
+  /* 厚みを増す。手前に出すのは列側（.slots--active）で行う */
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.34),
+    0 2px 0 rgba(0, 0, 0, 0.44),
+    0 3px 0 rgba(0, 0, 0, 0.42),
+    0 4px 0 rgba(0, 0, 0, 0.4),
+    0 5px 0 rgba(0, 0, 0, 0.36),
+    0 6px 0 rgba(0, 0, 0, 0.3),
+    0 18px 22px -8px rgba(0, 0, 0, 0.6);
 }
 
 /*
@@ -510,6 +1156,9 @@ body {
 }
 
 .hand > .card {
+  /* 束に見せるため弧に並べる（SPEC 9.7.2）。回転の軸は下端 */
+  transform: rotate(var(--fan-angle, 0deg)) translateY(var(--fan-lift, 0));
+  transform-origin: 50% 130%;
   /* 長押しでiOSの吹き出しや文字選択が出ないようにする */
   -webkit-touch-callout: none;
   touch-action: manipulation;
@@ -527,10 +1176,18 @@ body {
 }
 
 /* 選べるカードは重なりの上に出す。押せるものが隠れないようにする */
+/* 選べるカードは持ち上げる。落ち影を深くして、板が浮いていると分かるようにする */
 .hand > .card--selectable {
   position: relative;
   z-index: 1;
-  transform: translateY(-4px);
+  transform: rotate(var(--fan-angle, 0deg)) translateY(calc(var(--fan-lift, 0px) - 7px));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.34),
+    0 2px 0 rgba(0, 0, 0, 0.44),
+    0 3px 0 rgba(0, 0, 0, 0.42),
+    0 4px 0 rgba(0, 0, 0, 0.38),
+    0 5px 0 rgba(0, 0, 0, 0.34),
+    0 16px 18px -7px rgba(0, 0, 0, 0.62);
 }
 
 .hand .card__name {
@@ -541,11 +1198,451 @@ body {
   font-size: 10px;
 }
 
+/* ---------------- エネルギーゾーンの表示 ---------------- */
+
+/*
+ * 「今ターンぶんを置いたか、まだか」を丸の見た目で分ける。
+ * 文字だけだと読み飛ばされる（実際に分かりづらいと指摘された）
+ */
 .energy {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 240, 225, 0.18);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.energy--ready {
+  border-color: rgba(255, 214, 120, 0.75);
+  background: rgba(255, 214, 120, 0.12);
+}
+
+.energy--used {
+  opacity: 0.6;
+}
+
+.energy__orb {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: #10180f;
+  background: var(--orb, #9aa79c);
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* まだ置いていないときだけ脈打たせる。置いたら止まるので、静止＝完了と分かる */
+.energy--ready .energy__orb {
+  animation: orbPulse 1.5s ease-in-out infinite;
+}
+
+.energy--used .energy__orb {
+  background: rgba(245, 240, 225, 0.3);
+  color: var(--cream);
+  box-shadow: none;
+}
+
+.energy__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.energy__next {
+  flex: none;
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+@keyframes orbPulse {
+  0%, 100% { transform: scale(1); box-shadow: inset 0 -2px 4px rgba(0,0,0,.3), 0 0 0 0 rgba(255,214,120,.55); }
+  50%      { transform: scale(1.12); box-shadow: inset 0 -2px 4px rgba(0,0,0,.3), 0 0 0 7px rgba(255,214,120,0); }
+}
+
+/* 属性ごとの色。丸と、エネルギーを置ける姫神の破線で共有する */
+:root {
+  --energy-fire: #e2703a;
+  --energy-forest: #6ba368;
+  --energy-wind: #8fc7c0;
+  --energy-earth: #c1a06a;
+  --energy-thunder: #e6c34a;
+  --energy-water: #5b9dd9;
+  --energy-light: #f0e3b0;
+  --energy-dark: #b795e0;
+  --energy-colorless: #cfd3ca;
+}
+
+.energy__orb--fire     { --orb: #e2703a; }
+.energy__orb--forest   { --orb: #6ba368; }
+.energy__orb--wind     { --orb: #8fc7c0; }
+.energy__orb--earth    { --orb: #c1a06a; }
+.energy__orb--thunder  { --orb: #e6c34a; }
+.energy__orb--water    { --orb: #5b9dd9; }
+.energy__orb--light    { --orb: #f0e3b0; }
+.energy__orb--dark     { --orb: #9b7fc0; }
+.energy__orb--colorless{ --orb: #cfd3ca; }
+.energy__orb--none     { --orb: rgba(245, 240, 225, 0.22); }
+
+/* ---------------- 盤面の演出 ---------------- */
+
+/*
+ * エネルギーを置ける先。押す場所が分かるよう、ふちを脈打たせる。
+ * outline は card__body の overflow: hidden に切られないので、枠の演出はこちらで持つ。
+ *
+ * **破線にするのが要点。** バトル場のカードは実線の金枠（.card--active）なので、
+ * 同じ実線で光らせると「バトル場だから光っている」と読めてしまう。
+ * 色は今つけようとしているエネルギーの属性色にして、丸と置き先を結び付ける
+ */
+.card--attachable {
+  position: relative;
+  z-index: 1;
+  outline: 3px dashed var(--energy-color, var(--cream));
+  outline-offset: 2px;
+  animation: attachPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes attachPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 240, 225, 0.5); outline-offset: 2px; }
+  50%      { box-shadow: 0 0 14px 4px rgba(245, 240, 225, 0.4); outline-offset: 5px; }
+}
+
+/* 被弾。揺らして赤く差す */
+.card--hit {
+  animation: cardHit 0.42s ease-out;
+}
+
+/* 被弾。板が殴られて奥へ煽られるように、Y 軸で振ってから戻す */
+@keyframes cardHit {
+  0%   { transform: none; filter: none; }
+  15%  { transform: perspective(600px) translateX(-5px) rotateY(16deg); filter: brightness(1.7) saturate(0.6); }
+  35%  { transform: perspective(600px) translateX(5px) rotateY(-12deg); filter: brightness(1.4); }
+  55%  { transform: perspective(600px) translateX(-2px) rotateY(6deg); }
+  75%  { transform: perspective(600px) translateX(2px) rotateY(-3deg); }
+  100% { transform: none; filter: none; }
+}
+
+/* 受けたダメージの数字。0.9秒で消える */
+.card__pop {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  color: #ffd9d0;
+  text-shadow: 0 0 6px #000, 0 2px 0 #7d2418;
+  pointer-events: none;
+  animation: popRise 0.9s ease-out forwards;
+}
+
+@keyframes popRise {
+  0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.7); }
+  25%  { opacity: 1; transform: translate(-50%, -2px) scale(1.15); }
+  70%  { opacity: 1; transform: translate(-50%, -12px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -24px) scale(0.95); }
+}
+
+/* エネルギーが乗った瞬間 */
+.card--charged {
+  animation: cardCharge 0.5s ease-out;
+}
+
+@keyframes cardCharge {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 214, 120, 0.9); }
+  40%  { box-shadow: 0 0 14px 5px rgba(255, 214, 120, 0.75); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 214, 120, 0); }
+}
+
+/* 絶技を撃った姫神。板ごと一回転させて、通常の攻撃と段を変える */
+.card--ultimate {
+  animation: cardUltimate 0.72s cubic-bezier(0.3, 0, 0.2, 1);
+  z-index: 2;
+}
+
+@keyframes cardUltimate {
+  0%   { transform: none; }
+  25%  { transform: perspective(700px) rotateY(-24deg) scale(1.08); filter: brightness(1.3); }
+  60%  { transform: perspective(700px) rotateY(196deg) scale(1.14); filter: brightness(1.6); }
+  85%  { transform: perspective(700px) rotateY(352deg) scale(1.04); }
+  100% { transform: none; }
+}
+
+/* 半分以下まで削れた個体は、絵の差し替えに加えて枠でも分かるようにする */
+.card--wounded .card__bar span {
+  background: var(--danger);
+}
+
+/*
+ * 出し方が複数あるカードの目印。タップすると選択が出ることを予告する。
+ * これが無いと、リリース先が勝手に決まったように見える
+ */
+.card__choices {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: rgba(20, 28, 20, 0.82);
+  color: #ffd678;
+  font-size: 10px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.hand > .card--choices {
+  outline: 2px dashed #ffd678;
+  outline-offset: 1px;
+}
+
+/* ---------------- 残りHPの帯（カードの外） ---------------- */
+
+/*
+ * 参考画面（ポケモンTCGポケット）と同じく、残りHPをカードの上端に半分かけて出す。
+ * カードの中に置いていたときより絵の面積が広くなり、数字も大きく読める。
+ * 上へ出るのは高さの半分なので、1枠あたりの増分は10px程度で済む
+ */
+.meter {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  /*
+   * translateZ を足すのが要点。.slots は transform-style: preserve-3d なので、
+   * 中の要素は z-index ではなく3D上の位置で前後が決まる。
+   * Z を持たないとカード本体と同じ深さになり、描画順で負けて潜り込む
+   */
+  transform: translate(-50%, -52%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(14, 30, 19, 0.92);
+  border: 1px solid rgba(245, 240, 225, 0.35);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  /* 名前の帯や隣の列より必ず前に出す。後ろに回ると数字が読めなくなる */
+  z-index: 5;
+  white-space: nowrap;
+}
+
+.meter__hp {
+  font-size: 13px;
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter__bar {
+  display: block;
+  width: 30px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(245, 240, 225, 0.22);
+  overflow: hidden;
+}
+
+.meter__bar > span {
+  display: block;
+  height: 100%;
+  background: #8fd18f;
+}
+
+.meter__bar > span.is-low {
+  background: var(--danger);
+}
+
+/* バトル場は主役なので数字を一回り大きく */
+.card--active .meter__hp { font-size: 16px; }
+.card--active .meter__bar { width: 44px; height: 5px; }
+
+/* 相手側は小さく。読めればよい */
+.side--cpu .meter { padding: 0 5px; }
+.side--cpu .meter__hp { font-size: 11px; }
+.side--cpu .meter__bar { width: 22px; height: 3px; }
+
+/* ---------------- 山札とトラッシュの積み ---------------- */
+
+/*
+ * 卓の左右に置く。裏面はCSSだけで描き、画像を足さない（配布サイズを増やさない）。
+ * 位置は .side を基準にした絶対配置。列の中に入れると、カードの幅計算に混ざる
+ */
+.pile {
+  position: absolute;
+  width: 34px;
+  aspect-ratio: 5 / 7;
+  border-radius: 4px;
+  border: 1px dashed rgba(245, 240, 225, 0.22);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/*
+ * カードは中央に寄せて並ぶので、左右は空いている。そこへ縦中央で置く。
+ * 割合で上下に置くと、盤面の高さが変わるたびにカードと重なった（実装中に踏んだ）
+ */
+.pile {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.pile--deck { right: 2px; }
+.pile--discard { left: 2px; }
+
+/* 相手側は左右を入れ替えて、卓を挟んで向かい合っているように見せる */
+.side--cpu .pile--deck { left: 2px; right: auto; }
+.side--cpu .pile--discard { right: 2px; left: auto; }
+.side--cpu .pile { width: 26px; }
+
+/* 裏面。3枚まで重ねて、ずらしながら厚みを出す */
+.pile__card {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(245, 240, 225, 0.3);
+  background:
+    radial-gradient(circle at 50% 46%, rgba(245, 240, 225, 0.22), transparent 52%),
+    linear-gradient(150deg, #3f7452, #1e3d29);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.pile__card:nth-child(2) { transform: translate(-1.5px, -1.5px); }
+.pile__card:nth-child(3) { transform: translate(-3px, -3px); }
+
+/* トラッシュは表を上にして捨てる場所なので、地を沈ませて山札と区別する */
+.pile--discard .pile__card {
+  background: linear-gradient(150deg, rgba(30, 61, 41, 0.9), rgba(12, 24, 16, 0.95));
+}
+
+.pile__count {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%);
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(14, 30, 19, 0.92);
+  border: 1px solid rgba(245, 240, 225, 0.28);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- ポイント ---------------- */
+
+.points {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.points__pip {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(245, 240, 225, 0.6);
+  background: transparent;
+}
+
+.points__pip--on {
+  background: #ffd678;
+  border-color: #ffd678;
+  box-shadow: 0 0 7px rgba(255, 214, 120, 0.8);
+  animation: pipOn 0.45s ease-out;
+}
+
+@keyframes pipOn {
+  0%   { transform: scale(0.4); box-shadow: 0 0 0 0 rgba(255, 214, 120, 0.9); }
+  55%  { transform: scale(1.4); box-shadow: 0 0 12px 5px rgba(255, 214, 120, 0.6); }
+  100% { transform: scale(1); }
+}
+
+/* ---------------- 決着の幕 ---------------- */
+
+.finish {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at 50% 42%, rgba(8, 16, 10, 0.45), rgba(8, 16, 10, 0.82) 70%);
+  backdrop-filter: blur(2px);
+  animation: veilIn 0.5s ease-out both;
+}
+
+/* 勝ったときだけ、題字の後ろに光を回す */
+.finish--win::before {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 214, 120, 0.35), transparent 62%);
+  animation: winGlow 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes winGlow {
+  0%, 100% { transform: scale(0.9); opacity: 0.7; }
+  50%      { transform: scale(1.12); opacity: 1; }
+}
+
+.finish__inner {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  animation: finishIn 0.6s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  animation-delay: 0.15s;
+}
+
+.finish__title {
+  position: relative;
+  font-size: 52px;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+  color: var(--cream);
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.9), 0 3px 0 rgba(0, 0, 0, 0.55);
+}
+
+.finish--win .finish__title { color: #ffd678; text-shadow: 0 0 22px rgba(255, 214, 120, 0.7), 0 3px 0 rgba(0,0,0,.5); }
+.finish--loss .finish__title { color: #f0b6a8; }
+
+.finish__inner > * { position: relative; }
+
+.finish__score { font-size: 18px; }
+.finish__reason { font-size: 13px; opacity: 0.8; }
+.finish__next { margin-top: 8px; }
+
+@keyframes veilIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes finishIn {
+  from { opacity: 0; transform: scale(0.72) translateY(14px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* 動きを減らす設定を尊重する（CLAUDE.md 6章のタッチ前提と同じく、環境に合わせる） */
+@media (prefers-reduced-motion: reduce) {
+  .energy--ready .energy__orb,
+  .card--attachable,
+  .card--hit,
+  .card__pop,
+  .card--charged,
+  .points__pip--on,
+  .card--ultimate,
+  .finish,
+  .finish__inner,
+  .finish--win::before {
+    animation: none;
+  }
+  .card__pop { opacity: 1; }
 }
 
 .hint {
@@ -775,13 +1872,24 @@ body {
  * 変形は transform と opacity だけに絞る。レイアウトを動かす性質のプロパティを
  * 使うと、盤面全体の再計算が毎フレーム走って Android で落ちる。
  */
+/*
+ * 引く・出すは 3D で回す（SPEC 9.7）。
+ *
+ * 静止状態を傾けると文字がにじむので、回すのは**動いている間だけ**にした。
+ * 0.2〜0.4秒で終わるうえ、その間は目が形を追っていて字を読んでいないので、
+ * にじみは見えない。終端は必ず rotate 0 に戻し、静止したら平面になる。
+ */
 @keyframes cardDraw {
-  from {
+  0% {
     opacity: 0;
-    /* 山札は手札の右にあるので、そちらから滑り込ませる */
-    transform: translate(28px, 26px) scale(0.82);
+    /* 山札は手札の右にあるので、そちらから。裏返った状態で飛んでくる */
+    transform: perspective(600px) translate(28px, 26px) rotateY(-88deg) scale(0.82);
   }
-  to {
+  60% {
+    opacity: 1;
+    transform: perspective(600px) translate(4px, 4px) rotateY(-24deg) scale(0.98);
+  }
+  100% {
     opacity: 1;
     transform: none;
   }
@@ -790,11 +1898,15 @@ body {
 @keyframes cardPlace {
   0% {
     opacity: 0;
-    transform: translateY(14px) scale(0.7);
+    /* 手札から盤面へ、奥に倒れ込みながら着地する */
+    transform: perspective(600px) translateY(18px) rotateX(62deg) scale(0.78);
   }
-  70% {
+  65% {
     opacity: 1;
-    transform: translateY(0) scale(1.06);
+    transform: perspective(600px) translateY(0) rotateX(-12deg) scale(1.05);
+  }
+  85% {
+    transform: perspective(600px) rotateX(5deg) scale(1.01);
   }
   100% {
     opacity: 1;

@@ -33,6 +33,18 @@ export function energyLabel(type: string | null): string {
   return type === null ? '—' : (ENERGY_LABEL[type] ?? type)
 }
 
+/**
+ * コスト欄での表記（SPEC 9.1.1）。
+ *
+ * **コストの colorless は「全」と書く。** 属性としての無（そのカードが無属性）と
+ * 同じ「無」を出していたため、「無エネルギーが要る」と読めてしまっていた。
+ * 実際は**どの属性のエネルギーでも1個で払える**ので、「全」のほうが実態に近い。
+ * 無エネルギーは供給されないので（17.1）、コストの無は必ず他の属性で払われる。
+ */
+function costLabel(type: EnergyType): string {
+  return type === 'colorless' ? '全' : energyLabel(type)
+}
+
 const ORIGIN_LABEL: Readonly<Record<Origin, string>> = {
   japan: '日本神話',
   egypt: 'エジプト神話',
@@ -61,7 +73,7 @@ export function rarityLabel(rarity: Rarity): string {
 
 /** コストを「炎炎無」の形にする */
 export function formatCost(cost: readonly EnergyType[]): string {
-  return cost.length === 0 ? 'なし' : cost.map((e) => energyLabel(e)).join('')
+  return cost.length === 0 ? 'なし' : cost.map((e) => costLabel(e)).join('')
 }
 
 /** 効果を日本語1行にする。ワザの威力を読めるようにするのが目的 */
@@ -173,9 +185,14 @@ function weakOf(type: EnergyType): string {
   return `弱点 ${attackers.map((a) => energyLabel(a)).join('・')}（+${bonus}）`
 }
 
-/** 属性を色丸に白文字で示す。丸の色は theme.ts の TYPE_COLOR */
-function typeBadge(type: EnergyType): HTMLElement {
-  const badge = el('span', 'badge', energyLabel(type))
+/**
+ * 属性を色丸に白文字で示す。丸の色は theme.ts の TYPE_COLOR。
+ *
+ * `asCost` はコスト欄かどうか。同じ colorless でも、属性なら「無」、
+ * コストなら「全」と書き分ける（SPEC 9.1.1）
+ */
+function typeBadge(type: EnergyType, asCost = false): HTMLElement {
+  const badge = el('span', 'badge', asCost ? costLabel(type) : energyLabel(type))
   badge.style.setProperty('--card-type', TYPE_COLOR[type])
   return badge
 }
@@ -204,7 +221,18 @@ function costBadges(cost: readonly EnergyType[]): HTMLElement {
     row.append(el('span', undefined, 'なし'))
     return row
   }
-  for (const type of cost) row.append(typeBadge(type))
+  for (const type of cost) row.append(typeBadge(type, true))
+  return row
+}
+
+/**
+ * 実際に付いているエネルギーの丸。こちらはコストではないので「全」にしない。
+ * 無エネルギーは供給されないため（17.1）ここに colorless は現れないが、
+ * コスト欄と取り違えないよう関数を分けておく
+ */
+function attachedBadges(attached: readonly EnergyType[]): HTMLElement {
+  const row = el('span', 'badgeRow')
+  for (const type of attached) row.append(typeBadge(type))
   return row
 }
 
@@ -302,7 +330,7 @@ export function cardDetailPanel(card: CardDef, creature: Creature | null): HTMLE
       labelled('逃げる', costBadges(Array<EnergyType>(card.retreatCost).fill('colorless'))),
     )
     if (creature !== null && creature.attached.length > 0) {
-      facts.push(labelled('付いているエネルギー', costBadges(creature.attached)))
+      facts.push(labelled('付いているエネルギー', attachedBadges(creature.attached)))
     }
     if (creature !== null && creature.status.includes('poisoned')) facts.push('毒')
   }
@@ -427,6 +455,8 @@ export interface Handlers {
   readonly onRetreatMenu: () => void
   readonly onCreatureTap: (owner: PlayerId, instanceId: number) => void
   readonly onHandTap: (handIndex: number) => void
+  /** 出し方が複数あるとき（リリース先を選ぶとき）に開く */
+  readonly onHandPlace: (handIndex: number) => void
 }
 
 /*
@@ -440,6 +470,63 @@ export interface Handlers {
  */
 let prevHand: readonly string[] = []
 let prevBoard: ReadonlySet<number> = new Set()
+/** 個体ごとの前回の蓄積ダメージ。増えていたら被弾の演出を出す */
+let prevDamage: ReadonlyMap<number, number> = new Map()
+/** 個体ごとの前回のエネルギー数。増えていたら付与の演出を出す */
+let prevEnergy: ReadonlyMap<number, number> = new Map()
+
+/**
+ * 1回の描画だけに出す演出。core は純粋なので状態に演出は持てない。
+ * 「前回の描画と何が変わったか」から毎回作り直す（SPEC 9.4 と同じ作り）
+ */
+interface Fx {
+  /** 個体ID -> 今回受けたダメージ */
+  readonly hit: ReadonlyMap<number, number>
+  /** エネルギーが増えた個体 */
+  readonly charged: ReadonlySet<number>
+  /** 今回場に出た個体 */
+  readonly placed: ReadonlySet<number>
+  /** 直前に絶技を撃った側。バトル場の姫神を一回転させる */
+  readonly ultimate: PlayerId | null
+}
+
+function boardCreatures(state: GameState): readonly Creature[] {
+  const out: Creature[] = []
+  for (const player of state.players) {
+    if (player.active !== null) out.push(player.active)
+    out.push(...player.bench)
+  }
+  return out
+}
+
+/** 直前の1手が絶技だったか。ログの末尾だけを見る */
+function lastUltimate(state: GameState): PlayerId | null {
+  const last = state.log.at(-1)
+  return last !== undefined && last.kind === 'ultimate' ? last.player : null
+}
+
+function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
+  const hit = new Map<number, number>()
+  const charged = new Set<number>()
+  for (const c of boardCreatures(state)) {
+    const before = prevDamage.get(c.instanceId)
+    if (before !== undefined && c.damage > before) hit.set(c.instanceId, c.damage - before)
+    const energy = prevEnergy.get(c.instanceId)
+    if (energy !== undefined && c.attached.length > energy) charged.add(c.instanceId)
+  }
+  return { hit, charged, placed, ultimate: lastUltimate(state) }
+}
+
+function rememberBoard(state: GameState): void {
+  const damage = new Map<number, number>()
+  const energy = new Map<number, number>()
+  for (const c of boardCreatures(state)) {
+    damage.set(c.instanceId, c.damage)
+    energy.set(c.instanceId, c.attached.length)
+  }
+  prevDamage = damage
+  prevEnergy = energy
+}
 
 /** 手札のうち、前回の描画に居なかった位置。山札から引かれた枚数ぶん末尾に増える */
 function drawnIndices(hand: readonly string[]): ReadonlySet<number> {
@@ -466,12 +553,19 @@ function creatureCard(
   selectable: boolean,
   onTap: () => void,
   onDetail: () => void,
-  entering = false,
+  fx: Fx,
+  owner: PlayerId,
 ): HTMLElement {
   const card = requireCreature(creature.cardId)
   const remaining = Math.max(0, card.hp - creature.damage)
+  const damage = fx.hit.get(creature.instanceId)
   const node = el('button', `card card--board${isActive ? ' card--active' : ''}`
-    + `${selectable ? ' card--selectable' : ''}${entering ? ' card--enter' : ''}`)
+    + `${selectable ? ' card--attachable' : ''}`
+    + `${fx.placed.has(creature.instanceId) ? ' card--enter' : ''}`
+    + `${damage !== undefined ? ' card--hit' : ''}`
+    + `${fx.charged.has(creature.instanceId) ? ' card--charged' : ''}`
+    + `${remaining <= card.hp / 2 ? ' card--wounded' : ''}`
+    + `${isActive && fx.ultimate === owner ? ' card--ultimate' : ''}`)
   node.type = 'button'
   applyCardTheme(node, card.origin, card.rarity, card.type)
 
@@ -484,19 +578,12 @@ function creatureCard(
   }
   body.append(typeBadge(card.type))
   body.append(el('span', 'card__name', displayName(card.name, card.ex)))
-  body.append(el('span', 'card__hp', `${remaining}/${card.hp}`))
-
-  const bar = el('div', 'card__bar')
-  const fill = el('span')
-  fill.style.width = `${(remaining / card.hp) * 100}%`
-  bar.append(fill)
-  body.append(bar)
 
   // ついているエネルギーは丸で出す。詳細画面のコスト表記と同じ見た目にそろえ、
   // 「あと何個で撃てるか」をカードの行き来なしに数えられるようにする
   if (creature.attached.length > 0 || creature.status.includes('poisoned')) {
     const tags = el('span', 'card__tags')
-    if (creature.attached.length > 0) tags.append(costBadges(creature.attached))
+    if (creature.attached.length > 0) tags.append(attachedBadges(creature.attached))
     if (creature.status.includes('poisoned')) tags.append(el('span', 'card__status', '毒'))
     body.append(tags)
   }
@@ -519,9 +606,38 @@ function creatureCard(
     body.append(attacks)
   }
 
+  // 受けたダメージを一瞬だけ浮かせる。ログを読まなくても何が起きたか分かるように
+  if (damage !== undefined) body.append(el('span', 'card__pop', `-${damage}`))
   node.append(body)
+
+  /*
+   * 残りHPはカードの外に出す（SPEC 9.7.2）。上端に半分かけるので、
+   * 縦に増えるのは1枠あたり10px程度で済み、絵の面積も広くなる
+   */
+  const meter = el('span', 'meter')
+  meter.append(el('span', 'meter__hp', String(remaining)))
+  const bar = el('span', 'meter__bar')
+  const fill = el('span')
+  fill.style.width = `${(remaining / card.hp) * 100}%`
+  if (remaining * 2 <= card.hp) fill.classList.add('is-low')
+  bar.append(fill)
+  meter.append(bar)
+  node.append(meter)
+
   bindTap(node, onTap, onDetail)
   return node
+}
+
+/**
+ * 山札とトラッシュの積み。裏面はCSSだけで描く（画像を足さない）。
+ * 卓の左右に置いて、盤面が「カードゲームの卓」に見えるようにする（SPEC 9.7.2）
+ */
+function pileView(kind: 'deck' | 'discard', count: number): HTMLElement {
+  const pile = el('div', `pile pile--${kind}`)
+  // 3枚まで重ねて厚みを出す。0枚なら枠だけ残して「置き場所」を示す
+  for (let i = 0; i < Math.min(3, count); i += 1) pile.append(el('span', 'pile__card'))
+  pile.append(el('span', 'pile__count', String(count)))
+  return pile
 }
 
 /**
@@ -537,7 +653,7 @@ function sideView(
   id: PlayerId,
   handlers: Handlers,
   attachTargets: ReadonlySet<number>,
-  placed: ReadonlySet<number>,
+  fx: Fx,
 ): HTMLElement {
   const player: PlayerState = state.players[id]
   // 相手側は一回り小さくする。8枠ぶんを原寸で並べると縦が画面に収まらない（SPEC 9）
@@ -545,9 +661,12 @@ function sideView(
 
   const head = el('div', 'side__head')
   head.append(el('span', undefined, id === HUMAN ? '自分' : '相手'))
-  const points = el('span', 'points', '●'.repeat(Math.min(3, player.points)) + '○'.repeat(Math.max(0, 3 - player.points)))
+  const points = el('span', 'points')
+  for (let i = 0; i < 3; i += 1) {
+    points.append(el('span', `points__pip${i < player.points ? ' points__pip--on' : ''}`))
+  }
   head.append(points)
-  head.append(el('span', 'muted', `手札${player.hand.length} 山札${player.deck.length}`))
+  head.append(el('span', 'muted', `手札${player.hand.length}`))
   side.append(head)
 
   const bench = el('div', 'slots')
@@ -563,11 +682,13 @@ function sideView(
       creatureCard(creature, false, canAttach, canAttach
         ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId })
         : detail,
-      detail, placed.has(creature.instanceId)),
+      detail, fx, id),
     )
   }
 
-  const active = el('div', 'slots')
+  // バトル場は列ごと手前に出す。カード側に置くと、被弾や配置の
+  // transform アニメーションと打ち消し合う（SPEC 9.7）
+  const active = el('div', 'slots slots--active')
   if (player.active === null) active.append(emptySlot('バトル場', true))
   else {
     const creature = player.active
@@ -577,9 +698,12 @@ function sideView(
       creatureCard(creature, true, canAttach, canAttach
         ? () => handlers.onAction({ type: 'attachEnergy', player: id, target: creature.instanceId })
         : detail,
-      detail, placed.has(creature.instanceId)),
+      detail, fx, id),
     )
   }
+
+  side.append(pileView('deck', player.deck.length))
+  side.append(pileView('discard', player.discard.length))
 
   // 相手側はベンチを上、バトル場を下に置いて向かい合わせる
   if (id === CPU) {
@@ -592,7 +716,12 @@ function sideView(
 
 function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<number>): HTMLElement {
   const legal = legalActions(state)
-  const playable = new Map<number, Action>()
+  /*
+   * 1枚の手札に対して出し方が複数あることがある。レアリティ召喚では
+   * 「バトル場をリリース」「ベンチのどれをリリース」で結果が別物になるので、
+   * **1つに畳んではいけない**。畳むと勝手に選ばれてしまう
+   */
+  const playable = new Map<number, Action[]>()
   for (const action of legal) {
     if (action.type === 'start' || action.player !== HUMAN) continue
     switch (action.type) {
@@ -601,7 +730,7 @@ function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<numbe
       case 'playItem':
       case 'playAction':
       case 'useUltimate':
-        playable.set(action.handIndex, action)
+        playable.set(action.handIndex, [...(playable.get(action.handIndex) ?? []), action])
         break
       default:
         break
@@ -617,10 +746,21 @@ function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<numbe
   if (cards.length === 0) hand.append(el('div', 'muted', '手札なし'))
   cards.forEach((cardId, index) => {
     const card = requireCard(cardId)
-    const action = playable.get(index)
+    const options = playable.get(index) ?? []
+    const action = options[0]
     const fresh = drawn.has(index)
     const node = el('button', `card card--hand${action !== undefined ? ' card--selectable' : ''}`
+      + `${options.length > 1 ? ' card--choices' : ''}`
       + `${fresh ? ' card--draw' : ''}`)
+    /*
+     * 手札は弧に並べる（SPEC 9.7.2）。中央を0として左右に開く。
+     * **角度は浅く保つ。** 傾けるほど文字が読みにくくなるので、
+     * 端でも6度までにして、束に見える最小限に留める
+     */
+    const center = (cards.length - 1) / 2
+    const spread = cards.length <= 1 ? 0 : Math.min(6, 14 / cards.length)
+    node.style.setProperty('--fan-angle', `${(index - center) * spread}deg`)
+    node.style.setProperty('--fan-lift', `${Math.abs(index - center) * 1.6}px`)
     node.type = 'button'
     // 同時に何枚も引いたとき（初手など）は少しずつ遅らせて、順に届くように見せる
     if (fresh) node.style.setProperty('--draw-delay', `${Math.min(index, 6) * 60}ms`)
@@ -635,9 +775,20 @@ function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<numbe
     body.append(el('span', 'card__name', displayName(card.name, card.kind === 'creature' && card.ex)))
     // キャラは HP、それ以外は種別を出す。手札で何が使えるか一目で分かるようにする
     body.append(el('span', 'card__hp', card.kind === 'creature' ? `HP${card.hp}` : kindLabel(card.kind)))
+    // 出し方が複数あるカードは、選ぶ必要があると分かる目印を出す
+    if (options.length > 1) body.append(el('span', 'card__choices', `${options.length}通り`))
     node.append(body)
     const detail = (): void => handlers.onHandTap(index)
-    bindTap(node, action === undefined ? detail : () => handlers.onAction(action), detail)
+    /*
+     * 出し方が1つだけならタップで即出す（コモンを置く速さを落とさない）。
+     * 複数あるならリリース先を選ばせる。長押しは今までどおり詳細
+     */
+    const tap = action === undefined
+      ? detail
+      : options.length > 1
+        ? (): void => handlers.onHandPlace(index)
+        : (): void => handlers.onAction(action)
+    bindTap(node, tap, detail)
     hand.append(node)
   })
   return hand
@@ -671,17 +822,29 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   const drawn = drawnIndices(hand)
   const ids = boardIds(state)
   const placed = new Set([...ids].filter((id) => !prevBoard.has(id)))
+  const fx = makeFx(state, placed)
 
   root.replaceChildren()
   const board = el('div', 'board')
-  board.append(statusBanner(state))
-  board.append(sideView(state, CPU, handlers, new Set(), placed))
-  board.append(sideView(state, HUMAN, handlers, attachTargets, placed))
-
-  const energy = el('div', 'energy')
-  const zone = state.players[HUMAN].energy
-  energy.append(el('span', undefined, `エネルギー: ${energyLabel(zone.current)}（次: ${energyLabel(zone.next)}）`))
-  board.append(energy)
+  // 置き先の破線を、今つけようとしているエネルギーと同じ色にする
+  const current = state.players[HUMAN].energy.current
+  if (current !== null) board.style.setProperty('--energy-color', `var(--energy-${current})`)
+  /*
+   * 盤面は縦に伸びるが、操作するのは下の2段（ボタンと手札）である。
+   * 画面が足りないときに切れるのが下からだと操作できなくなるので、
+   * 盤面だけを内側でスクロールさせ、ボタンと手札は必ず見える位置に置く
+   */
+  const field = el('div', 'field')
+  field.append(statusBanner(state))
+  /*
+   * 盤面の下敷き（SPEC 9.7.1）。カードは平面のまま、**下敷きだけ**を寝かせて
+   * 奥行きを出す。文字を載せない要素なので、傾けてもにじまない
+   */
+  const mat = el('div', 'mat')
+  mat.append(el('div', 'mat__face'))
+  field.append(mat)
+  field.append(sideView(state, CPU, handlers, new Set(), fx))
+  field.append(sideView(state, HUMAN, handlers, attachTargets, fx))
 
   const player = state.players[HUMAN]
   const controls = el('div', 'row')
@@ -715,20 +878,85 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
     if (endTurn !== undefined) endBtn.addEventListener('click', () => handlers.onAction(endTurn))
     controls.append(endBtn)
   }
-  board.append(controls)
-  board.append(handView(state, handlers, drawn))
-
-  board.append(el('div', 'hint', 'カードを長押しすると、ワザや弱点を見られます'))
+  field.append(el('div', 'hint', 'カードを長押しすると、ワザや弱点を見られます'))
 
   const logBox = el('div', 'log')
   for (const line of recentLog(state, 4)) logBox.append(el('div', undefined, line))
-  board.append(logBox)
+  field.append(logBox)
 
+  const dock = el('div', 'dock')
+  // エネルギーの状態は必ず見えていないと意味が無い。盤面側に置くと画面外に出る
+  dock.append(energyBar(state, attachTargets.size > 0))
+  dock.append(controls)
+  dock.append(handView(state, handlers, drawn))
+
+  board.append(field)
+  board.append(dock)
   root.append(board)
 
   // 次の描画で「前回」として使う。ここを忘れると毎回すべてが新規扱いになる
   prevHand = hand
   prevBoard = ids
+  rememberBoard(state)
+}
+
+/**
+ * エネルギーゾーンの状態を1行で見せる。
+ *
+ * 「今ターンぶんを置いたのか、まだなのか」が分からないという指摘への対応。
+ * 文字だけだと読み飛ばすので、丸の見た目そのものを3状態で変える。
+ */
+function energyBar(state: GameState, canAttach: boolean): HTMLElement {
+  const player = state.players[HUMAN]
+  const zone = player.energy
+  const myTurn = state.current === HUMAN && state.phase.kind === 'main'
+  const used = player.attachedThisTurn
+  const empty = zone.current === null
+
+  // 置いたあとは在庫も空になるが、見た目は「空」ではなく「置いた」を優先する。
+  // 空と完了を同じ灰色にすると、置き忘れなのか完了なのか読めなくなる
+  const state3 = used ? 'used' : empty ? 'empty' : 'ready'
+  const bar = el('div', `energy energy--${state3}`)
+
+  const orb = el('span', `energy__orb energy__orb--${zone.current ?? 'none'}`)
+  orb.append(el('span', 'energy__mark', used ? '✓' : energyLabel(zone.current)))
+  bar.append(orb)
+
+  const text = el('span', 'energy__text')
+  if (used) text.textContent = 'このターンのエネルギーは置いた'
+  else if (empty) text.textContent = 'エネルギーの在庫なし'
+  else if (myTurn && canAttach) text.textContent = 'まだ置いていない — 姫神をタップ'
+  else if (myTurn) text.textContent = 'まだ置いていない — 置ける姫神がいない'
+  else text.textContent = 'まだ置いていない'
+  bar.append(text)
+
+  bar.append(el('span', 'energy__next', `次 ${energyLabel(zone.next)}`))
+  return bar
+}
+
+/** 決着した盤面の上に出す幕。結果画面へはボタンで進む */
+export function renderFinish(root: HTMLElement, state: GameState, onNext: () => void): void {
+  const won = state.winner === HUMAN
+  const drew = state.winner === null
+  const veil = el('div', `finish finish--${drew ? 'draw' : won ? 'win' : 'loss'}`)
+  const inner = el('div', 'finish__inner')
+  inner.append(el('div', 'finish__title', drew ? '引き分け' : won ? '勝利' : '敗北'))
+  inner.append(el('div', 'finish__score',
+    `${state.players[HUMAN].points} - ${state.players[CPU].points}　${state.turn}ターン`))
+  inner.append(el('div', 'finish__reason', END_REASON[state.endReason ?? ''] ?? ''))
+  const next = el('button', 'btn finish__next', '結果を見る')
+  next.type = 'button'
+  next.addEventListener('click', onNext)
+  inner.append(next)
+  veil.append(inner)
+  root.append(veil)
+}
+
+const END_REASON: Readonly<Record<string, string>> = {
+  points: '3ポイント先取',
+  simultaneous: '同時に3ポイント — 手番側の勝ち',
+  noCreature: 'バトル場に出せる姫神が尽きた',
+  turnLimit: 'ターン上限',
 }
 
 /** ワザ選択・ベンチ選択の共通モーダル */

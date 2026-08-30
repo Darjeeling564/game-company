@@ -102,4 +102,6 @@ export function applyCardTheme(
   node.style.setProperty('--card-edge', r.edge)
   node.style.setProperty('--card-type', TYPE_COLOR[type])
   if (r.gradientText) node.classList.add('is-gradient-text')
+  // 3D 表示の光沢を上位レアだけに載せるための目印（SPEC 9.7）
+  if (rarity === 'superRare' || rarity === 'ultra') node.classList.add(`card--${r.code.toLowerCase()}`)
 }
