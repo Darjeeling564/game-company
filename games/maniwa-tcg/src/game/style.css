@@ -101,6 +101,336 @@ body {
   padding-top: 32px;
 }
 
+/* ================ タイトル画面（SPEC 9.8） ================ */
+
+.title-screen {
+  position: relative;
+  height: 100%;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 18px;
+  overflow: hidden;
+}
+
+/* 奥から手前へ差す光。題字の後ろに芯を作る */
+.title-screen::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255, 214, 120, 0.22), transparent 46%),
+    radial-gradient(circle at 50% 46%, rgba(120, 173, 139, 0.28), transparent 62%);
+  pointer-events: none;
+}
+
+/* 漂うカード。既にある絵を使い回すので素材を足さない */
+.drift {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.drift__card {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 84px;
+  aspect-ratio: 5 / 7;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center 22%;
+  border: 1px solid rgba(245, 240, 225, 0.25);
+  box-shadow: 0 8px 18px -6px rgba(0, 0, 0, 0.7);
+  opacity: calc(0.28 + var(--s) * 0.34);
+  transform: scale(var(--s)) rotate(var(--r));
+  animation: driftUp var(--t) ease-in-out var(--d) infinite alternate;
+}
+
+@keyframes driftUp {
+  from { transform: scale(var(--s)) rotate(var(--r)) translateY(10px); }
+  to   { transform: scale(var(--s)) rotate(calc(var(--r) * -0.6)) translateY(-14px); }
+}
+
+.logo {
+  position: relative;
+  text-align: center;
+}
+
+.logo__main {
+  font-size: clamp(44px, 15vw, 64px);
+  letter-spacing: 0.1em;
+  color: #ffd678;
+  text-shadow:
+    0 0 24px rgba(255, 214, 120, 0.55),
+    0 3px 0 rgba(30, 61, 41, 0.9),
+    0 6px 14px rgba(0, 0, 0, 0.7);
+}
+
+.logo__sub {
+  margin-top: 4px;
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  color: rgba(245, 240, 225, 0.7);
+}
+
+.title-screen__start {
+  position: relative;
+  border: 0;
+  background: none;
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  padding: 12px 20px;
+  min-height: var(--tap);
+  cursor: pointer;
+  animation: blink 1.9s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+.title-screen__foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ================ タブのある画面 ================ */
+
+.page {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.page__head {
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  padding: 4px 2px 8px;
+  border-bottom: 1px solid rgba(245, 240, 225, 0.16);
+}
+
+.page__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tabbar {
+  display: flex;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(245, 240, 225, 0.16);
+}
+
+.tabbar__item {
+  flex: 1 1 0;
+  min-height: var(--tap);
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 5px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(245, 240, 225, 0.6);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tabbar__item.is-on {
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--cream);
+}
+
+.tabbar__mark {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 13px;
+}
+
+.tabbar__item.is-on .tabbar__mark {
+  background: #ffd678;
+  border-color: #ffd678;
+  color: var(--forest-dark);
+}
+
+.tabbar__label { font-size: 11px; }
+
+/* ================ ホーム ================ */
+
+.home, .battle-select, .howto, .gallery {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+
+.panel {
+  background: rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(245, 240, 225, 0.12);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.panel__title {
+  font-size: 14px;
+  color: #ffd678;
+  letter-spacing: 0.06em;
+}
+
+.record { display: flex; gap: 18px; }
+
+.record__cell { display: flex; align-items: baseline; gap: 3px; }
+
+.record__num {
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+}
+
+.record__label { font-size: 12px; opacity: 0.7; }
+
+/* ================ 対戦選択 ================ */
+
+.hero {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center 24%;
+  border: 1px solid rgba(245, 240, 225, 0.2);
+  display: grid;
+  align-content: end;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 35%, rgba(10, 22, 14, 0.88));
+}
+
+/* 影の帯（::after）は通常フローの子より後に描かれるので、文字は前に出す */
+.hero__title, .hero__sub { position: relative; z-index: 1; }
+.hero__title { font-size: 30px; letter-spacing: 0.12em; }
+.hero__sub { font-size: 12px; opacity: 0.8; }
+
+/* ================ カード図鑑 ================ */
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 240, 225, 0.28);
+  background: transparent;
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip.is-on {
+  background: #ffd678;
+  border-color: #ffd678;
+  color: var(--forest-dark);
+}
+
+.chip__count { font-size: 11px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+.gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.gallery__cell {
+  position: relative;
+  padding: 2px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--card-frame, var(--cream));
+  cursor: pointer;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4), 0 6px 10px -5px rgba(0, 0, 0, 0.6);
+}
+
+.gallery__face {
+  display: block;
+  position: relative;
+  aspect-ratio: 5 / 7;
+  border-radius: 5px;
+  background: linear-gradient(var(--card-bg), var(--card-deep));
+  background-size: cover;
+  background-position: center 20%;
+  overflow: hidden;
+}
+
+.gallery__name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 8px 4px 3px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+  color: var(--cream);
+  font-size: 10px;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.gallery__none {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: rgba(245, 240, 225, 0.5);
+}
+
+.gallery__rarity {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(14, 30, 19, 0.85);
+  color: var(--cream);
+  font-size: 9px;
+  line-height: 1.6;
+}
+
+/* ================ 遊びかた ================ */
+
+.howto__line {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+}
+
+.howto__line strong { color: #ffd678; }
+
 .deck-option {
   display: grid;
   gap: 4px;
