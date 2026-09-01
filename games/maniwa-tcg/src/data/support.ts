@@ -120,6 +120,18 @@ export const ITEMS: readonly ItemCard[] = [
     flavor: '深海の底で眠る者が漏らす寝言。意味を成さない音だが、聞き取れた回数だけ正気が削れる。',
     effects: [{ type: 'damagePerHeads', target: 'opponentActive', value: 20, count: 2 }],
   },
+  {
+    id: 'i019', name: 'アグニの火箭', ruby: 'アグニのかせん', kind: 'item', origin: 'india', rarity: 'rare',
+    flavor: '火神の放つ無数の矢。狙いは定めず、控えて待つ者たちの頭上へ等しく降りそそぐ。',
+    // 神具で opponentBenchAll を使うのは初。控えを一度に削る手段が神具に無かった
+    effects: [{ type: 'damage', target: 'opponentBenchAll', value: 20 }],
+  },
+  {
+    id: 'i020', name: 'ウシャブティ', kind: 'item', origin: 'egypt', rarity: 'superRare',
+    flavor: '墓に納める従者の人形。死者の代わりに畑を耕すよう、名を呼ばれた数だけ起き上がる。',
+    // 神具で ownBenchAll にエネルギーを配るのは初。控えの立ち上がりを早める役割
+    effects: [{ type: 'attachEnergy', target: 'ownBenchAll', value: 1 }],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
