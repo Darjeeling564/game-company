@@ -62,6 +62,24 @@ function format(brief: Brief): string {
   ].join('\n')
 }
 
+/**
+ * 衣装の条件（2026-09-01 更新・src/data/art/README.md）。
+ *
+ * もとは「カップ＋肩紐＋アンダーバンドが繋がった三角ビキニ」という**形**を指定していたが、
+ * 覆えているのに形が違うだけの絵まで弾いてしまうため、形の指定を外した。
+ * 判定は「胸が不透明に隠れているか」の1点だけで行う。
+ *
+ * 生成のたびに手で書き添えていた条件を、ここに移して出力に必ず載るようにする。
+ */
+const COSTUME_NOTE: readonly string[] = [
+  '**胸が不透明に隠れていること。** 取り込めるかどうかはこの1点で決まる',
+  '手段は問わない。布・革・金属・鎧のほか、髪・腕・抱えた道具・水面・湯気・影でもよい',
+  '形も問わない。ビキニ型・一枚布のドレープ・片肩・コルセット・胸当て、どれでもよい',
+  '通らないのは頂点が露出しているもの。次の4つが実際に見送った例',
+  '  貼り付け型で頂点だけを覆う（ニップレス類） / 鎖・紐だけが掛かっている',
+  '  透ける布で下が見えている / 布はあるが縁にずれて頂点が出ている',
+]
+
 /** 種別ごとの描き方。カードに渡す5項目は変えず、指示だけを分ける */
 const KIND_BRIEF: readonly {
   readonly kind: CardDef['kind']
@@ -128,6 +146,9 @@ function main(argv: readonly string[]): number {
 
   console.log(`姫神演義 カードイラスト入力データ（${cards.length}種）`)
   console.log('1024×1024 の正方形。渡すデータは5項目のみで、ここに無い要素を足さない。')
+  console.log('')
+  console.log('━━━ 衣装（全種別に共通・取り込みの可否を決める）')
+  for (const line of COSTUME_NOTE) console.log(`・${line}`)
 
   for (const section of KIND_BRIEF) {
     const group = cards.filter((c) => c.kind === section.kind)
