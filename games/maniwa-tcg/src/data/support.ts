@@ -247,6 +247,24 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'switchOpponent' },
     ],
   },
+  {
+    id: 'a019', name: '金翅鳥の急襲', ruby: 'こんじちょうのきゅうしゅう', kind: 'action', origin: 'india', rarity: 'rare',
+    flavor: '蛇を狙って舞い降りる霊鳥。掴み上げられた者は、否応なく前へ引き出される。',
+    // 道標で switchOpponent + damage を組むのは初。a003 は入れ替えのみ、a018 は剥奪と入れ替え
+    effects: [
+      { type: 'switchOpponent' },
+      { type: 'damage', target: 'opponentActive', value: 20 },
+    ],
+  },
+  {
+    id: 'a020', name: 'セルケトの針', ruby: 'セルケトのはり', kind: 'action', origin: 'egypt', rarity: 'rare',
+    flavor: '死者の内臓を守る蠍の女神。刺された者は毒に痺れ、力の巡りが止まる。',
+    // 道標で applyStatus + discardEnergy を組むのは初。a006 は毒と打点、a007 は剥奪のみ
+    effects: [
+      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
