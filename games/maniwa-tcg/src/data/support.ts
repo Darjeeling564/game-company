@@ -120,7 +120,18 @@ export const ITEMS: readonly ItemCard[] = [
     flavor: '深海の底で眠る者が漏らす寝言。意味を成さない音だが、聞き取れた回数だけ正気が削れる。',
     effects: [{ type: 'damagePerHeads', target: 'opponentActive', value: 20, count: 2 }],
   },
-]
+  {
+    id: 'i019', name: 'アグニの火箭', ruby: 'アグニのかせん', kind: 'item', origin: 'india', rarity: 'rare',
+    flavor: '火神の放つ無数の矢。狙いは定めず、控えて待つ者たちの頭上へ等しく降りそそぐ。',
+    // 神具で opponentBenchAll を使うのは初。控えを一度に削る手段が神具に無かった
+    effects: [{ type: 'damage', target: 'opponentBenchAll', value: 20 }],
+  },
+  {
+    id: 'i020', name: 'ウシャブティ', kind: 'item', origin: 'egypt', rarity: 'superRare',
+    flavor: '墓に納める従者の人形。死者の代わりに畑を耕すよう、名を呼ばれた数だけ起き上がる。',
+    // 神具で ownBenchAll にエネルギーを配るのは初。控えの立ち上がりを早める役割
+    effects: [{ type: 'attachEnergy', target: 'ownBenchAll', value: 1 }],
+  },]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
 
@@ -367,4 +378,27 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'selfDamage', value: 10 },
     ],
   },
-]
+  {
+    id: 'u013', name: '五色の石', ruby: 'ごしきのいし', kind: 'ultimate',
+    origin: 'china', rarity: 'ultra', requires: 'e009',
+    flavor: '崩れた天の裂け目を、練り上げた五色の石で塞ぐ。世界が繕われるあいだ、己の傷もまた閉じていく。',
+    cost: ['earth', 'earth', 'colorless'],
+    effects: [
+      // 女媧の最強ワザ「天を繕う」は効率 27.33。ここを 30.67 にして比 1.122 に置く。
+      // 中国系統はこれが初の絶技で、SPEC 16.5.2 が「作れない」としていた4系統のひとつ
+      { type: 'damage', target: 'opponentActive', value: 80 },
+      { type: 'heal', target: 'self', value: 20 },
+    ],
+  },
+  {
+    id: 'u014', name: '四方の風', ruby: 'しほうのかぜ', kind: 'ultimate',
+    origin: 'mesopotamia', rarity: 'ultra', requires: 't009',
+    flavor: '四方から呼んだ風で大蛇の腹を膨らませ、動けなくしてから射抜く。裂けた体は天と地に分けられた。',
+    cost: ['thunder', 'thunder', 'colorless'],
+    effects: [
+      // マルドゥクの最強ワザ「五十の名」は効率 26.67。ここを 30.83 にして比 1.156 に置く。
+      // 中東系統もこれが初の絶技
+      { type: 'damage', target: 'opponentActive', value: 70 },
+      { type: 'damage', target: 'opponentBenchAll', value: 15 },
+    ],
+  },]

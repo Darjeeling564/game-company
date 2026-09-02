@@ -344,7 +344,20 @@ const WIND: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
     ],
   },
-]
+  {
+    id: 'k009', name: 'アメン', kind: 'creature',
+    flavor: '姿を持たぬ風として世界を満たす神。名を隠したまま、王の背を押して玉座へ導く。',
+    origin: 'egypt', rarity: 'rare',
+    type: 'wind', hp: 110, ex: false, retreatCost: 1, stage: 0,
+    attacks: [
+      { name: '見えざる息', ruby: 'みえざるいき', cost: ['wind', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
+      // 最強ワザをコスト3にしてある。エジプト系統は「最強ワザがコスト3の姫神」が
+      // 1体も居ないために絶技を作れなかった（SPEC 16.5.2）。その穴を開けるため
+      { name: '隠れたる者', ruby: 'かくれたるもの', cost: ['wind', 'wind', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 80 }] },
+    ],
+  },]
 
 // ------------------------------------------------ 土
 const EARTH: readonly CreatureCard[] = [
@@ -668,7 +681,18 @@ const WATER: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 50 }, { type: 'damage', target: 'opponentBenchAll', value: 10 }] },
     ],
   },
-]
+  {
+    id: 'w009', name: 'ダゴン', kind: 'creature',
+    flavor: '深きものたちの父。海に沈んだ都から浮かび上がり、岸の民を水底へ迎え入れる。',
+    origin: 'cthulhu', rarity: 'superRare',
+    type: 'water', hp: 130, ex: false, retreatCost: 3, stage: 0,
+    attacks: [
+      { name: '深きものの手', ruby: 'ふかきもののて', cost: ['water'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: '父なるダゴン', ruby: 'ちちなるダゴン', cost: ['water', 'water'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 60 }, { type: 'damage', target: 'opponentBenchRandom', value: 20 }] },
+    ],
+  },]
 
 // ------------------------------------------------ 光
 const LIGHT: readonly CreatureCard[] = [
