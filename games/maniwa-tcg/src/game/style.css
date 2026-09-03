@@ -101,6 +101,25 @@ body {
   padding-top: 32px;
 }
 
+/* ================ 画面の切り替え（SPEC 9.4.1） ================ */
+
+/*
+ * 画面は root.replaceChildren() で丸ごと差し替わる。要素が毎回作り直されるので、
+ * 入場アニメーションを当てるだけで全遷移に効く（JS 側の変更は要らない）。
+ * 0.18 秒に固定する。これ以上長いとタブを連打したときに待たされる。
+ */
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.page,
+.title-screen,
+.screen,
+.modal__panel {
+  animation: screenIn 0.18s ease-out;
+}
+
 /* ================ タイトル画面（SPEC 9.8） ================ */
 
 .title-screen {
@@ -157,7 +176,27 @@ body {
   text-align: center;
 }
 
+/*
+ * ロゴと「タップでスタート」は順に現れる（SPEC 9.4.2）。漂うカードだけが動いていて、
+ * いちばん目立つ要素が静止していた。backwards を付けて、遅れているあいだは隠しておく
+ */
+@keyframes logoIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes startIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .logo__main {
+  animation: logoIn 0.52s ease-out 0.1s backwards;
   font-size: clamp(44px, 15vw, 64px);
   letter-spacing: 0.1em;
   color: #ffd678;
@@ -168,6 +207,7 @@ body {
 }
 
 .logo__sub {
+  animation: riseIn 0.48s ease-out 0.34s backwards;
   margin-top: 4px;
   font-size: 12px;
   letter-spacing: 0.42em;
@@ -185,7 +225,10 @@ body {
   padding: 12px 20px;
   min-height: var(--tap);
   cursor: pointer;
-  animation: blink 1.9s ease-in-out infinite;
+  /* 入場 → そのあと点滅。点滅は既にあるものをそのまま使う */
+  animation:
+    startIn 0.4s ease-out 0.62s backwards,
+    blink 1.9s ease-in-out 1.02s infinite;
 }
 
 @keyframes blink {
@@ -1636,6 +1679,13 @@ body {
   .card__pop,
   .card--charged,
   .points__pip--on,
+  .page,
+  .title-screen,
+  .screen,
+  .modal__panel,
+  .logo__main,
+  .logo__sub,
+  .title-screen__start,
   .card--ultimate,
   .finish,
   .finish__inner,
