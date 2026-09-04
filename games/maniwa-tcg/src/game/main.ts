@@ -141,7 +141,7 @@ function showTitle(): void {
 
   const logo = el('div', 'logo')
   logo.append(el('div', 'logo__main', '姫神演義'))
-  logo.append(el('div', 'logo__sub', 'HIMEGAMI ENGI'))
+  logo.append(el('div', 'logo__sub', 'KISHIN ENGI'))
   screen.append(logo)
 
   const start = el('button', 'title-screen__start', 'タップでスタート')
