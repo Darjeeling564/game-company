@@ -131,7 +131,8 @@ export const ITEMS: readonly ItemCard[] = [
     flavor: '墓に納める従者の人形。死者の代わりに畑を耕すよう、名を呼ばれた数だけ起き上がる。',
     // 神具で ownBenchAll にエネルギーを配るのは初。控えの立ち上がりを早める役割
     effects: [{ type: 'attachEnergy', target: 'ownBenchAll', value: 1 }],
-  },]
+  },
+]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
 
@@ -401,4 +402,39 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'damage', target: 'opponentActive', value: 70 },
       { type: 'damage', target: 'opponentBenchAll', value: 15 },
     ],
-  },]
+  },
+  {
+    id: 'u015', name: 'アメン＝ラーの顕現', ruby: 'アメン＝ラーのけんげん', kind: 'ultimate',
+    origin: 'egypt', rarity: 'ultra', requires: 'k009',
+    flavor: '隠れていた風が姿を現し、王として立つ。名を知られた瞬間、その息はすべてを薙ぎ払う。',
+    cost: ['wind', 'wind', 'colorless'],
+    effects: [
+      /*
+       * アメンの最強ワザ「隠れたる者」は効率 26.67。ここを 33.33 にして比 1.25 に置く。
+       * エジプト系統はこれが初の絶技。
+       *
+       * **使用率が低いのは承知のうえ。原因は効果ではなく対応姫神の生存力にある。**
+       * 最初は `switchOpponent` を添えて 85ダメージにしたが、pool 1万戦で使用率 12.8%。
+       * 素の打点 100 に振り直しても 13.4% でほとんど動かなかった。
+       *
+       * 絶技16種を対応姫神ごとに並べると、EX 由来の平均使用率 37.5% に対して
+       * 非EX 由来は 21.1%。非EX のなかでも HP 順に並び、アメンは **HP110 で最小**である。
+       * 撃つ価値（＝効率比）が基準内でも、**バトル場に立ち続けられなければ撃つ機会が来ない**。
+       * SPEC 16.5.1 の効率比は前者しか見ていない（2026-09-05 の夜間ジョブで測定）
+       */
+      { type: 'damage', target: 'opponentActive', value: 100 },
+    ],
+  },
+  {
+    id: 'u016', name: '血より生る神', ruby: 'ちよりなるかみ', kind: 'ultimate',
+    origin: 'japan', rarity: 'ultra', requires: 'f001',
+    flavor: '斬られた体から流れた血が岩に落ち、そのたびに新しい神が立ち上がった。',
+    cost: ['fire', 'fire', 'colorless'],
+    effects: [
+      // カグツチの最強ワザ「焼き尽くす」は効率 23.33。ここを 27.67 にして比 1.186 に置く。
+      // 絶技で searchCreature を使うのは初。血から神が生まれる神話をそのまま効果にした
+      { type: 'damage', target: 'opponentActive', value: 75 },
+      { type: 'searchCreature' },
+    ],
+  },
+]
