@@ -1369,6 +1369,132 @@ body {
   100% { transform: none; filter: none; }
 }
 
+/* ---------------- 攻撃の演出（SPEC 9.4.4） ---------------- */
+
+/*
+ * 攻撃した側のバトル場が、相手のほうへ踏み込んで戻る。
+ * 向きは側で決まる。自分は上（相手が上に居る）、相手は下。
+ * **移動量は1段の半分まで。** 相手のカードに重なると受け手のHPが読めなくなる
+ */
+.side--human .card--lunge {
+  animation: lungeUp 0.42s cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+.side--cpu .card--lunge {
+  animation: lungeDown 0.42s cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+@keyframes lungeUp {
+  0%   { transform: none; }
+  22%  { transform: translateY(6px) scale(0.97); }
+  46%  { transform: translateY(-34px) scale(1.04); }
+  62%  { transform: translateY(-26px) scale(1.02); }
+  100% { transform: none; }
+}
+
+@keyframes lungeDown {
+  0%   { transform: none; }
+  22%  { transform: translateY(-6px) scale(0.97); }
+  46%  { transform: translateY(34px) scale(1.04); }
+  62%  { transform: translateY(26px) scale(1.02); }
+  100% { transform: none; }
+}
+
+/*
+ * 着弾。**破片は DOM を増やさず conic-gradient の繰り返しで描く。**
+ * 手札まで含めた再描画のたびに要素を10個足すと重い（SPEC 9.4.4）。
+ *
+ *   本体   = 破片（属性色）。--burst-shards 本の棘が外へ開く
+ *   ::before = 輪（レアリティ）。C は太さ0で出ない
+ *   ::after  = 閃光（系統色）
+ */
+.burst {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 132px;
+  height: 132px;
+  margin: -66px 0 0 -66px;
+  pointer-events: none;
+  z-index: 3;
+  background: repeating-conic-gradient(
+    from 0deg,
+    var(--burst-type) 0deg 4deg,
+    transparent 4deg calc(360deg / var(--burst-shards))
+  );
+  mask: radial-gradient(closest-side, transparent 12%, #000 26%, #000 64%, transparent 100%);
+  animation: burstShards 0.52s cubic-bezier(0.15, 0.7, 0.3, 1) both;
+}
+
+.burst::before,
+.burst::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.burst::before {
+  border: var(--burst-ring) solid var(--burst-ring-color);
+  animation: burstRing 0.5s cubic-bezier(0.1, 0.75, 0.25, 1) both;
+}
+
+.burst::after {
+  background: radial-gradient(closest-side, var(--burst-origin), transparent 70%);
+  animation: burstFlash 0.3s ease-out both;
+}
+
+/* UR だけ虹を一掃きする。枠色がグラデーションで border に入らないぶんをここで出す */
+.burst--ur {
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      var(--burst-type) 0deg 4deg,
+      transparent 4deg calc(360deg / var(--burst-shards))
+    ),
+    conic-gradient(#ff6b6b, #ffd166, #8ce99a, #74c0fc, #b197fc, #ff8fd0, #ff6b6b);
+  animation: burstShards 0.52s cubic-bezier(0.15, 0.7, 0.3, 1) both,
+    burstSweep 0.52s linear both;
+}
+
+@keyframes burstShards {
+  0%   { transform: scale(0.28) rotate(-14deg); opacity: 0; }
+  18%  { opacity: 1; }
+  100% { transform: scale(1.55) rotate(10deg); opacity: 0; }
+}
+
+@keyframes burstRing {
+  0%   { transform: scale(0.2); opacity: 0.95; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+@keyframes burstFlash {
+  0%   { transform: scale(0.35); opacity: 0.85; }
+  100% { transform: scale(1.1); opacity: 0; }
+}
+
+@keyframes burstSweep {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(120deg); }
+}
+
+/* ---------------- 気絶の演出（SPEC 9.4.3） ---------------- */
+
+/*
+ * 倒れた姫神を1描画ぶんだけ置き直したもの。手前に倒れながら沈み、
+ * 彩度が抜けて消える。**押せない**（盤面にはもう居ないため）
+ */
+.card--faint {
+  pointer-events: none;
+  animation: cardFaint 0.45s ease-in both;
+}
+
+@keyframes cardFaint {
+  0%   { transform: none; filter: none; opacity: 1; }
+  30%  { transform: perspective(600px) rotateX(-10deg) translateY(4px); filter: brightness(1.5) saturate(0.7); }
+  100% { transform: perspective(600px) rotateX(-52deg) translateY(26px) scale(0.94); filter: grayscale(1) brightness(0.5); opacity: 0; }
+}
+
 /* 受けたダメージの数字。0.9秒で消える */
 .card__pop {
   position: absolute;
@@ -1687,12 +1813,20 @@ body {
   .logo__sub,
   .title-screen__start,
   .card--ultimate,
+  .card--lunge,
+  .burst,
+  .burst::before,
+  .burst::after,
+  .card--faint,
   .finish,
   .finish__inner,
   .finish--win::before {
     animation: none;
   }
   .card__pop { opacity: 1; }
+  /* 動かさないなら出さない。被弾は HP と .card__pop で分かる（SPEC 9.4.4） */
+  .burst { display: none; }
+  .card--faint { display: none; }
 }
 
 .hint {

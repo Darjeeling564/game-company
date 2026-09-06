@@ -11,6 +11,7 @@ import type {
   Effect,
   EnergyType,
   GameState,
+  LogEntry,
   Origin,
   PlayerId,
   PlayerState,
@@ -19,7 +20,7 @@ import type {
 import { BENCH_SIZE, WEAKNESS_CHART, weaknessBonus } from '../core/types.ts'
 import { requireCard, requireCreature } from '../data/cards.ts'
 import { artStage, artUrl } from './art.ts'
-import { RARITY_STYLE, TYPE_COLOR, applyCardTheme } from './theme.ts'
+import { ORIGIN_STYLE, RARITY_STYLE, TYPE_COLOR, applyCardTheme } from './theme.ts'
 
 export const HUMAN: PlayerId = 0
 export const CPU: PlayerId = 1
@@ -474,6 +475,8 @@ let prevBoard: ReadonlySet<number> = new Set()
 let prevDamage: ReadonlyMap<number, number> = new Map()
 /** 個体ごとの前回のエネルギー数。増えていたら付与の演出を出す */
 let prevEnergy: ReadonlyMap<number, number> = new Map()
+/** 前回のバトル場。消えていたら気絶の演出を出す（SPEC 9.4.3） */
+let prevActive: readonly [Creature | null, Creature | null] = [null, null]
 
 /**
  * 1回の描画だけに出す演出。core は純粋なので状態に演出は持てない。
@@ -488,6 +491,25 @@ interface Fx {
   readonly placed: ReadonlySet<number>
   /** 直前に絶技を撃った側。バトル場の姫神を一回転させる */
   readonly ultimate: PlayerId | null
+  /** 直前に攻撃した側。バトル場のカードを相手のほうへ踏み込ませる（SPEC 9.4.4） */
+  readonly lunge: PlayerId | null
+  /**
+   * 着弾のエフェクト。**色と派手さは攻撃した側のカードから取る**（SPEC 9.4.4）。
+   * 受け手の色で光ると、誰が撃ったのか分からない
+   */
+  readonly burst: BurstStyle | null
+  /** 気絶して消えた個体。1描画ぶんだけ幽霊として置く（SPEC 9.4.3） */
+  readonly faint: ReadonlyMap<PlayerId, Creature>
+}
+
+/** 着弾エフェクトの見た目。専用の配色表は作らず theme.ts の3つをそのまま使う */
+interface BurstStyle {
+  /** 系統。閃光の色味 */
+  readonly origin: Origin
+  /** レアリティ。輪の太さと破片の数 */
+  readonly rarity: Rarity
+  /** 属性。着弾の色 */
+  readonly type: EnergyType
 }
 
 function boardCreatures(state: GameState): readonly Creature[] {
@@ -505,6 +527,28 @@ function lastUltimate(state: GameState): PlayerId | null {
   return last !== undefined && last.kind === 'ultimate' ? last.player : null
 }
 
+/**
+ * 前回の描画から増えたログ。攻撃と気絶を拾うのに使う（SPEC 9.4.3 / 9.4.4）。
+ *
+ * 攻撃のログは末尾に残らない（`attack` のあとに `damage` や `ko` が続く）ので、
+ * `lastUltimate` のように末尾だけを見る方法では取れない。**差分を見る。**
+ * これは音の実装（`main.ts` の `playFromLog`）と同じ考え方である。
+ */
+let prevLogLen = 0
+
+function freshLog(state: GameState): readonly LogEntry[] {
+  return state.log.length >= prevLogLen ? state.log.slice(prevLogLen) : state.log
+}
+
+/** 差分の中で最後に攻撃した側。絶技も攻撃として数える */
+function lastAttacker(fresh: readonly LogEntry[]): PlayerId | null {
+  let who: PlayerId | null = null
+  for (const entry of fresh) {
+    if (entry.kind === 'attack' || entry.kind === 'ultimate') who = entry.player
+  }
+  return who
+}
+
 function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
   const hit = new Map<number, number>()
   const charged = new Set<number>()
@@ -514,7 +558,42 @@ function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
     const energy = prevEnergy.get(c.instanceId)
     if (energy !== undefined && c.attached.length > energy) charged.add(c.instanceId)
   }
-  return { hit, charged, placed, ultimate: lastUltimate(state) }
+
+  const fresh = freshLog(state)
+  const lunge = lastAttacker(fresh)
+  /*
+   * エフェクトの色は**攻撃した側のバトル場**から取る（SPEC 9.4.4）。
+   * 撃った直後に気絶して居なくなっている場合があるので、居なければ出さない
+   */
+  const striker = lunge === null ? null : state.players[lunge].active
+  const burst = striker === null || hit.size === 0
+    ? null
+    : (() => {
+        const card = requireCreature(striker.cardId)
+        return { origin: card.origin, rarity: card.rarity, type: card.type }
+      })()
+
+  return { hit, charged, placed, ultimate: lastUltimate(state), lunge, burst, faint: makeFaint(state, fresh) }
+}
+
+/**
+ * 気絶して盤面から消えた個体を拾う（SPEC 9.4.3）。
+ *
+ * **バトル場のぶんだけを見る。** 気絶はほぼバトル場で起き、そのあと枠が空くので
+ * 幽霊を元の位置に置ける。ベンチは配列が詰められて位置が動くため、
+ * 同じ場所に置けない。ベンチの気絶（benchAll のワザ）は演出しない
+ */
+function makeFaint(state: GameState, fresh: readonly LogEntry[]): ReadonlyMap<PlayerId, Creature> {
+  const out = new Map<PlayerId, Creature>()
+  if (!fresh.some((e) => e.kind === 'ko')) return out
+  for (const id of [0, 1] as const) {
+    const before = prevActive[id]
+    if (before === null) continue
+    // 同じ個体がまだ居るなら気絶していない（逃げただけならベンチに残る）
+    if (boardIds(state).has(before.instanceId)) continue
+    out.set(id, before)
+  }
+  return out
 }
 
 function rememberBoard(state: GameState): void {
@@ -526,6 +605,8 @@ function rememberBoard(state: GameState): void {
   }
   prevDamage = damage
   prevEnergy = energy
+  prevActive = [state.players[0].active, state.players[1].active]
+  prevLogLen = state.log.length
 }
 
 /** 手札のうち、前回の描画に居なかった位置。山札から引かれた枚数ぶん末尾に増える */
@@ -547,6 +628,39 @@ function boardIds(state: GameState): ReadonlySet<number> {
   return ids
 }
 
+/**
+ * 着弾のエフェクト（SPEC 9.4.4）。
+ *
+ * **専用の配色表を作らない。** theme.ts の3つをそのまま引く。
+ * 表が二重になると、系統やレアリティを足したときに片方だけ直し忘れる。
+ *
+ *   属性 → 着弾の色 / 系統 → 閃光の色味 / レアリティ → 輪の太さと破片の数
+ *
+ * 破片は DOM を増やさず `repeating-conic-gradient` の繰り返し数で出す。
+ * 手札まで含めた再描画のたびに要素を10個足すと重くなるため。
+ */
+const BURST_SHARDS: Readonly<Record<Rarity, number>> = {
+  common: 4, rare: 6, superRare: 8, ultra: 10,
+}
+
+/** 輪の太さ(px)。0 は輪を出さない */
+const BURST_RING: Readonly<Record<Rarity, number>> = {
+  common: 0, rare: 2, superRare: 4, ultra: 4,
+}
+
+function burstNode(style: BurstStyle): HTMLElement {
+  const node = el('span', `burst${style.rarity === 'ultra' ? ' burst--ur' : ''}`)
+  node.style.setProperty('--burst-type', TYPE_COLOR[style.type])
+  node.style.setProperty('--burst-origin', ORIGIN_STYLE[style.origin].bg)
+  node.style.setProperty('--burst-shards', String(BURST_SHARDS[style.rarity]))
+  node.style.setProperty('--burst-ring', `${BURST_RING[style.rarity]}px`)
+  // UR の枠色はグラデーションなので border に入らない。輪は属性色で描き、虹は別層で掃く
+  node.style.setProperty('--burst-ring-color', style.rarity === 'ultra'
+    ? TYPE_COLOR[style.type]
+    : RARITY_STYLE[style.rarity].frame)
+  return node
+}
+
 function creatureCard(
   creature: Creature,
   isActive: boolean,
@@ -565,7 +679,13 @@ function creatureCard(
     + `${damage !== undefined ? ' card--hit' : ''}`
     + `${fx.charged.has(creature.instanceId) ? ' card--charged' : ''}`
     + `${remaining <= card.hp / 2 ? ' card--wounded' : ''}`
-    + `${isActive && fx.ultimate === owner ? ' card--ultimate' : ''}`)
+    + `${isActive && fx.ultimate === owner ? ' card--ultimate' : ''}`
+    /*
+     * 攻撃した側のバトル場だけが踏み込む。向きは side--human / side--cpu で決まる。
+     * **絶技のときは付けない。** 一回転（card--ultimate）を残す決まりで（SPEC 9.4.4）、
+     * 両方付けると transform が競合してどちらか片方しか効かない
+     */
+    + `${isActive && fx.lunge === owner && fx.ultimate !== owner ? ' card--lunge' : ''}`)
   node.type = 'button'
   applyCardTheme(node, card.origin, card.rarity, card.type)
 
@@ -608,6 +728,8 @@ function creatureCard(
 
   // 受けたダメージを一瞬だけ浮かせる。ログを読まなくても何が起きたか分かるように
   if (damage !== undefined) body.append(el('span', 'card__pop', `-${damage}`))
+  // 着弾のエフェクトは被弾した側に出す。色は攻撃した側から取る（SPEC 9.4.4）
+  if (damage !== undefined && fx.burst !== null) body.append(burstNode(fx.burst))
   node.append(body)
 
   /*
@@ -689,8 +811,21 @@ function sideView(
   // バトル場は列ごと手前に出す。カード側に置くと、被弾や配置の
   // transform アニメーションと打ち消し合う（SPEC 9.7）
   const active = el('div', 'slots slots--active')
-  if (player.active === null) active.append(emptySlot('バトル場', true))
-  else {
+  const faint = fx.faint.get(id)
+  if (player.active === null) {
+    /*
+     * 気絶した姫神を1描画ぶんだけ置き直す（SPEC 9.4.3）。
+     * 倒れてから消えるので、どこに居た誰が倒れたのかが分かる。
+     * **押せないようにする**（CSS の pointer-events）。押せると盤面と食い違う
+     */
+    if (faint !== undefined) {
+      const ghost = creatureCard(faint, true, false, () => undefined, () => undefined,
+        { ...fx, hit: new Map(), charged: new Set(), placed: new Set(), burst: null }, id)
+      ghost.classList.add('card--faint')
+      if (ghost instanceof HTMLButtonElement) ghost.disabled = true
+      active.append(ghost)
+    } else active.append(emptySlot('バトル場', true))
+  } else {
     const creature = player.active
     const canAttach = attachTargets.has(creature.instanceId)
     const detail = (): void => handlers.onCreatureTap(id, creature.instanceId)

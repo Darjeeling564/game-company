@@ -30,7 +30,7 @@ import type { CustomDeck } from './storage.ts'
 import { load, recordResult, save } from './storage.ts'
 import { artUrl } from './art.ts'
 import { applyCardTheme } from './theme.ts'
-import { hasSfx, isMuted, play, setMuted } from './sound.ts'
+import { hasSfx, isMuted, play, playBgm, setMuted, stopBgm } from './sound.ts'
 
 const root = document.getElementById('app') as HTMLElement
 const CPU_DELAY_MS = 450
@@ -119,6 +119,9 @@ const TITLE_CARDS = [
 
 function showTitle(): void {
   clearTimer()
+  // 初回はタップ前なので何も起きない（AudioContext を作らない。SPEC 9.6）。
+  // 結果画面から戻ってきたときはここで calm に戻る
+  playBgm('calm')
   root.replaceChildren()
   const screen = el('div', 'title-screen')
 
@@ -158,15 +161,23 @@ function showTitle(): void {
   root.append(screen)
 }
 
-/** 効果音の入切。押した結果をその場で鳴らして、切り替わったことを耳で分かるようにする */
+/**
+ * 音の入切。押した結果をその場で鳴らして、切り替わったことを耳で分かるようにする。
+ *
+ * **表記は「効果音」ではなく「音」。** BGM も同じトグルで止まるため（SPEC 9.6.3）。
+ * BGM 専用のトグルは作らない。操作が増えるうえ、セーブのスキーマも変わる
+ */
 function soundToggle(redraw: () => void): HTMLElement {
-  const btn = el('button', 'btn btn--ghost', isMuted() ? '効果音: オフ' : '効果音: オン')
+  const btn = el('button', 'btn btn--ghost', isMuted() ? '音: オフ' : '音: オン')
   btn.type = 'button'
   btn.addEventListener('click', () => {
     const next = !isMuted()
     setMuted(next)
     save({ ...load(), muted: next })
-    if (!next) play('tap')
+    if (!next) {
+      play('tap')
+      playBgm('calm')
+    }
     redraw()
   })
   return btn
@@ -208,6 +219,8 @@ function tabBar(current: Tab): HTMLElement {
 /** タブのある画面の外枠。中身と下部タブを縦に積む */
 function shell(current: Tab, title: string, body: HTMLElement): void {
   clearTimer()
+  // 対戦の外はすべて calm（SPEC 9.6.3）。同じ曲なら playBgm 側で何もしない
+  playBgm('calm')
   root.replaceChildren()
   const page = el('div', 'page')
   page.append(el('div', 'page__head', title))
@@ -751,6 +764,8 @@ function render(): void {
       return
     }
     finishShown = true
+    // 決着の音を邪魔しないよう、鳴らす前に BGM を絞る（SPEC 9.6.3）
+    stopBgm()
     play(state.winner === null ? 'draw_game' : state.winner === HUMAN ? 'win' : 'lose')
     renderBattle(root, state, {
       onAction: () => undefined,
@@ -764,6 +779,7 @@ function render(): void {
     return
   }
 
+  playBgm('battle')
   renderBattle(root, state, {
     onAction: apply,
     onAttackMenu: () => openOverlay(showAttackMenu),
