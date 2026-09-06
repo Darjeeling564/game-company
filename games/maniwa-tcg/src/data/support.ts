@@ -247,6 +247,30 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'switchOpponent' },
     ],
   },
+  /*
+   * a021 / a022 は**先に絵があってあとからカードを作った**、この2枚だけの経緯を持つ。
+   * 2026-09-06 に、カードデータを記憶から作文して存在しないカードの絵を2枚頼み、
+   * 出来上がった絵を捨てずに済ませるため、その作文どおりのカードを新規に起こした。
+   * 番号は a019 / a020 が未マージの夜間ブランチで埋まっているので a021 から取る。
+   */
+  {
+    id: 'a021', name: '星辰の囁き', ruby: 'せいしんのささやき', kind: 'action', origin: 'cthulhu', rarity: 'rare',
+    flavor: '星が正しい位置に並ぶ夜、囁きは誰にでも聞こえる。ただし意味は分からない。',
+    // 道標で draw + applyStatus を組むのは初。a006 は打点と毒、a005 は探索とドロー
+    effects: [
+      { type: 'draw', value: 2 },
+      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+    ],
+  },
+  {
+    id: 'a022', name: '深淵の呼び声', ruby: 'しんえんのよびごえ', kind: 'action', origin: 'cthulhu', rarity: 'superRare',
+    flavor: '海の底から呼ばれている。応えた者は、二度と浮かんでこない。',
+    // 道標で damage + discardEnergy を組むのは初。a007 は剥奪のみ、a018 は剥奪と入れ替え
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 20 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
