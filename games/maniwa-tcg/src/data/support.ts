@@ -131,7 +131,31 @@ export const ITEMS: readonly ItemCard[] = [
     flavor: '墓に納める従者の人形。死者の代わりに畑を耕すよう、名を呼ばれた数だけ起き上がる。',
     // 神具で ownBenchAll にエネルギーを配るのは初。控えの立ち上がりを早める役割
     effects: [{ type: 'attachEnergy', target: 'ownBenchAll', value: 1 }],
-  },]
+  },
+  /*
+   * **神具は3種別のうち唯一 UR が0種だった**（神具 C8 R9 SR3 UR0 に対し、
+   * 道標は UR1）。i021 でその穴を埋める。
+   */
+  {
+    id: 'i021', name: 'グングニル', kind: 'item', origin: 'norse', rarity: 'ultra',
+    flavor: '投げれば必ず的を貫く槍。射抜かれた者は、立っていた場所から引きずり出される。',
+    // 神具で damage + switchOpponent を組むのは初。i010 は入れ替えのみ、i007 は打点のみ
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 45 },
+      { type: 'switchOpponent' },
+    ],
+  },
+  {
+    id: 'i022', name: 'パンドラの匣', ruby: 'パンドラのはこ', kind: 'item', origin: 'greece', rarity: 'superRare',
+    flavor: '開けた者の手から災いが飛び散り、底には希望だけが残る。',
+    // 神具で damage + heal を組むのは初。災いは控えへ散り、希望は前に立つ者を癒す。
+    // 回復15はダメージ20より小さい（SPEC 8.2）
+    effects: [
+      { type: 'damage', target: 'opponentBenchAll', value: 20 },
+      { type: 'heal', target: 'ownActive', value: 15 },
+    ],
+  },
+]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
 
