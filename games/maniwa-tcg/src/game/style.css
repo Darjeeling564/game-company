@@ -211,7 +211,7 @@ body {
   margin-top: 4px;
   font-size: 12px;
   letter-spacing: 0.42em;
-  color: rgba(245, 240, 225, 0.7);
+  color: rgba(245, 240, 225, 0.76);
 }
 
 .title-screen__start {
@@ -287,7 +287,8 @@ body {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: rgba(245, 240, 225, 0.6);
+  /* 選んでいないタブも読めるように（2026-09-10 計測: 0.6 では比 3.65）*/
+  color: rgba(245, 240, 225, 0.74);
   font-family: inherit;
   cursor: pointer;
 }
@@ -406,7 +407,7 @@ body {
   color: var(--forest-dark);
 }
 
-.chip__count { font-size: 11px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.chip__count { font-size: 11px; opacity: 0.78; font-variant-numeric: tabular-nums; }
 
 .gallery__grid {
   display: grid;
@@ -688,8 +689,14 @@ body {
   border-bottom: 2px solid rgba(245, 240, 225, 0.6);
 }
 
-/* 高さが足りないときはここだけがスクロールする */
-.field {
+/*
+ * 高さが足りないときはここだけがスクロールする。
+ *
+ * **必ず `.board >` で絞る。** `.field` はデッキ名の入力欄にも使っている別物で、
+ * 絞らないと入力欄の `min-height: var(--tap)` を後勝ちの `min-height: 0` が
+ * 打ち消し、タップ領域が 336x36px になる（2026-09-10 の計測で発覚）
+ */
+.board > .field {
   display: grid;
   align-content: start;
   gap: 7px;
@@ -711,7 +718,7 @@ body {
  * **文字を1文字も載せない要素**なので、傾けてもにじみが起きない。
  * 9.7 で「カードを傾けると文字が潰れる」と分かったのを、ここで回避している。
  */
-.field {
+.board > .field {
   position: relative;
 }
 
@@ -1074,7 +1081,7 @@ body {
   background: transparent;
   color: var(--cream);
   border: 2px dashed var(--cream);
-  opacity: 0.45;
+  opacity: 0.62;
   cursor: default;
   font-size: 12px;
 }
@@ -1372,7 +1379,8 @@ body {
 }
 
 .energy--used .energy__orb {
-  background: rgba(245, 240, 225, 0.3);
+  /* クリーム地を薄くすると、上に乗るクリームの✓との差が開く（2026-09-10）*/
+  background: rgba(245, 240, 225, 0.18);
   color: var(--cream);
   box-shadow: none;
 }
@@ -1384,7 +1392,7 @@ body {
 
 .energy__next {
   flex: none;
-  opacity: 0.7;
+  opacity: 0.9;
   font-size: 12px;
 }
 
@@ -1960,7 +1968,7 @@ body {
 
 .hint {
   font-size: 11px;
-  opacity: 0.55;
+  opacity: 0.7;
 }
 
 /* 何がいくつ起きたかを追えるように、複数行で残す */
