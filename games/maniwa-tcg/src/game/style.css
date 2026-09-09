@@ -637,6 +637,57 @@ body {
   min-height: 0;
 }
 
+/*
+ * 盤面の下端をぼかして「まだ続きがある」ことを見せる（SPEC 9.3.2）。
+ * 390x844 では盤面の 217px が画面の外にあり、そこに**自分のベンチ**が居る。
+ * グリッドの行を指定した絶対配置なので、盤面の段の下辺にだけ乗り、
+ * 段の高さは押し広げない
+ */
+/*
+ * `.field` の中の**最後の子**に置く。スクロール領域の下端に貼り付くので、
+ * 中身がどれだけ伸びても盤面の下辺に乗る。
+ * 高さを 0 にして、隙間ぶんの負のマージンを付けてあるので、段は伸びない
+ */
+.field__more {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  height: 0;
+  margin-top: -7px;
+  pointer-events: none;
+  /* 下に続きがあるときだけ出す。JS が field__more--on を付け外しする */
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.field__more--on {
+  opacity: 1;
+}
+
+.field__more::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 30px;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(to top, rgba(18, 42, 27, 0.92), rgba(18, 42, 27, 0));
+}
+
+/* 下向きの印。矢印そのものだと押せると思われるので、隅を2辺だけ描く */
+.field__more::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 13px;
+  height: 13px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 2px solid rgba(245, 240, 225, 0.6);
+  border-bottom: 2px solid rgba(245, 240, 225, 0.6);
+}
+
 /* 高さが足りないときはここだけがスクロールする */
 .field {
   display: grid;
@@ -1903,6 +1954,8 @@ body {
   /* 動かさないなら出さない。被弾は HP と .card__pop で分かる（SPEC 9.4.4） */
   .burst { display: none; }
   .card--faint { display: none; }
+  /* 手がかりは消さない。動きだけ止める（SPEC 9.3.2） */
+  .field__more { transition: none; }
 }
 
 .hint {

@@ -998,6 +998,17 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   const placed = new Set([...ids].filter((id) => !prevBoard.has(id)))
   const fx = makeFx(state, placed)
 
+  /*
+   * 盤面の**スクロール位置を持ち越す**（SPEC 9.3.2）。
+   * 描き直しは root.replaceChildren() で丸ごと作り直すので、下げた視界が
+   * 1手ごとに先頭へ巻き戻り、画面外にある自分のベンチとログに届かなかった。
+   * 対戦画面以外から来たときは `.board > .field` が無く、0 から始まる。
+   *
+   * `.field` は入力欄にも使っている別物があるので、必ず `.board >` で絞る
+   */
+  const live = root.querySelector('.board > .field')
+  const keptScroll = live instanceof HTMLElement ? live.scrollTop : 0
+
   root.replaceChildren()
   const board = el('div', 'board')
   // 置き先の破線を、今つけようとしているエネルギーと同じ色にする
@@ -1064,9 +1075,31 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   dock.append(controls)
   dock.append(handView(state, handlers, drawn))
 
+  /*
+   * 続きがあることの手がかり（SPEC 9.3.2）。盤面の下端をぼかす。
+   * 触れないように pointer-events: none にしてある
+   */
+  const more = el('div', 'field__more')
+  field.append(more)
+
   board.append(field)
   board.append(dock)
   root.append(board)
+
+  // append したあとでないとスクロールできない（高さが決まっていない）
+  field.scrollTop = keptScroll
+
+  /*
+   * **下に本当に続きがあるときだけ**手がかりを出す。出しっぱなしにすると、
+   * 一番下まで見ているのに「まだ下がある」と嘘をつくことになる。
+   * 描き直しのたびに付け直すので、外す処理は要らない
+   */
+  const syncMore = (): void => {
+    const rest = field.scrollHeight - field.clientHeight - field.scrollTop
+    more.classList.toggle('field__more--on', rest > 8)
+  }
+  syncMore()
+  field.addEventListener('scroll', syncMore, { passive: true })
 
   // 次の描画で「前回」として使う。ここを忘れると毎回すべてが新規扱いになる
   prevHand = hand
