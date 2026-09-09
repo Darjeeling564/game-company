@@ -692,6 +692,23 @@ const WATER: readonly CreatureCard[] = [
       { name: '父なるダゴン', ruby: 'ちちなるダゴン', cost: ['water', 'water'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 60 }, { type: 'damage', target: 'opponentBenchRandom', value: 20 }] },
     ],
+  },
+  /*
+   * インドで初めて**最強ワザがコスト3**の姫神。SPEC 16.5.2 のとおり、絶技を付けられる
+   * のは対応姫神の最強ワザがコスト3のときにほぼ限られる。インドだけが該当0体で、
+   * 8夜にわたり「絶技を作れない系統」として報告され続けていた。これで解消する。
+   */
+  {
+    id: 'w010', name: 'ヴィシュヌ', kind: 'creature',
+    flavor: '大蛇の上で眠りながら世界を保つ神。目覚めるたび姿を変えて地上に降り、崩れかけた秩序を戻す。',
+    origin: 'india', rarity: 'superRare',
+    type: 'water', hp: 130, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '円盤を放つ', ruby: 'えんばんをはなつ', cost: ['water', 'water'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+      { name: '十の顕現', ruby: 'とおのけんげん', cost: ['water', 'water', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 90 }] },
+    ],
   },]
 
 // ------------------------------------------------ 光
@@ -919,6 +936,26 @@ const DARK: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
       { name: 'にっしょく', cost: ['dark', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 40 }, { type: 'discardEnergy', target: 'opponentActive', value: 1 }] },
+    ],
+  },
+  /*
+   * 闇は**最強ワザがコスト3の姫神が d001 ニャルラトホテプEX の1体しかいなかった**。
+   * 9属性でいちばん薄い。非EXで1体足して、闇にも絶技を作れる余地を持たせる。
+   * エジプトも該当が k009 アメン だけだったので、あわせて埋まる。
+   */
+  {
+    id: 'd010', name: 'アペプ', kind: 'creature',
+    flavor: '日輪を呑もうと毎夜あらわれる混沌の大蛇。斬られても翌日にはまた地平に戻ってくる。',
+    origin: 'egypt', rarity: 'superRare',
+    type: 'dark', hp: 120, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '巻きつく', ruby: 'まきつく', cost: ['dark', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
+      { name: '日輪を呑む', ruby: 'にちりんをのむ', cost: ['dark', 'dark', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 80 },
+          { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+        ] },
     ],
   },
 ]
