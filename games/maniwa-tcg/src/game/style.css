@@ -384,7 +384,12 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
-  min-height: 34px;
+  /* タップ領域は 44px **四方**以上（CLAUDE.md 6章）。34px だと図鑑の絞り込みと
+     デッキ編集の属性で計15件の違反になっていた（2026-09-04 の点検から未適用）。
+     高さだけ直すと、1文字の属性チップが 37px 幅で残る。幅にも下限を置く */
+  min-height: var(--tap);
+  min-width: var(--tap);
+  justify-content: center;
   padding: 4px 11px;
   border-radius: 999px;
   border: 1px solid rgba(245, 240, 225, 0.28);
@@ -1115,9 +1120,39 @@ body {
   text-shadow: 0 0.08em 0.08em rgba(0, 0, 0, 0.6);
 }
 
-.card .badge {
-  float: right;
-  margin-left: 4px;
+/*
+ * 盤面と手札の属性バッジは**右上に重ねる**（SPEC 9.4.6）。
+ *
+ * もとは `float: right` だった。`.card__name` は行数を切るために
+ * `display: -webkit-box` を使っており、これはブロック整形文脈を作るので
+ * **浮動要素を避けて横幅そのものが縮む。** ベンチで実測 29px しか無く、
+ * 「オオゲツヒメ」が3行必要なのに2行で無言に切られていた（2026-09-08 の計測）。
+ *
+ * 重ねる方式にすると、名前は枠いっぱいを使える。1行目だけがバッジと重なるので、
+ * その1行ぶんの逃げを padding-right で確保する。
+ */
+/*
+ * **`.card__body` の直下だけ**を狙う。`.card .badge` にすると、ワザ行の
+ * コストバッジ（`.card__attack .badge`）まで絶対配置になり、右上に積み上がる
+ */
+.card__body > .badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+}
+
+.card__name {
+  padding-right: 19px;
+}
+
+/*
+ * ベンチは幅が無いぶん縦に逃がす。3行まで許すと6文字の名前が収まる。
+ * バトル場と手札はワザやHPが下に続くので2行のままにする
+ */
+.slots > .card:not(.card--active) .card__name {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 /*
@@ -1478,6 +1513,45 @@ body {
   100% { filter: hue-rotate(120deg); }
 }
 
+/* ---------------- 逃げる・入れ替えの演出（SPEC 9.4.5） ---------------- */
+
+/*
+ * バトル場が入れ替わったときだけ出す。気絶（9.4.3）とは view.ts 側で
+ * 「下がったほうが盤面に残っているか」で見分けている。
+ *
+ * 向きは側で決まる。自分のベンチはバトル場より下、相手は上にあるので、
+ * 入場は自分が下から・相手が上から来る。向きだけで誰の盤面が動いたか分かる。
+ *
+ * **詳細度で `.card--hit` と `.card--lunge` に勝たせている**（SPEC 9.4.5）。
+ * 位置が変わったことのほうが、被弾より読み取りに要る。
+ */
+.side--human .card--swap-in { animation: swapInUp 0.36s cubic-bezier(0.2, 0.85, 0.3, 1) both; }
+.side--cpu .card--swap-in { animation: swapInDown 0.36s cubic-bezier(0.2, 0.85, 0.3, 1) both; }
+.side--human .card--swap-out { animation: swapOutDown 0.36s ease-out both; }
+.side--cpu .card--swap-out { animation: swapOutUp 0.36s ease-out both; }
+
+@keyframes swapInUp {
+  0%   { transform: translateY(26px) scale(0.82); opacity: 0.35; }
+  70%  { transform: translateY(-3px) scale(1.03); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+
+@keyframes swapInDown {
+  0%   { transform: translateY(-26px) scale(0.82); opacity: 0.35; }
+  70%  { transform: translateY(3px) scale(1.03); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+
+@keyframes swapOutDown {
+  0%   { transform: translateY(-22px) scale(1.22); opacity: 0.4; }
+  100% { transform: none; opacity: 1; }
+}
+
+@keyframes swapOutUp {
+  0%   { transform: translateY(22px) scale(1.22); opacity: 0.4; }
+  100% { transform: none; opacity: 1; }
+}
+
 /* ---------------- 気絶の演出（SPEC 9.4.3） ---------------- */
 
 /*
@@ -1814,6 +1888,8 @@ body {
   .title-screen__start,
   .card--ultimate,
   .card--lunge,
+  .card--swap-in,
+  .card--swap-out,
   .burst,
   .burst::before,
   .burst::after,
