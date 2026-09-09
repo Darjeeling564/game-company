@@ -211,7 +211,7 @@ body {
   margin-top: 4px;
   font-size: 12px;
   letter-spacing: 0.42em;
-  color: rgba(245, 240, 225, 0.7);
+  color: rgba(245, 240, 225, 0.76);
 }
 
 .title-screen__start {
@@ -287,7 +287,8 @@ body {
   border: 0;
   border-radius: 8px;
   background: transparent;
-  color: rgba(245, 240, 225, 0.6);
+  /* 選んでいないタブも読めるように（2026-09-10 計測: 0.6 では比 3.65）*/
+  color: rgba(245, 240, 225, 0.74);
   font-family: inherit;
   cursor: pointer;
 }
@@ -384,7 +385,12 @@ body {
   display: flex;
   align-items: center;
   gap: 5px;
-  min-height: 34px;
+  /* タップ領域は 44px **四方**以上（CLAUDE.md 6章）。34px だと図鑑の絞り込みと
+     デッキ編集の属性で計15件の違反になっていた（2026-09-04 の点検から未適用）。
+     高さだけ直すと、1文字の属性チップが 37px 幅で残る。幅にも下限を置く */
+  min-height: var(--tap);
+  min-width: var(--tap);
+  justify-content: center;
   padding: 4px 11px;
   border-radius: 999px;
   border: 1px solid rgba(245, 240, 225, 0.28);
@@ -401,7 +407,7 @@ body {
   color: var(--forest-dark);
 }
 
-.chip__count { font-size: 11px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.chip__count { font-size: 11px; opacity: 0.78; font-variant-numeric: tabular-nums; }
 
 .gallery__grid {
   display: grid;
@@ -632,8 +638,65 @@ body {
   min-height: 0;
 }
 
-/* 高さが足りないときはここだけがスクロールする */
-.field {
+/*
+ * 盤面の下端をぼかして「まだ続きがある」ことを見せる（SPEC 9.3.2）。
+ * 390x844 では盤面の 217px が画面の外にあり、そこに**自分のベンチ**が居る。
+ * グリッドの行を指定した絶対配置なので、盤面の段の下辺にだけ乗り、
+ * 段の高さは押し広げない
+ */
+/*
+ * `.field` の中の**最後の子**に置く。スクロール領域の下端に貼り付くので、
+ * 中身がどれだけ伸びても盤面の下辺に乗る。
+ * 高さを 0 にして、隙間ぶんの負のマージンを付けてあるので、段は伸びない
+ */
+.field__more {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  height: 0;
+  margin-top: -7px;
+  pointer-events: none;
+  /* 下に続きがあるときだけ出す。JS が field__more--on を付け外しする */
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.field__more--on {
+  opacity: 1;
+}
+
+.field__more::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 30px;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(to top, rgba(18, 42, 27, 0.92), rgba(18, 42, 27, 0));
+}
+
+/* 下向きの印。矢印そのものだと押せると思われるので、隅を2辺だけ描く */
+.field__more::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 13px;
+  height: 13px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 2px solid rgba(245, 240, 225, 0.6);
+  border-bottom: 2px solid rgba(245, 240, 225, 0.6);
+}
+
+/*
+ * 高さが足りないときはここだけがスクロールする。
+ *
+ * **必ず `.board >` で絞る。** `.field` はデッキ名の入力欄にも使っている別物で、
+ * 絞らないと入力欄の `min-height: var(--tap)` を後勝ちの `min-height: 0` が
+ * 打ち消し、タップ領域が 336x36px になる（2026-09-10 の計測で発覚）
+ */
+.board > .field {
   display: grid;
   align-content: start;
   gap: 7px;
@@ -655,7 +718,7 @@ body {
  * **文字を1文字も載せない要素**なので、傾けてもにじみが起きない。
  * 9.7 で「カードを傾けると文字が潰れる」と分かったのを、ここで回避している。
  */
-.field {
+.board > .field {
   position: relative;
 }
 
@@ -1018,7 +1081,7 @@ body {
   background: transparent;
   color: var(--cream);
   border: 2px dashed var(--cream);
-  opacity: 0.45;
+  opacity: 0.62;
   cursor: default;
   font-size: 12px;
 }
@@ -1115,9 +1178,39 @@ body {
   text-shadow: 0 0.08em 0.08em rgba(0, 0, 0, 0.6);
 }
 
-.card .badge {
-  float: right;
-  margin-left: 4px;
+/*
+ * 盤面と手札の属性バッジは**右上に重ねる**（SPEC 9.4.6）。
+ *
+ * もとは `float: right` だった。`.card__name` は行数を切るために
+ * `display: -webkit-box` を使っており、これはブロック整形文脈を作るので
+ * **浮動要素を避けて横幅そのものが縮む。** ベンチで実測 29px しか無く、
+ * 「オオゲツヒメ」が3行必要なのに2行で無言に切られていた（2026-09-08 の計測）。
+ *
+ * 重ねる方式にすると、名前は枠いっぱいを使える。1行目だけがバッジと重なるので、
+ * その1行ぶんの逃げを padding-right で確保する。
+ */
+/*
+ * **`.card__body` の直下だけ**を狙う。`.card .badge` にすると、ワザ行の
+ * コストバッジ（`.card__attack .badge`）まで絶対配置になり、右上に積み上がる
+ */
+.card__body > .badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 2;
+}
+
+.card__name {
+  padding-right: 19px;
+}
+
+/*
+ * ベンチは幅が無いぶん縦に逃がす。3行まで許すと6文字の名前が収まる。
+ * バトル場と手札はワザやHPが下に続くので2行のままにする
+ */
+.slots > .card:not(.card--active) .card__name {
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
 /*
@@ -1286,7 +1379,8 @@ body {
 }
 
 .energy--used .energy__orb {
-  background: rgba(245, 240, 225, 0.3);
+  /* クリーム地を薄くすると、上に乗るクリームの✓との差が開く（2026-09-10）*/
+  background: rgba(245, 240, 225, 0.18);
   color: var(--cream);
   box-shadow: none;
 }
@@ -1298,7 +1392,7 @@ body {
 
 .energy__next {
   flex: none;
-  opacity: 0.7;
+  opacity: 0.9;
   font-size: 12px;
 }
 
@@ -1476,6 +1570,45 @@ body {
 @keyframes burstSweep {
   0%   { filter: hue-rotate(0deg); }
   100% { filter: hue-rotate(120deg); }
+}
+
+/* ---------------- 逃げる・入れ替えの演出（SPEC 9.4.5） ---------------- */
+
+/*
+ * バトル場が入れ替わったときだけ出す。気絶（9.4.3）とは view.ts 側で
+ * 「下がったほうが盤面に残っているか」で見分けている。
+ *
+ * 向きは側で決まる。自分のベンチはバトル場より下、相手は上にあるので、
+ * 入場は自分が下から・相手が上から来る。向きだけで誰の盤面が動いたか分かる。
+ *
+ * **詳細度で `.card--hit` と `.card--lunge` に勝たせている**（SPEC 9.4.5）。
+ * 位置が変わったことのほうが、被弾より読み取りに要る。
+ */
+.side--human .card--swap-in { animation: swapInUp 0.36s cubic-bezier(0.2, 0.85, 0.3, 1) both; }
+.side--cpu .card--swap-in { animation: swapInDown 0.36s cubic-bezier(0.2, 0.85, 0.3, 1) both; }
+.side--human .card--swap-out { animation: swapOutDown 0.36s ease-out both; }
+.side--cpu .card--swap-out { animation: swapOutUp 0.36s ease-out both; }
+
+@keyframes swapInUp {
+  0%   { transform: translateY(26px) scale(0.82); opacity: 0.35; }
+  70%  { transform: translateY(-3px) scale(1.03); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+
+@keyframes swapInDown {
+  0%   { transform: translateY(-26px) scale(0.82); opacity: 0.35; }
+  70%  { transform: translateY(3px) scale(1.03); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+
+@keyframes swapOutDown {
+  0%   { transform: translateY(-22px) scale(1.22); opacity: 0.4; }
+  100% { transform: none; opacity: 1; }
+}
+
+@keyframes swapOutUp {
+  0%   { transform: translateY(22px) scale(1.22); opacity: 0.4; }
+  100% { transform: none; opacity: 1; }
 }
 
 /* ---------------- 気絶の演出（SPEC 9.4.3） ---------------- */
@@ -1814,6 +1947,8 @@ body {
   .title-screen__start,
   .card--ultimate,
   .card--lunge,
+  .card--swap-in,
+  .card--swap-out,
   .burst,
   .burst::before,
   .burst::after,
@@ -1827,11 +1962,13 @@ body {
   /* 動かさないなら出さない。被弾は HP と .card__pop で分かる（SPEC 9.4.4） */
   .burst { display: none; }
   .card--faint { display: none; }
+  /* 手がかりは消さない。動きだけ止める（SPEC 9.3.2） */
+  .field__more { transition: none; }
 }
 
 .hint {
   font-size: 11px;
-  opacity: 0.55;
+  opacity: 0.7;
 }
 
 /* 何がいくつ起きたかを追えるように、複数行で残す */

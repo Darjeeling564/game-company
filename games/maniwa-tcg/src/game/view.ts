@@ -500,6 +500,10 @@ interface Fx {
   readonly burst: BurstStyle | null
   /** 気絶して消えた個体。1描画ぶんだけ幽霊として置く（SPEC 9.4.3） */
   readonly faint: ReadonlyMap<PlayerId, Creature>
+  /** 入れ替えでバトル場に入った個体（SPEC 9.4.5） */
+  readonly swapIn: ReadonlySet<number>
+  /** 入れ替えでバトル場から下がった個体（SPEC 9.4.5） */
+  readonly swapOut: ReadonlySet<number>
 }
 
 /** 着弾エフェクトの見た目。専用の配色表は作らず theme.ts の3つをそのまま使う */
@@ -573,7 +577,35 @@ function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
         return { origin: card.origin, rarity: card.rarity, type: card.type }
       })()
 
-  return { hit, charged, placed, ultimate: lastUltimate(state), lunge, burst, faint: makeFaint(state, fresh) }
+  const swap = makeSwap(state)
+  return {
+    hit, charged, placed, ultimate: lastUltimate(state), lunge, burst,
+    faint: makeFaint(state, fresh), swapIn: swap.in, swapOut: swap.out,
+  }
+}
+
+/**
+ * バトル場の入れ替えを拾う（SPEC 9.4.5）。逃げる・引きずり出す・気絶後の登板の3つ。
+ *
+ * **「バトル場のカードが変わった」だけでは気絶と区別できない。**
+ * 下がったほうがまだ盤面に居るかどうかで見分ける。居なければ気絶（9.4.3）なので、
+ * こちらでは扱わない。
+ */
+function makeSwap(state: GameState): { readonly in: ReadonlySet<number>; readonly out: ReadonlySet<number> } {
+  const entered = new Set<number>()
+  const left = new Set<number>()
+  const ids = boardIds(state)
+  for (const id of [0, 1] as const) {
+    const before = prevActive[id]
+    const now = state.players[id].active
+    if (before === null || now === null) continue
+    if (before.instanceId === now.instanceId) continue
+    // 前のバトル場が盤面から消えていれば気絶。入れ替えではない
+    if (!ids.has(before.instanceId)) continue
+    entered.add(now.instanceId)
+    left.add(before.instanceId)
+  }
+  return { in: entered, out: left }
 }
 
 /**
@@ -685,7 +717,13 @@ function creatureCard(
      * **絶技のときは付けない。** 一回転（card--ultimate）を残す決まりで（SPEC 9.4.4）、
      * 両方付けると transform が競合してどちらか片方しか効かない
      */
-    + `${isActive && fx.lunge === owner && fx.ultimate !== owner ? ' card--lunge' : ''}`)
+    + `${isActive && fx.lunge === owner && fx.ultimate !== owner ? ' card--lunge' : ''}`
+    /*
+     * 入れ替え（SPEC 9.4.5）。位置が変わったことのほうが被弾より読み取りに要るので、
+     * 同じカードに乗ったときは入れ替えを優先する（CSS 側の詳細度で解決している）
+     */
+    + `${fx.swapIn.has(creature.instanceId) ? ' card--swap-in' : ''}`
+    + `${fx.swapOut.has(creature.instanceId) ? ' card--swap-out' : ''}`)
   node.type = 'button'
   applyCardTheme(node, card.origin, card.rarity, card.type)
 
@@ -820,7 +858,8 @@ function sideView(
      */
     if (faint !== undefined) {
       const ghost = creatureCard(faint, true, false, () => undefined, () => undefined,
-        { ...fx, hit: new Map(), charged: new Set(), placed: new Set(), burst: null }, id)
+        { ...fx, hit: new Map(), charged: new Set(), placed: new Set(), burst: null,
+          swapIn: new Set(), swapOut: new Set() }, id)
       ghost.classList.add('card--faint')
       if (ghost instanceof HTMLButtonElement) ghost.disabled = true
       active.append(ghost)
@@ -959,6 +998,17 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   const placed = new Set([...ids].filter((id) => !prevBoard.has(id)))
   const fx = makeFx(state, placed)
 
+  /*
+   * 盤面の**スクロール位置を持ち越す**（SPEC 9.3.2）。
+   * 描き直しは root.replaceChildren() で丸ごと作り直すので、下げた視界が
+   * 1手ごとに先頭へ巻き戻り、画面外にある自分のベンチとログに届かなかった。
+   * 対戦画面以外から来たときは `.board > .field` が無く、0 から始まる。
+   *
+   * `.field` は入力欄にも使っている別物があるので、必ず `.board >` で絞る
+   */
+  const live = root.querySelector('.board > .field')
+  const keptScroll = live instanceof HTMLElement ? live.scrollTop : 0
+
   root.replaceChildren()
   const board = el('div', 'board')
   // 置き先の破線を、今つけようとしているエネルギーと同じ色にする
@@ -1025,9 +1075,31 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   dock.append(controls)
   dock.append(handView(state, handlers, drawn))
 
+  /*
+   * 続きがあることの手がかり（SPEC 9.3.2）。盤面の下端をぼかす。
+   * 触れないように pointer-events: none にしてある
+   */
+  const more = el('div', 'field__more')
+  field.append(more)
+
   board.append(field)
   board.append(dock)
   root.append(board)
+
+  // append したあとでないとスクロールできない（高さが決まっていない）
+  field.scrollTop = keptScroll
+
+  /*
+   * **下に本当に続きがあるときだけ**手がかりを出す。出しっぱなしにすると、
+   * 一番下まで見ているのに「まだ下がある」と嘘をつくことになる。
+   * 描き直しのたびに付け直すので、外す処理は要らない
+   */
+  const syncMore = (): void => {
+    const rest = field.scrollHeight - field.clientHeight - field.scrollTop
+    more.classList.toggle('field__more--on', rest > 8)
+  }
+  syncMore()
+  field.addEventListener('scroll', syncMore, { passive: true })
 
   // 次の描画で「前回」として使う。ここを忘れると毎回すべてが新規扱いになる
   prevHand = hand
