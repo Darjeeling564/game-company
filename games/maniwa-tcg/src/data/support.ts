@@ -247,11 +247,30 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'switchOpponent' },
     ],
   },
+  {
+    id: 'a019', name: '金翅鳥の急襲', ruby: 'こんじちょうのきゅうしゅう', kind: 'action', origin: 'india', rarity: 'rare',
+    flavor: '蛇を狙って舞い降りる霊鳥。掴み上げられた者は、否応なく前へ引き出される。',
+    // 道標で switchOpponent + damage を組むのは初。a003 は入れ替えのみ、a018 は剥奪と入れ替え
+    effects: [
+      { type: 'switchOpponent' },
+      { type: 'damage', target: 'opponentActive', value: 20 },
+    ],
+  },
+  {
+    id: 'a020', name: 'セルケトの針', ruby: 'セルケトのはり', kind: 'action', origin: 'egypt', rarity: 'rare',
+    flavor: '死者の内臓を守る蠍の女神。刺された者は毒に痺れ、力の巡りが止まる。',
+    // 道標で applyStatus + discardEnergy を組むのは初。a006 は毒と打点、a007 は剥奪のみ
+    effects: [
+      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
   /*
    * a021 / a022 は**先に絵があってあとからカードを作った**、この2枚だけの経緯を持つ。
    * 2026-09-06 に、カードデータを記憶から作文して存在しないカードの絵を2枚頼み、
    * 出来上がった絵を捨てずに済ませるため、その作文どおりのカードを新規に起こした。
-   * 番号は a019 / a020 が未マージの夜間ブランチで埋まっているので a021 から取る。
+   * 番号は、当時 a019 / a020 が未マージの夜間ブランチで埋まっていたので a021 から取った
+   * （その a019 / a020 は 2026-09-10 に取り込んで、いまは上に並んでいる）。
    */
   {
     id: 'a021', name: '星辰の囁き', ruby: 'せいしんのささやき', kind: 'action', origin: 'cthulhu', rarity: 'rare',
