@@ -134,6 +134,16 @@ const SFX: Readonly<Record<string, Sfx>> = {
     { wave: 'triangle', from: N.d5, to: N.f5, time: 0.14, gain: 0.143, cutoff: 1800, cutoffTo: 5000, detune: 8, space: 0.28 },
     { wave: 'sine', from: N.a5, to: N.d6, time: 0.16, gain: 0.091, delay: 0.07, space: 0.36 },
   ],
+  /**
+   * 山札から姫神を探す（SPEC 9.6.2）。札を繰る音を3枚ぶん重ね、
+   * 最後に見つけた1枚を三角波で立てる。draw より探している時間を長く取る
+   */
+  searchCreature: [
+    { noise: true, from: 0, band: 2200, bandTo: 4800, time: 0.07, gain: 0.06, space: 0.12 },
+    { noise: true, from: 0, band: 2400, bandTo: 5000, time: 0.07, gain: 0.06, delay: 0.06, space: 0.12 },
+    { noise: true, from: 0, band: 2600, bandTo: 5200, time: 0.07, gain: 0.06, delay: 0.12, space: 0.12 },
+    { wave: 'triangle', from: N.d5, to: N.a5, time: 0.14, gain: 0.12, delay: 0.19, cutoff: 1800, cutoffTo: 6200, detune: 7, space: 0.3 },
+  ],
 
   // --- 戦闘 ---
   /** 打撃。低い胴と、掃けるノイズの2枚重ね */
@@ -153,6 +163,25 @@ const SFX: Readonly<Record<string, Sfx>> = {
     { wave: 'sine', from: 330, to: 262, time: 0.2, gain: 0.08, space: 0.4 },
     { wave: 'sine', from: 262, to: 336, time: 0.18, gain: 0.07, delay: 0.16, space: 0.4 },
     { noise: true, from: 0, band: 620, bandTo: 380, time: 0.3, gain: 0.04, attack: 0.05, space: 0.4 },
+  ],
+  /**
+   * 相手をベンチから引きずり出す（SPEC 9.6.2）。低いところから擦り上げる。
+   * retreat が自分から退く音なので、こちらは逆向きに上げて向きの違いを出す
+   */
+  switchOpponent: [
+    { noise: true, from: 0, band: 500, bandTo: 2400, time: 0.18, gain: 0.10, attack: 0.03 },
+    { wave: 'sawtooth', from: N.d3, to: N.f4, time: 0.2, gain: 0.13, cutoff: 400, cutoffTo: 2800, attack: 0.01 },
+    { wave: 'triangle', from: N.f4, time: 0.1, gain: 0.09, delay: 0.18, cutoff: 3200, space: 0.3 },
+  ],
+  /**
+   * 状態異常が付いた（SPEC 9.6.2）。都節の主音に♭6を重ねる。
+   * 濁った響きにして「良くないことが起きた」と分かるようにする。
+   * **detail では音を変えない。** 変えるとログ種別で引く仕組みが崩れる
+   */
+  status: [
+    { wave: 'triangle', from: N.d5, time: 0.26, gain: 0.09, cutoff: 2200, cutoffTo: 900, attack: 0.004, space: 0.42 },
+    { wave: 'triangle', from: N.bb4, time: 0.3, gain: 0.08, delay: 0.02, cutoff: 2000, cutoffTo: 800, attack: 0.004, space: 0.42 },
+    { noise: true, from: 0, band: 1100, bandTo: 520, time: 0.22, gain: 0.05, attack: 0.02, space: 0.3 },
   ],
   coin: [
     { wave: 'triangle', from: N.d6, time: 0.05, gain: 0.09, cutoff: 6000, space: 0.3 },
@@ -183,6 +212,10 @@ const SFX: Readonly<Record<string, Sfx>> = {
   ],
   beginTurn: [
     { wave: 'sine', from: N.d4, to: N.a4, time: 0.16, gain: 0.24, space: 0.4 },
+  ],
+  /** 手番を渡す（SPEC 9.6.2）。beginTurn の裏返しで、下げて小さく置く */
+  endTurn: [
+    { wave: 'sine', from: N.a4, to: N.d4, time: 0.18, gain: 0.13, cutoff: 2600, cutoffTo: 1100, space: 0.36 },
   ],
 
   // --- 決着 ---
@@ -219,6 +252,8 @@ let burstAt = 0
 
 export function setMuted(value: boolean): void {
   muted = value
+  // トグルは1つなので、消したら BGM も止める（SPEC 9.6.3）
+  if (value) stopBgm()
 }
 
 export function isMuted(): boolean {
@@ -320,8 +355,21 @@ function noiseBuffer(audio: AudioContext): AudioBuffer {
 
 const NYQUIST = 20000
 
-function playVoice(audio: AudioContext, voice: Voice, at: number, wobble: number): void {
+/**
+ * 1つの Voice を鳴らす。
+ *
+ * `out` は出力先。既定は効果音のバスで、BGM だけ別のゲインへ通す（SPEC 9.6.3）。
+ * 分けておくと、止めるときに BGM だけを絞れる。
+ */
+function playVoice(
+  audio: AudioContext,
+  voice: Voice,
+  at: number,
+  wobble: number,
+  out: AudioNode | null = null,
+): void {
   if (bus === null || send === null) return
+  const target = out ?? bus
   const start = at + (voice.delay ?? 0)
   const end = start + voice.time * (1 + wobble * 0.06)
   const peak = voice.gain ?? 0.18
@@ -336,7 +384,7 @@ function playVoice(audio: AudioContext, voice: Voice, at: number, wobble: number
   const pan = audio.createStereoPanner()
   pan.pan.setValueAtTime(Math.max(-1, Math.min(1, voice.pan ?? 0)), start)
   amp.connect(pan)
-  pan.connect(bus)
+  pan.connect(target)
 
   const dry = audio.createGain()
   dry.gain.setValueAtTime(voice.space ?? 0.18, start)
@@ -411,4 +459,169 @@ export function play(name: string, pan = 0): void {
 /** 対応する効果音を持つログ種別か */
 export function hasSfx(name: string): boolean {
   return SFX[name] !== undefined
+}
+
+// ---------------------------------------------------------------- BGM
+
+/**
+ * BGM（SPEC 9.6.3）。
+ *
+ * 効果音と**同じ音階（都節・D主音）**を使う。別の音階にすると、効果音が鳴った
+ * 瞬間に濁る。曲も効果音と同じく**データで表現**し、再生ロジックを増やさない（4章）。
+ *
+ * 出口は効果音と同じコンプレッサを通す。効果音が鳴った瞬間に BGM が自然に引っ込み、
+ * 手で音量を上下させる必要がない。
+ */
+interface Note {
+  /** 小節の何拍目から鳴らすか */
+  readonly beat: number
+  readonly voice: Voice
+}
+
+interface Track {
+  /** 1拍の秒数 */
+  readonly beat: number
+  /** 1小節の拍数 */
+  readonly beats: number
+  readonly notes: readonly Note[]
+}
+
+/** 低音の持続。小節をまたいで途切れないよう、拍数より少し長く取る */
+function drone(from: number, time: number, gain: number): Voice {
+  return { wave: 'sine', from, time, gain, attack: 0.6, cutoff: 700, cutoffTo: 420, space: 0.6 }
+}
+
+const TRACKS: Readonly<Record<string, Track>> = {
+  /**
+   * 対戦の外。低音の持続の上に、都節の音をまばらに置く。
+   * 拍を刻まないので、待たせている感じが出ない
+   */
+  calm: {
+    beat: 0.75,
+    beats: 8,
+    notes: [
+      { beat: 0, voice: drone(N.d3, 6.4, 0.045) },
+      { beat: 0, voice: drone(N.a3, 6.4, 0.022) },
+      { beat: 0, voice: { wave: 'triangle', from: N.d4, time: 1.5, gain: 0.03, attack: 0.12, cutoff: 1500, cutoffTo: 700, detune: 6, space: 0.6 } },
+      { beat: 2, voice: { wave: 'triangle', from: N.f4, time: 1.4, gain: 0.026, attack: 0.12, cutoff: 1600, cutoffTo: 700, detune: 6, space: 0.6 } },
+      { beat: 3.5, voice: { wave: 'sine', from: N.a4, time: 1.2, gain: 0.024, attack: 0.1, space: 0.65 } },
+      { beat: 5, voice: { wave: 'triangle', from: N.e4, time: 1.4, gain: 0.024, attack: 0.12, cutoff: 1500, cutoffTo: 700, detune: 6, space: 0.6 } },
+      { beat: 6.5, voice: { wave: 'sine', from: N.d5, time: 1.3, gain: 0.020, attack: 0.14, space: 0.7 } },
+    ],
+  },
+  /**
+   * 対戦中。拍が分かる刻みを足して少し速くする。
+   * 刻みは太鼓に寄せた低い三角波で、旋律より前に出さない
+   */
+  battle: {
+    beat: 0.5,
+    beats: 8,
+    notes: [
+      { beat: 0, voice: drone(N.d3, 4.4, 0.040) },
+      { beat: 0, voice: { wave: 'triangle', from: N.d3, to: 92, time: 0.16, gain: 0.055, attack: 0.003, cutoff: 900, cutoffTo: 300 } },
+      { beat: 2, voice: { wave: 'triangle', from: N.d3, to: 92, time: 0.14, gain: 0.034, attack: 0.003, cutoff: 900, cutoffTo: 300 } },
+      { beat: 3, voice: { wave: 'triangle', from: N.f3, to: 110, time: 0.14, gain: 0.030, attack: 0.003, cutoff: 900, cutoffTo: 300 } },
+      { beat: 4, voice: { wave: 'triangle', from: N.d3, to: 92, time: 0.16, gain: 0.048, attack: 0.003, cutoff: 900, cutoffTo: 300 } },
+      { beat: 6, voice: { wave: 'triangle', from: N.a3, to: 138, time: 0.14, gain: 0.032, attack: 0.003, cutoff: 900, cutoffTo: 300 } },
+      // 上声。1小節に3つだけ置いて、効果音の邪魔をしない
+      { beat: 1, voice: { wave: 'triangle', from: N.a4, time: 0.7, gain: 0.024, attack: 0.02, cutoff: 2000, cutoffTo: 900, detune: 8, space: 0.5 } },
+      { beat: 4.5, voice: { wave: 'triangle', from: N.bb4, time: 0.6, gain: 0.022, attack: 0.02, cutoff: 2000, cutoffTo: 900, detune: 8, space: 0.5 } },
+      { beat: 6.5, voice: { wave: 'triangle', from: N.f4, time: 0.8, gain: 0.022, attack: 0.02, cutoff: 1900, cutoffTo: 850, detune: 8, space: 0.5 } },
+      // 擦り。裏拍に薄く置いて、刻みだけの単調さを消す
+      { beat: 1.5, voice: { noise: true, from: 0, band: 5200, bandTo: 3000, time: 0.09, gain: 0.012, space: 0.4 } },
+      { beat: 5.5, voice: { noise: true, from: 0, band: 5200, bandTo: 3000, time: 0.09, gain: 0.012, space: 0.4 } },
+    ],
+  },
+}
+
+let bgmGain: GainNode | null = null
+let bgmName: string | null = null
+let bgmTimer = 0
+/** 次に組み立てる小節の開始時刻（AudioContext の時計） */
+let bgmNextBar = 0
+
+/**
+ * 先へ先へ予約する（SPEC 9.6.3）。**1音ずつ setInterval で鳴らさない。**
+ * タブが背面に回るとタイマーが間引かれ、リズムが崩れるため。
+ */
+const BGM_LOOKAHEAD = 1.6
+
+function scheduleBars(audio: AudioContext): void {
+  const track = bgmName === null ? undefined : TRACKS[bgmName]
+  if (track === undefined || bgmGain === null) return
+  const bar = track.beat * track.beats
+  if (bgmNextBar < audio.currentTime) bgmNextBar = audio.currentTime + 0.08
+  while (bgmNextBar < audio.currentTime + BGM_LOOKAHEAD) {
+    for (const note of track.notes) {
+      playVoice(audio, note.voice, bgmNextBar + note.beat * track.beat, 0, bgmGain)
+    }
+    bgmNextBar += bar
+  }
+}
+
+/**
+ * BGM を切り替える。同じ曲なら何もしない（画面を描き直すたびに呼ばれるため）。
+ * 効果音と同じ `muted` で止まる。**BGM 専用のトグルは作らない**（SPEC 9.6.3）
+ */
+export function playBgm(name: string): void {
+  if (muted) {
+    stopBgm()
+    return
+  }
+  if (bgmName === name && bgmTimer !== 0) return
+  const audio = context()
+  if (audio === null || bus === null) return
+
+  if (bgmGain === null) {
+    bgmGain = audio.createGain()
+    bgmGain.connect(bus)
+  }
+  // 曲が変わるときは前の予約が残っているので、一度絞ってから入れ直す
+  bgmGain.gain.cancelScheduledValues(audio.currentTime)
+  bgmGain.gain.setValueAtTime(bgmName === null ? 0.0001 : bgmGain.gain.value, audio.currentTime)
+  bgmGain.gain.linearRampToValueAtTime(1, audio.currentTime + 1.2)
+
+  bgmName = name
+  bgmNextBar = audio.currentTime + 0.08
+  if (bgmTimer !== 0) window.clearInterval(bgmTimer)
+  scheduleBars(audio)
+  bgmTimer = window.setInterval(() => {
+    if (ctx !== null) scheduleBars(ctx)
+  }, 400)
+}
+
+/** 決着の効果音を邪魔しないよう、0.4秒で絞ってから止める */
+export function stopBgm(): void {
+  if (bgmTimer !== 0) {
+    window.clearInterval(bgmTimer)
+    bgmTimer = 0
+  }
+  bgmName = null
+  if (bgmGain !== null && ctx !== null) {
+    bgmGain.gain.cancelScheduledValues(ctx.currentTime)
+    bgmGain.gain.setValueAtTime(bgmGain.gain.value, ctx.currentTime)
+    bgmGain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.4)
+  }
+}
+
+/** 背面に回る直前に鳴っていた曲。戻ったときに同じものへ戻す */
+let resumeName: string | null = null
+
+/**
+ * 画面が背面に回ったら止め、戻ったら鳴らし直す（SPEC 9.6.3）。
+ * 背面で鳴り続けるのは端末の電池を食う。
+ */
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (bgmName !== null) {
+        resumeName = bgmName
+        stopBgm()
+      }
+    } else if (resumeName !== null) {
+      const name = resumeName
+      resumeName = null
+      playBgm(name)
+    }
+  })
 }

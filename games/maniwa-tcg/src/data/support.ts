@@ -131,7 +131,31 @@ export const ITEMS: readonly ItemCard[] = [
     flavor: '墓に納める従者の人形。死者の代わりに畑を耕すよう、名を呼ばれた数だけ起き上がる。',
     // 神具で ownBenchAll にエネルギーを配るのは初。控えの立ち上がりを早める役割
     effects: [{ type: 'attachEnergy', target: 'ownBenchAll', value: 1 }],
-  },]
+  },
+  /*
+   * **神具は3種別のうち唯一 UR が0種だった**（神具 C8 R9 SR3 UR0 に対し、
+   * 道標は UR1）。i021 でその穴を埋める。
+   */
+  {
+    id: 'i021', name: 'グングニル', kind: 'item', origin: 'norse', rarity: 'ultra',
+    flavor: '投げれば必ず的を貫く槍。射抜かれた者は、立っていた場所から引きずり出される。',
+    // 神具で damage + switchOpponent を組むのは初。i010 は入れ替えのみ、i007 は打点のみ
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 45 },
+      { type: 'switchOpponent' },
+    ],
+  },
+  {
+    id: 'i022', name: 'パンドラの匣', ruby: 'パンドラのはこ', kind: 'item', origin: 'greece', rarity: 'superRare',
+    flavor: '開けた者の手から災いが飛び散り、底には希望だけが残る。',
+    // 神具で damage + heal を組むのは初。災いは控えへ散り、希望は前に立つ者を癒す。
+    // 回復15はダメージ20より小さい（SPEC 8.2）
+    effects: [
+      { type: 'damage', target: 'opponentBenchAll', value: 20 },
+      { type: 'heal', target: 'ownActive', value: 15 },
+    ],
+  },
+]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
 
@@ -245,6 +269,49 @@ export const ACTIONS: readonly ActionCard[] = [
     effects: [
       { type: 'discardEnergy', target: 'opponentActive', value: 1 },
       { type: 'switchOpponent' },
+    ],
+  },
+  {
+    id: 'a019', name: '金翅鳥の急襲', ruby: 'こんじちょうのきゅうしゅう', kind: 'action', origin: 'india', rarity: 'rare',
+    flavor: '蛇を狙って舞い降りる霊鳥。掴み上げられた者は、否応なく前へ引き出される。',
+    // 道標で switchOpponent + damage を組むのは初。a003 は入れ替えのみ、a018 は剥奪と入れ替え
+    effects: [
+      { type: 'switchOpponent' },
+      { type: 'damage', target: 'opponentActive', value: 20 },
+    ],
+  },
+  {
+    id: 'a020', name: 'セルケトの針', ruby: 'セルケトのはり', kind: 'action', origin: 'egypt', rarity: 'rare',
+    flavor: '死者の内臓を守る蠍の女神。刺された者は毒に痺れ、力の巡りが止まる。',
+    // 道標で applyStatus + discardEnergy を組むのは初。a006 は毒と打点、a007 は剥奪のみ
+    effects: [
+      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
+  /*
+   * a021 / a022 は**先に絵があってあとからカードを作った**、この2枚だけの経緯を持つ。
+   * 2026-09-06 に、カードデータを記憶から作文して存在しないカードの絵を2枚頼み、
+   * 出来上がった絵を捨てずに済ませるため、その作文どおりのカードを新規に起こした。
+   * 番号は、当時 a019 / a020 が未マージの夜間ブランチで埋まっていたので a021 から取った
+   * （その a019 / a020 は 2026-09-10 に取り込んで、いまは上に並んでいる）。
+   */
+  {
+    id: 'a021', name: '星辰の囁き', ruby: 'せいしんのささやき', kind: 'action', origin: 'cthulhu', rarity: 'rare',
+    flavor: '星が正しい位置に並ぶ夜、囁きは誰にでも聞こえる。ただし意味は分からない。',
+    // 道標で draw + applyStatus を組むのは初。a006 は打点と毒、a005 は探索とドロー
+    effects: [
+      { type: 'draw', value: 2 },
+      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+    ],
+  },
+  {
+    id: 'a022', name: '深淵の呼び声', ruby: 'しんえんのよびごえ', kind: 'action', origin: 'cthulhu', rarity: 'superRare',
+    flavor: '海の底から呼ばれている。応えた者は、二度と浮かんでこない。',
+    // 道標で damage + discardEnergy を組むのは初。a007 は剥奪のみ、a018 は剥奪と入れ替え
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 20 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
     ],
   },
 ]
@@ -401,4 +468,39 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'damage', target: 'opponentActive', value: 70 },
       { type: 'damage', target: 'opponentBenchAll', value: 15 },
     ],
-  },]
+  },
+  {
+    id: 'u015', name: 'アメン＝ラーの顕現', ruby: 'アメン＝ラーのけんげん', kind: 'ultimate',
+    origin: 'egypt', rarity: 'ultra', requires: 'k009',
+    flavor: '隠れていた風が姿を現し、王として立つ。名を知られた瞬間、その息はすべてを薙ぎ払う。',
+    cost: ['wind', 'wind', 'colorless'],
+    effects: [
+      /*
+       * アメンの最強ワザ「隠れたる者」は効率 26.67。ここを 33.33 にして比 1.25 に置く。
+       * エジプト系統はこれが初の絶技。
+       *
+       * **使用率が低いのは承知のうえ。原因は効果ではなく対応姫神の生存力にある。**
+       * 最初は `switchOpponent` を添えて 85ダメージにしたが、pool 1万戦で使用率 12.8%。
+       * 素の打点 100 に振り直しても 13.4% でほとんど動かなかった。
+       *
+       * 絶技16種を対応姫神ごとに並べると、EX 由来の平均使用率 37.5% に対して
+       * 非EX 由来は 21.1%。非EX のなかでも HP 順に並び、アメンは **HP110 で最小**である。
+       * 撃つ価値（＝効率比）が基準内でも、**バトル場に立ち続けられなければ撃つ機会が来ない**。
+       * SPEC 16.5.1 の効率比は前者しか見ていない（2026-09-05 の夜間ジョブで測定）
+       */
+      { type: 'damage', target: 'opponentActive', value: 100 },
+    ],
+  },
+  {
+    id: 'u016', name: '血より生る神', ruby: 'ちよりなるかみ', kind: 'ultimate',
+    origin: 'japan', rarity: 'ultra', requires: 'f001',
+    flavor: '斬られた体から流れた血が岩に落ち、そのたびに新しい神が立ち上がった。',
+    cost: ['fire', 'fire', 'colorless'],
+    effects: [
+      // カグツチの最強ワザ「焼き尽くす」は効率 23.33。ここを 27.67 にして比 1.186 に置く。
+      // 絶技で searchCreature を使うのは初。血から神が生まれる神話をそのまま効果にした
+      { type: 'damage', target: 'opponentActive', value: 75 },
+      { type: 'searchCreature' },
+    ],
+  },
+]
