@@ -314,6 +314,31 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'discardEnergy', target: 'opponentActive', value: 1 },
     ],
   },
+  /*
+   * a023 / a024 は 2026-09-11 の夜間ジョブで追加した。**手薄な系統と対象を埋める。**
+   * 追加前の道標22種は、系統が 北欧2 / インド2 / ギリシア2 で最小、対象は
+   * `opponentBenchAll` が a008 焦土の誓い の1件だけだった。
+   */
+  {
+    id: 'a023', name: 'ギャラルホルン', kind: 'action', origin: 'norse', rarity: 'superRare',
+    flavor: '終末を告げる角笛。鳴り渡れば、奥に控えていた者まで残らず引き出される。',
+    // 道標で opponentBenchAll + searchCreature を組むのは初。a008 は控えへの打点のみ、
+    // a015 は控えの回復と探索。角笛が「控えを起こす」ことを、両側の控えに効かせて表した
+    effects: [
+      { type: 'damage', target: 'opponentBenchAll', value: 20 },
+      { type: 'searchCreature' },
+    ],
+  },
+  {
+    id: 'a024', name: 'レテの水', ruby: 'レテのみず', kind: 'action', origin: 'greece', rarity: 'rare',
+    flavor: '冥府を流れる忘却の川。ひと口飲んだ者は、握っていた力の名前を思い出せなくなる。',
+    // 道標で discardEnergy + draw を組むのは初。a007 は剥奪のみ、a018 は剥奪と入れ替え、
+    // a020 は毒と剥奪、a022 は打点と剥奪。忘れさせる側と思い出す側を1枚に収めた
+    effects: [
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+      { type: 'draw', value: 2 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
