@@ -404,6 +404,24 @@ function showHowTo(): void {
 
 // ---------------------------------------------------------------- デッキ編集
 
+/*
+ * core の語を画面の語に訳す（SPEC 9.10.1）。
+ *
+ * core は種別を「クリーチャー」と呼ぶが、画面では「姫神」で統一している。
+ * **core/ は決定論に関わるので触らない**（CLAUDE.md 3章）。`validateDeck` の
+ * 文言のように core の語がそのまま画面へ出る経路では、出すところで訳す。
+ *
+ * 表に無い語はそのまま出す。訳せないものを黙って消すと、何が足りないのか
+ * 分からないデッキが作れてしまう。
+ */
+const CORE_WORDS: readonly (readonly [string, string])[] = [
+  ['クリーチャー', '姫神'],
+]
+
+function localizeCoreText(text: string): string {
+  return CORE_WORDS.reduce((out, [from, to]) => out.split(from).join(to), text)
+}
+
 /**
  * 自作デッキ（SPEC 9.9）。
  *
@@ -502,11 +520,11 @@ function showDeckEdit(id: string): void {
   energyBox.append(chips)
   body.append(energyBox)
 
-  // 検証結果。core の validateDeck をそのまま出す
+  // 検証結果。判断は core の validateDeck に任せ、**語だけ画面のものに訳す**（SPEC 9.10.1）
   const state = el('div', `panel${errors.length === 0 ? ' panel--ok' : ' panel--warn'}`)
   state.append(el('div', 'panel__title', `${deck.cards.length} / ${DECK_SIZE} 枚`))
   if (errors.length === 0) state.append(el('div', undefined, 'このデッキは対戦で使えます。'))
-  else for (const e of errors) state.append(el('div', 'deck-edit__error', `・${e}`))
+  else for (const e of errors) state.append(el('div', 'deck-edit__error', `・${localizeCoreText(e)}`))
   body.append(state)
 
   // 中身 / 追加 の切り替え

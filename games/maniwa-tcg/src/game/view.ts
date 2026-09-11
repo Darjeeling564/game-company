@@ -475,6 +475,8 @@ let prevBoard: ReadonlySet<number> = new Set()
 let prevDamage: ReadonlyMap<number, number> = new Map()
 /** 個体ごとの前回のエネルギー数。増えていたら付与の演出を出す */
 let prevEnergy: ReadonlyMap<number, number> = new Map()
+/** 前回の描画で毒だった個体。毒が**付いた瞬間**だけを拾うために持つ（SPEC 9.4.7） */
+let prevPoisoned: ReadonlySet<number> = new Set()
 /** 前回のバトル場。消えていたら気絶の演出を出す（SPEC 9.4.3） */
 let prevActive: readonly [Creature | null, Creature | null] = [null, null]
 
@@ -489,6 +491,8 @@ interface Fx {
   readonly charged: ReadonlySet<number>
   /** 今回場に出た個体 */
   readonly placed: ReadonlySet<number>
+  /** 今回**新しく毒になった**個体。すでに毒の個体は含めない（SPEC 9.4.7） */
+  readonly envenom: ReadonlySet<number>
   /** 直前に絶技を撃った側。バトル場の姫神を一回転させる */
   readonly ultimate: PlayerId | null
   /** 直前に攻撃した側。バトル場のカードを相手のほうへ踏み込ませる（SPEC 9.4.4） */
@@ -556,11 +560,17 @@ function lastAttacker(fresh: readonly LogEntry[]): PlayerId | null {
 function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
   const hit = new Map<number, number>()
   const charged = new Set<number>()
+  const envenom = new Set<number>()
   for (const c of boardCreatures(state)) {
     const before = prevDamage.get(c.instanceId)
     if (before !== undefined && c.damage > before) hit.set(c.instanceId, c.damage - before)
     const energy = prevEnergy.get(c.instanceId)
     if (energy !== undefined && c.attached.length > energy) charged.add(c.instanceId)
+    /*
+     * 毒は**付いた瞬間だけ**光らせる（SPEC 9.4.7）。
+     * 毒である限り毎回光らせると、付いた瞬間との区別がつかなくなる
+     */
+    if (c.status.includes('poisoned') && !prevPoisoned.has(c.instanceId)) envenom.add(c.instanceId)
   }
 
   const fresh = freshLog(state)
@@ -579,7 +589,7 @@ function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
 
   const swap = makeSwap(state)
   return {
-    hit, charged, placed, ultimate: lastUltimate(state), lunge, burst,
+    hit, charged, placed, envenom, ultimate: lastUltimate(state), lunge, burst,
     faint: makeFaint(state, fresh), swapIn: swap.in, swapOut: swap.out,
   }
 }
@@ -637,6 +647,9 @@ function rememberBoard(state: GameState): void {
   }
   prevDamage = damage
   prevEnergy = energy
+  prevPoisoned = new Set(
+    [...boardCreatures(state)].filter((c) => c.status.includes('poisoned')).map((c) => c.instanceId),
+  )
   prevActive = [state.players[0].active, state.players[1].active]
   prevLogLen = state.log.length
 }
@@ -708,6 +721,7 @@ function creatureCard(
   const node = el('button', `card card--board${isActive ? ' card--active' : ''}`
     + `${selectable ? ' card--attachable' : ''}`
     + `${fx.placed.has(creature.instanceId) ? ' card--enter' : ''}`
+    + `${fx.envenom.has(creature.instanceId) ? ' card--envenom' : ''}`
     + `${damage !== undefined ? ' card--hit' : ''}`
     + `${fx.charged.has(creature.instanceId) ? ' card--charged' : ''}`
     + `${remaining <= card.hp / 2 ? ' card--wounded' : ''}`
@@ -858,7 +872,7 @@ function sideView(
      */
     if (faint !== undefined) {
       const ghost = creatureCard(faint, true, false, () => undefined, () => undefined,
-        { ...fx, hit: new Map(), charged: new Set(), placed: new Set(), burst: null,
+        { ...fx, hit: new Map(), charged: new Set(), placed: new Set(), envenom: new Set(), burst: null,
           swapIn: new Set(), swapOut: new Set() }, id)
       ghost.classList.add('card--faint')
       if (ghost instanceof HTMLButtonElement) ghost.disabled = true
@@ -1147,7 +1161,8 @@ export function renderFinish(root: HTMLElement, state: GameState, onNext: () => 
   const drew = state.winner === null
   const veil = el('div', `finish finish--${drew ? 'draw' : won ? 'win' : 'loss'}`)
   const inner = el('div', 'finish__inner')
-  inner.append(el('div', 'finish__title', drew ? '引き分け' : won ? '勝利' : '敗北'))
+  // 語は結果画面（main.ts の showResult）と揃える（SPEC 9.10）
+  inner.append(el('div', 'finish__title', drew ? '引き分け' : won ? '勝ち！' : '負け…'))
   inner.append(el('div', 'finish__score',
     `${state.players[HUMAN].points} - ${state.players[CPU].points}　${state.turn}ターン`))
   inner.append(el('div', 'finish__reason', END_REASON[state.endReason ?? ''] ?? ''))
