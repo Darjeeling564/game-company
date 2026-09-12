@@ -1453,6 +1453,58 @@ body {
   animation: cardHit 0.42s ease-out;
 }
 
+/*
+ * 毒が付いた瞬間（SPEC 9.4.7）。**カード自身の transform は動かさない。**
+ * `.card--hit` や `.card--lunge` と同じ要素に乗りうるので、transform を取り合うと
+ * どちらか片方しか出なくなる（同じ詳細度なら後勝ちで丸ごと置き換わる）。
+ * 毒と被弾は同じワザで同時に起きる（a006 祟りの札）ため、必ず両立させる。
+ * ここでは擬似要素の opacity と、「毒」の札の拡大だけで見せる。
+ */
+.card--envenom {
+  /* 膜を重ねるための基準。ずらさないので配置は動かない */
+  position: relative;
+}
+
+.card--envenom::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  /*
+   * 毒は属性でも系統でもレアリティでもないので、theme.ts に対応する色が無い。
+   * この演出だけの紫を1つ置く（専用の配色表は作らない。SPEC 9.4.7）
+   */
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(152, 88, 204, 0.72),
+    rgba(74, 26, 104, 0.42) 62%,
+    transparent 78%
+  );
+  opacity: 0;
+  animation: envenomVeil 0.52s ease-out;
+}
+
+/* ひと呼吸かかって消える。出るのを速く、引くのをゆっくりにして「回った」感じを出す */
+@keyframes envenomVeil {
+  0%   { opacity: 0; }
+  22%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 「毒」の札も同時にひと回り大きくしてから戻す。どのカードに付いたのかを目で追える */
+.card--envenom .card__status {
+  display: inline-block;
+  animation: envenomTag 0.52s ease-out;
+}
+
+@keyframes envenomTag {
+  0%   { transform: scale(1); }
+  25%  { transform: scale(1.38); }
+  100% { transform: scale(1); }
+}
+
 /* 被弾。板が殴られて奥へ煽られるように、Y 軸で振ってから戻す */
 @keyframes cardHit {
   0%   { transform: none; filter: none; }
@@ -1964,6 +2016,12 @@ body {
   .card--faint { display: none; }
   /* 手がかりは消さない。動きだけ止める（SPEC 9.3.2） */
   .field__more { transition: none; }
+  /*
+   * 毒の演出は止める。**「毒」の札は残る**ので、何が起きたかは読める（SPEC 9.4.7）
+   */
+  .card--envenom::after,
+  .card--envenom .card__status { animation: none; }
+  .card--envenom::after { display: none; }
 }
 
 .hint {
