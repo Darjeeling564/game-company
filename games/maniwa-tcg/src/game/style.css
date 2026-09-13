@@ -1905,6 +1905,16 @@ body {
   background: #ffd678;
   border-color: #ffd678;
   box-shadow: 0 0 7px rgba(255, 214, 120, 0.8);
+}
+
+/*
+ * 光るのは**点が入った瞬間だけ**（SPEC 9.4.8）。
+ *
+ * 点灯（--on）は状態から決まるクラスで、描き直しのたびに要素ごと作り直される。
+ * そこにアニメを付けると**点が増えていない描き直しでも毎回再生され**、
+ * 入った瞬間と区別がつかない。毒（9.4.7）で踏んだのと同じ誤りである。
+ */
+.points__pip--gain {
   animation: pipOn 0.45s ease-out;
 }
 
@@ -1989,7 +1999,7 @@ body {
   .card--hit,
   .card__pop,
   .card--charged,
-  .points__pip--on,
+  .points__pip--gain,
   .page,
   .title-screen,
   .screen,
