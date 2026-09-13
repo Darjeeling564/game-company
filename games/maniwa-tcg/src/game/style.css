@@ -1101,15 +1101,15 @@ body {
 /*
  * カード名。1行に収めようとすると、ベンチ（3枚並びで実効80px程度）では
  * 「プリティヴィー」のような7文字の名前が切れる。2行まで折り返して、
- * それを超えたぶんだけ切り詰める。属性の丸は float なので、
- * 1行目は丸をよけ、2行目から幅いっぱいを使う。
+ * それを超えたぶんだけ切り詰める。1行目だけが属性バッジをよけ、
+ * 2行目から幅いっぱいを使う（逃げ方は SPEC 9.1.2）。
  */
 .card__name {
   font-size: 13px;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  display: block;
+  /* 行数の打ち切りを max-height で行うので、行の高さを固定する（SPEC 9.1.2） */
+  line-height: 1.25;
+  max-height: 2.5em;
   overflow: hidden;
   word-break: break-word;
   /*
@@ -1181,13 +1181,13 @@ body {
 /*
  * 盤面と手札の属性バッジは**右上に重ねる**（SPEC 9.4.6）。
  *
- * もとは `float: right` だった。`.card__name` は行数を切るために
+ * もとは `float: right` だった。当時の `.card__name` は行数を切るために
  * `display: -webkit-box` を使っており、これはブロック整形文脈を作るので
  * **浮動要素を避けて横幅そのものが縮む。** ベンチで実測 29px しか無く、
  * 「オオゲツヒメ」が3行必要なのに2行で無言に切られていた（2026-09-08 の計測）。
  *
  * 重ねる方式にすると、名前は枠いっぱいを使える。1行目だけがバッジと重なるので、
- * その1行ぶんの逃げを padding-right で確保する。
+ * その1行ぶんの逃げを名前の側で確保する（下の `.card__name::before`）。
  */
 /*
  * **`.card__body` の直下だけ**を狙う。`.card .badge` にすると、ワザ行の
@@ -1200,8 +1200,24 @@ body {
   z-index: 2;
 }
 
-.card__name {
-  padding-right: 19px;
+/*
+ * **逃げるのは1行目だけ。**（SPEC 9.1.2）
+ *
+ * `padding-right` は全行から一律に19px削るが、バッジは1行目の高さにしか無い。
+ * ベンチの名前は実効49pxしかなく、19px削ると30px＝12pxの文字で2文字強。
+ * 「ツァトゥグアEX」が3行に収まらず無言で切れていた（2026-09-14 の計測で9件）。
+ *
+ * 1行ぶんの高さを持つ右寄せの空き箱を先頭に置くと、1行目だけが短くなる。
+ * **`-webkit-line-clamp` とは併用できない**（`display: -webkit-box` は
+ * ブロック整形文脈を作るので、浮動要素をよけて横幅そのものが縮む。
+ * 2026-09-08 に float のバッジで踏んだのと同じ現象）。
+ * 打ち切りは max-height に任せる。末尾の「…」は出なくなる。
+ */
+.card__name::before {
+  content: '';
+  float: right;
+  width: 19px;
+  height: 1.25em;
 }
 
 /*
@@ -1209,8 +1225,7 @@ body {
  * バトル場と手札はワザやHPが下に続くので2行のままにする
  */
 .slots > .card:not(.card--active) .card__name {
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  max-height: 3.75em;
 }
 
 /*
