@@ -132,6 +132,21 @@ const FIRE: readonly CreatureCard[] = [
         ] },
     ],
   },
+  {
+    id: 'f010', name: 'ローギ', kind: 'creature',
+    flavor: '野を走る火そのものである巨人。食らう速さで神々の王に勝った。',
+    origin: 'norse', rarity: 'superRare',
+    type: 'fire', hp: 120, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '野を舐める', ruby: 'のをなめる', cost: ['fire'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: '隠れ処を焼く', ruby: 'かくれがをやく', cost: ['fire', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 60 },
+          { type: 'switchOpponent' },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 森
@@ -467,6 +482,21 @@ const EARTH: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
       { name: '天を繕う', ruby: 'てんをつくろう', cost: ['earth', 'earth', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 70 }, { type: 'heal', target: 'self', value: 20 }] },
+    ],
+  },
+  {
+    id: 'e010', name: '埴安姫', ruby: 'はにやすひめ', kind: 'creature',
+    flavor: '伊邪那美が病の床で生した土の女神。器も竈も、その埴から形を得た。',
+    origin: 'japan', rarity: 'superRare',
+    type: 'earth', hp: 130, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '埴を捏ねる', ruby: 'はにをこねる', cost: ['earth'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: '埴輪の列', ruby: 'はにわのれつ', cost: ['earth', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 60 },
+          { type: 'searchCreature' },
+        ] },
     ],
   },
 ]
