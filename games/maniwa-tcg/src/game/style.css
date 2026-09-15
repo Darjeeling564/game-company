@@ -1101,15 +1101,15 @@ body {
 /*
  * カード名。1行に収めようとすると、ベンチ（3枚並びで実効80px程度）では
  * 「プリティヴィー」のような7文字の名前が切れる。2行まで折り返して、
- * それを超えたぶんだけ切り詰める。属性の丸は float なので、
- * 1行目は丸をよけ、2行目から幅いっぱいを使う。
+ * それを超えたぶんだけ切り詰める。1行目だけが属性バッジをよけ、
+ * 2行目から幅いっぱいを使う（逃げ方は SPEC 9.1.2）。
  */
 .card__name {
   font-size: 13px;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  display: block;
+  /* 行数の打ち切りを max-height で行うので、行の高さを固定する（SPEC 9.1.2） */
+  line-height: 1.25;
+  max-height: 2.5em;
   overflow: hidden;
   word-break: break-word;
   /*
@@ -1181,13 +1181,13 @@ body {
 /*
  * 盤面と手札の属性バッジは**右上に重ねる**（SPEC 9.4.6）。
  *
- * もとは `float: right` だった。`.card__name` は行数を切るために
+ * もとは `float: right` だった。当時の `.card__name` は行数を切るために
  * `display: -webkit-box` を使っており、これはブロック整形文脈を作るので
  * **浮動要素を避けて横幅そのものが縮む。** ベンチで実測 29px しか無く、
  * 「オオゲツヒメ」が3行必要なのに2行で無言に切られていた（2026-09-08 の計測）。
  *
  * 重ねる方式にすると、名前は枠いっぱいを使える。1行目だけがバッジと重なるので、
- * その1行ぶんの逃げを padding-right で確保する。
+ * その1行ぶんの逃げを名前の側で確保する（下の `.card__name::before`）。
  */
 /*
  * **`.card__body` の直下だけ**を狙う。`.card .badge` にすると、ワザ行の
@@ -1200,8 +1200,24 @@ body {
   z-index: 2;
 }
 
-.card__name {
-  padding-right: 19px;
+/*
+ * **逃げるのは1行目だけ。**（SPEC 9.1.2）
+ *
+ * `padding-right` は全行から一律に19px削るが、バッジは1行目の高さにしか無い。
+ * ベンチの名前は実効49pxしかなく、19px削ると30px＝12pxの文字で2文字強。
+ * 「ツァトゥグアEX」が3行に収まらず無言で切れていた（2026-09-14 の計測で9件）。
+ *
+ * 1行ぶんの高さを持つ右寄せの空き箱を先頭に置くと、1行目だけが短くなる。
+ * **`-webkit-line-clamp` とは併用できない**（`display: -webkit-box` は
+ * ブロック整形文脈を作るので、浮動要素をよけて横幅そのものが縮む。
+ * 2026-09-08 に float のバッジで踏んだのと同じ現象）。
+ * 打ち切りは max-height に任せる。末尾の「…」は出なくなる。
+ */
+.card__name::before {
+  content: '';
+  float: right;
+  width: 19px;
+  height: 1.25em;
 }
 
 /*
@@ -1209,8 +1225,7 @@ body {
  * バトル場と手札はワザやHPが下に続くので2行のままにする
  */
 .slots > .card:not(.card--active) .card__name {
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  max-height: 3.75em;
 }
 
 /*
@@ -1711,6 +1726,31 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(255, 214, 120, 0); }
 }
 
+/*
+ * エネルギーを剥がされた（SPEC 9.4.9）。
+ *
+ * `discardEnergy` はログに1行も出ないので音も鳴らず、手がかりは
+ * 「丸が1つ減った」だけだった。増える側（--charged）の金と**対**にして灰を置く。
+ *
+ * **灰は青みに寄せる。** 最初は rgba(112, 122, 112) の緑がかった灰にしたが、
+ * 盤の森緑と明度も色相も近く、実機の写真で halo がほとんど読めなかった
+ * （実測 rgba(112,122,112,0.776) / blur 11.9px / spread 4.6px）。
+ * 冷たい鋼色にすると、緑の盤からも金の --charged からも離れる。
+ *
+ * **カード本体の transform は動かさない。** 剥がすワザは同時にダメージも与えるため
+ * `.card--hit` と同じカードに乗る（毒 9.4.7 で踏んだのと同じ理由で、
+ * 同じ詳細度の animation は後勝ちで丸ごと置き換わる）。
+ */
+.card--drained {
+  animation: cardDrain 0.5s ease-out;
+}
+
+@keyframes cardDrain {
+  0%   { box-shadow: 0 0 0 0 rgba(198, 210, 218, 0); }
+  35%  { box-shadow: 0 0 15px 6px rgba(198, 210, 218, 0.92); }
+  100% { box-shadow: 0 0 0 0 rgba(198, 210, 218, 0); }
+}
+
 /* 絶技を撃った姫神。板ごと一回転させて、通常の攻撃と段を変える */
 .card--ultimate {
   animation: cardUltimate 0.72s cubic-bezier(0.3, 0, 0.2, 1);
@@ -1905,6 +1945,16 @@ body {
   background: #ffd678;
   border-color: #ffd678;
   box-shadow: 0 0 7px rgba(255, 214, 120, 0.8);
+}
+
+/*
+ * 光るのは**点が入った瞬間だけ**（SPEC 9.4.8）。
+ *
+ * 点灯（--on）は状態から決まるクラスで、描き直しのたびに要素ごと作り直される。
+ * そこにアニメを付けると**点が増えていない描き直しでも毎回再生され**、
+ * 入った瞬間と区別がつかない。毒（9.4.7）で踏んだのと同じ誤りである。
+ */
+.points__pip--gain {
   animation: pipOn 0.45s ease-out;
 }
 
@@ -1989,7 +2039,8 @@ body {
   .card--hit,
   .card__pop,
   .card--charged,
-  .points__pip--on,
+  .card--drained,
+  .points__pip--gain,
   .page,
   .title-screen,
   .screen,

@@ -106,6 +106,16 @@ const SFX: Readonly<Record<string, Sfx>> = {
     { noise: true, from: 0, band: 900, bandTo: 300, time: 0.14, gain: 0.07 },
     { wave: 'triangle', from: N.d4, to: N.d5, time: 0.2, gain: 0.15, delay: 0.15, cutoff: 700, cutoffTo: 5200, detune: 9, space: 0.34 },
   ],
+  /**
+   * 準備完了（SPEC 9.6.2）。400戦のログ種別を数えたところ **800回出ていて音が無かった**。
+   * 盤が整う音なので、setupPlace の木の音を2つ、間を空けて置く。
+   * 相手が準備を終えたことが、画面を見ていなくても分かるようにする
+   */
+  setupDone: [
+    { noise: true, from: 0, band: 1100, bandTo: 420, time: 0.08, gain: 0.14 },
+    { wave: 'triangle', from: N.d4, to: N.a4, time: 0.13, gain: 0.18, cutoff: 1600, cutoffTo: 3600, space: 0.3 },
+    { wave: 'triangle', from: N.a4, to: N.d5, time: 0.15, gain: 0.13, delay: 0.1, cutoff: 1800, cutoffTo: 4800, detune: 7, space: 0.34 },
+  ],
   promote: [
     { wave: 'triangle', from: N.f4, to: N.d5, time: 0.16, gain: 0.13, cutoff: 1400, cutoffTo: 4800, detune: 6, space: 0.26 },
   ],

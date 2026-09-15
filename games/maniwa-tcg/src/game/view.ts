@@ -477,6 +477,8 @@ let prevDamage: ReadonlyMap<number, number> = new Map()
 let prevEnergy: ReadonlyMap<number, number> = new Map()
 /** 前回の描画で毒だった個体。毒が**付いた瞬間**だけを拾うために持つ（SPEC 9.4.7） */
 let prevPoisoned: ReadonlySet<number> = new Set()
+/** 前回の描画のポイント。**増えた丸だけ**を光らせるために持つ（SPEC 9.4.8） */
+let prevPoints: readonly [number, number] = [0, 0]
 /** 前回のバトル場。消えていたら気絶の演出を出す（SPEC 9.4.3） */
 let prevActive: readonly [Creature | null, Creature | null] = [null, null]
 
@@ -489,10 +491,17 @@ interface Fx {
   readonly hit: ReadonlyMap<number, number>
   /** エネルギーが増えた個体 */
   readonly charged: ReadonlySet<number>
+  /** 今回エネルギーが**減った**個体。剥がされたことを見せる（SPEC 9.4.9） */
+  readonly drained: ReadonlySet<number>
   /** 今回場に出た個体 */
   readonly placed: ReadonlySet<number>
   /** 今回**新しく毒になった**個体。すでに毒の個体は含めない（SPEC 9.4.7） */
   readonly envenom: ReadonlySet<number>
+  /**
+   * 前回の描画での両者のポイント。これより後ろの丸だけを光らせる（SPEC 9.4.8）。
+   * 点灯そのものは状態から決まるので、**光らせる範囲だけ**を差分で持つ
+   */
+  readonly pointsBefore: readonly [number, number]
   /** 直前に絶技を撃った側。バトル場の姫神を一回転させる */
   readonly ultimate: PlayerId | null
   /** 直前に攻撃した側。バトル場のカードを相手のほうへ踏み込ませる（SPEC 9.4.4） */
@@ -560,12 +569,18 @@ function lastAttacker(fresh: readonly LogEntry[]): PlayerId | null {
 function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
   const hit = new Map<number, number>()
   const charged = new Set<number>()
+  const drained = new Set<number>()
   const envenom = new Set<number>()
   for (const c of boardCreatures(state)) {
     const before = prevDamage.get(c.instanceId)
     if (before !== undefined && c.damage > before) hit.set(c.instanceId, c.damage - before)
     const energy = prevEnergy.get(c.instanceId)
     if (energy !== undefined && c.attached.length > energy) charged.add(c.instanceId)
+    /*
+     * 剥がされた側も見せる（SPEC 9.4.9）。discardEnergy はログに出ないので、
+     * ここで拾わないと「丸が1つ減った」以外の手がかりが画面に無い
+     */
+    if (energy !== undefined && c.attached.length < energy) drained.add(c.instanceId)
     /*
      * 毒は**付いた瞬間だけ**光らせる（SPEC 9.4.7）。
      * 毒である限り毎回光らせると、付いた瞬間との区別がつかなくなる
@@ -589,7 +604,8 @@ function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
 
   const swap = makeSwap(state)
   return {
-    hit, charged, placed, envenom, ultimate: lastUltimate(state), lunge, burst,
+    hit, charged, drained, placed, envenom, pointsBefore: prevPoints,
+    ultimate: lastUltimate(state), lunge, burst,
     faint: makeFaint(state, fresh), swapIn: swap.in, swapOut: swap.out,
   }
 }
@@ -651,6 +667,7 @@ function rememberBoard(state: GameState): void {
     [...boardCreatures(state)].filter((c) => c.status.includes('poisoned')).map((c) => c.instanceId),
   )
   prevActive = [state.players[0].active, state.players[1].active]
+  prevPoints = [state.players[0].points, state.players[1].points]
   prevLogLen = state.log.length
 }
 
@@ -724,6 +741,7 @@ function creatureCard(
     + `${fx.envenom.has(creature.instanceId) ? ' card--envenom' : ''}`
     + `${damage !== undefined ? ' card--hit' : ''}`
     + `${fx.charged.has(creature.instanceId) ? ' card--charged' : ''}`
+    + `${fx.drained.has(creature.instanceId) ? ' card--drained' : ''}`
     + `${remaining <= card.hp / 2 ? ' card--wounded' : ''}`
     + `${isActive && fx.ultimate === owner ? ' card--ultimate' : ''}`
     /*
@@ -837,7 +855,16 @@ function sideView(
   head.append(el('span', undefined, id === HUMAN ? '自分' : '相手'))
   const points = el('span', 'points')
   for (let i = 0; i < 3; i += 1) {
-    points.append(el('span', `points__pip${i < player.points ? ' points__pip--on' : ''}`))
+    /*
+     * 点灯は状態から、**光り方は差分から**決める（SPEC 9.4.8）。
+     * 描き直しは要素を作り直すので、点灯した見た目にアニメを付けると
+     * 点が増えていない描き直しでも毎回再生され、入った瞬間と区別がつかない
+     */
+    const on = i < player.points
+    const gained = on && i >= fx.pointsBefore[id]
+    points.append(
+      el('span', `points__pip${on ? ' points__pip--on' : ''}${gained ? ' points__pip--gain' : ''}`),
+    )
   }
   head.append(points)
   head.append(el('span', 'muted', `手札${player.hand.length}`))
@@ -872,7 +899,7 @@ function sideView(
      */
     if (faint !== undefined) {
       const ghost = creatureCard(faint, true, false, () => undefined, () => undefined,
-        { ...fx, hit: new Map(), charged: new Set(), placed: new Set(), envenom: new Set(), burst: null,
+        { ...fx, hit: new Map(), charged: new Set(), drained: new Set(), placed: new Set(), envenom: new Set(), burst: null,
           swapIn: new Set(), swapOut: new Set() }, id)
       ghost.classList.add('card--faint')
       if (ghost instanceof HTMLButtonElement) ghost.disabled = true
