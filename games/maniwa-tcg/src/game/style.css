@@ -1726,6 +1726,31 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(255, 214, 120, 0); }
 }
 
+/*
+ * エネルギーを剥がされた（SPEC 9.4.9）。
+ *
+ * `discardEnergy` はログに1行も出ないので音も鳴らず、手がかりは
+ * 「丸が1つ減った」だけだった。増える側（--charged）の金と**対**にして灰を置く。
+ *
+ * **灰は青みに寄せる。** 最初は rgba(112, 122, 112) の緑がかった灰にしたが、
+ * 盤の森緑と明度も色相も近く、実機の写真で halo がほとんど読めなかった
+ * （実測 rgba(112,122,112,0.776) / blur 11.9px / spread 4.6px）。
+ * 冷たい鋼色にすると、緑の盤からも金の --charged からも離れる。
+ *
+ * **カード本体の transform は動かさない。** 剥がすワザは同時にダメージも与えるため
+ * `.card--hit` と同じカードに乗る（毒 9.4.7 で踏んだのと同じ理由で、
+ * 同じ詳細度の animation は後勝ちで丸ごと置き換わる）。
+ */
+.card--drained {
+  animation: cardDrain 0.5s ease-out;
+}
+
+@keyframes cardDrain {
+  0%   { box-shadow: 0 0 0 0 rgba(198, 210, 218, 0); }
+  35%  { box-shadow: 0 0 15px 6px rgba(198, 210, 218, 0.92); }
+  100% { box-shadow: 0 0 0 0 rgba(198, 210, 218, 0); }
+}
+
 /* 絶技を撃った姫神。板ごと一回転させて、通常の攻撃と段を変える */
 .card--ultimate {
   animation: cardUltimate 0.72s cubic-bezier(0.3, 0, 0.2, 1);
@@ -2014,6 +2039,7 @@ body {
   .card--hit,
   .card__pop,
   .card--charged,
+  .card--drained,
   .points__pip--gain,
   .page,
   .title-screen,
