@@ -489,6 +489,8 @@ interface Fx {
   readonly hit: ReadonlyMap<number, number>
   /** エネルギーが増えた個体 */
   readonly charged: ReadonlySet<number>
+  /** 今回エネルギーが**減った**個体。剥がされたことを見せる（SPEC 9.4.9） */
+  readonly drained: ReadonlySet<number>
   /** 今回場に出た個体 */
   readonly placed: ReadonlySet<number>
   /** 今回**新しく毒になった**個体。すでに毒の個体は含めない（SPEC 9.4.7） */
@@ -560,12 +562,18 @@ function lastAttacker(fresh: readonly LogEntry[]): PlayerId | null {
 function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
   const hit = new Map<number, number>()
   const charged = new Set<number>()
+  const drained = new Set<number>()
   const envenom = new Set<number>()
   for (const c of boardCreatures(state)) {
     const before = prevDamage.get(c.instanceId)
     if (before !== undefined && c.damage > before) hit.set(c.instanceId, c.damage - before)
     const energy = prevEnergy.get(c.instanceId)
     if (energy !== undefined && c.attached.length > energy) charged.add(c.instanceId)
+    /*
+     * 剥がされた側も見せる（SPEC 9.4.9）。discardEnergy はログに出ないので、
+     * ここで拾わないと「丸が1つ減った」以外の手がかりが画面に無い
+     */
+    if (energy !== undefined && c.attached.length < energy) drained.add(c.instanceId)
     /*
      * 毒は**付いた瞬間だけ**光らせる（SPEC 9.4.7）。
      * 毒である限り毎回光らせると、付いた瞬間との区別がつかなくなる
@@ -589,7 +597,7 @@ function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
 
   const swap = makeSwap(state)
   return {
-    hit, charged, placed, envenom, ultimate: lastUltimate(state), lunge, burst,
+    hit, charged, drained, placed, envenom, ultimate: lastUltimate(state), lunge, burst,
     faint: makeFaint(state, fresh), swapIn: swap.in, swapOut: swap.out,
   }
 }
@@ -724,6 +732,7 @@ function creatureCard(
     + `${fx.envenom.has(creature.instanceId) ? ' card--envenom' : ''}`
     + `${damage !== undefined ? ' card--hit' : ''}`
     + `${fx.charged.has(creature.instanceId) ? ' card--charged' : ''}`
+    + `${fx.drained.has(creature.instanceId) ? ' card--drained' : ''}`
     + `${remaining <= card.hp / 2 ? ' card--wounded' : ''}`
     + `${isActive && fx.ultimate === owner ? ' card--ultimate' : ''}`
     /*
@@ -872,7 +881,7 @@ function sideView(
      */
     if (faint !== undefined) {
       const ghost = creatureCard(faint, true, false, () => undefined, () => undefined,
-        { ...fx, hit: new Map(), charged: new Set(), placed: new Set(), envenom: new Set(), burst: null,
+        { ...fx, hit: new Map(), charged: new Set(), drained: new Set(), placed: new Set(), envenom: new Set(), burst: null,
           swapIn: new Set(), swapOut: new Set() }, id)
       ghost.classList.add('card--faint')
       if (ghost instanceof HTMLButtonElement) ghost.disabled = true
