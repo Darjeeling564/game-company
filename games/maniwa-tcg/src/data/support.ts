@@ -155,6 +155,26 @@ export const ITEMS: readonly ItemCard[] = [
       { type: 'heal', target: 'ownActive', value: 15 },
     ],
   },
+  {
+    id: 'i023', name: '八尺瓊勾玉', ruby: 'やさかにのまがたま', kind: 'item', origin: 'japan', rarity: 'ultra',
+    flavor: '三種の神器のひとつ。岩戸の前に掲げられ、隠れた光を招き出した玉。',
+    // 神具の UR は i021 グングニル の1種だけだった。あちらが攻めの UR なので、
+    // こちらは支えの UR にする。回復と付与を組むのは神具では初
+    effects: [
+      { type: 'heal', target: 'ownActive', value: 30 },
+      { type: 'attachEnergy', target: 'ownActive', value: 1 },
+    ],
+  },
+  {
+    id: 'i024', name: '天の牡牛の角', ruby: 'あめのおうしのつの', kind: 'item', origin: 'mesopotamia', rarity: 'superRare',
+    flavor: '天から降された牡牛の角。踏み荒らされた地は七年のあいだ実らない。',
+    // 控えへの範囲打撃とエネルギー剥がしを組むのは神具では初。
+    // 牡牛は地を荒らし（控えへ）、旱魃で蓄えを奪う（エネルギー）
+    effects: [
+      { type: 'damage', target: 'opponentBenchAll', value: 20 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
