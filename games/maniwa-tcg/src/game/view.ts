@@ -1120,6 +1120,13 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
    * 続きがあることの手がかり（SPEC 9.3.2）。盤面の下端をぼかす。
    * 触れないように pointer-events: none にしてある
    */
+  /*
+   * 上に隠れている段の手がかり（SPEC 9.3.3）。`.field__more` と上下対称。
+   * **field の先頭に置く。** sticky の top で効かせるので、順序が要る
+   */
+  const less = el('div', 'field__less')
+  field.prepend(less)
+
   const more = el('div', 'field__more')
   field.append(more)
 
@@ -1138,6 +1145,8 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
   const syncMore = (): void => {
     const rest = field.scrollHeight - field.clientHeight - field.scrollTop
     more.classList.toggle('field__more--on', rest > 8)
+    // 上に隠れている段の手がかり（SPEC 9.3.3）。しきい値は下と同じ8px
+    less.classList.toggle('field__less--on', field.scrollTop > 8)
   }
   syncMore()
   field.addEventListener('scroll', syncMore, { passive: true })
