@@ -359,6 +359,45 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'draw', value: 2 },
     ],
   },
+  {
+    id: 'a025', name: 'ドゥルガーの凱旋', ruby: 'ドゥルガーのがいせん', kind: 'action',
+    origin: 'india', rarity: 'superRare',
+    flavor: '水牛の魔神を討ち取った女神が、十の腕に武器を提げて帰ってくる。倒れていた者も、その姿を見て立ち上がった。',
+    /*
+     * 道標で damage + heal を組むのは初（神具では i022 パンドラの匣がある）。
+     * インド系統の道標は a002 と a019 の2種しか無く、8系統で唯一2種だったので
+     * ここを3種にそろえる。india/superRare の枠も空いていた。
+     *
+     * SPEC 8.2 のとおり回復量(20)はダメージ量(30)より小さくする。
+     * 評価値は 30 + 20×0.6 = 42 → 総合力 151.2 で SR の帯（115〜190）の中。
+     */
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 30 },
+      { type: 'heal', target: 'ownActive', value: 20 },
+    ],
+  },
+  {
+    id: 'a026', name: 'ヘカの言葉', ruby: 'ヘカのことば', kind: 'action',
+    origin: 'egypt', rarity: 'ultra',
+    flavor: '魔法そのものを司る神。正しい名で呼ばれた者は、逆らうことも隠れることもできない。',
+    /*
+     * 道標の UR は a002 招雷の儀の1種しか無かったので、ここを2種にする。
+     * エジプトの道標は a004 / a015 / a020 がすべて R で、**1系統まるごと単一レアリティ**
+     * だったのもここで崩れる。
+     *
+     * **支援カードで効果を3つ持つのはこれが初**（神具24種・道標24種とも、これまで最大2つ）。
+     * 名を呼んで引き出し（switchOpponent）、声で討ち（damage）、持っていた力を落とさせる
+     * （discardEnergy）。UR の1枚ぶんの手数として3つを1枚に収める。
+     *
+     * 評価値は 10 + 30 + 15 = 55 → 総合力 198.0。UR の帯（190以上）で、
+     * 同じ 198.0 の i021 グングニルと並ぶ。
+     */
+    effects: [
+      { type: 'switchOpponent' },
+      { type: 'damage', target: 'opponentActive', value: 30 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）

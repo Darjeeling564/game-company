@@ -690,6 +690,54 @@ body {
 }
 
 /*
+ * 上に隠れている段の手がかり（SPEC 9.3.3）。`.field__more` と上下対称にする。
+ *
+ * 2026-09-18 の実測で、盤面は 中身817px / 枠613px。**204px が枠の外**にあり、
+ * 少し下へ送ると相手のベンチが消えるのに、消えたと分かる手がかりが無かった。
+ *
+ * 形・色・持続時間は下の印とまったく同じにし、**向きだけを返す**。
+ * 別物に見えると、同じ意味だと読み取れない。
+ */
+.field__less {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 0;
+  margin-bottom: -7px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.field__less--on {
+  opacity: 1;
+}
+
+.field__less::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 30px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(to bottom, rgba(18, 42, 27, 0.92), rgba(18, 42, 27, 0));
+}
+
+/* 上向きの印。下の印を上下に返しただけ */
+.field__less::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  width: 13px;
+  height: 13px;
+  transform: translateX(-50%) rotate(45deg);
+  border-left: 2px solid rgba(245, 240, 225, 0.6);
+  border-top: 2px solid rgba(245, 240, 225, 0.6);
+}
+
+/*
  * 高さが足りないときはここだけがスクロールする。
  *
  * **必ず `.board >` で絞る。** `.field` はデッキ名の入力欄にも使っている別物で、
@@ -1343,6 +1391,20 @@ body {
 
 .hand .card__name {
   font-size: 11px;
+}
+
+/*
+ * 手札が混むとカードが縮み、名前が入らなくなる（2026-09-18 の計測）。
+ *
+ * 手札9枚のとき、カードは 48×67px まで縮む（44px は割らないので、
+ * タップ領域としては満たしている）。ただし名前の枠は幅34px・高さ28pxになり、
+ * 「カグツチEX」「双龍の采配」「フェンリル」が3行（41px）必要で切れていた。
+ *
+ * **8枚以上のときだけ一段小さくする。** 9pxなら 34px に3〜4文字入るので
+ * 6文字が2行に収まる。7枚以下は従来どおり 11px のまま
+ */
+.hand:has(> .card:nth-child(8)) .card__name {
+  font-size: 9px;
 }
 
 .hand .card__hp {
@@ -2065,8 +2127,9 @@ body {
   /* 動かさないなら出さない。被弾は HP と .card__pop で分かる（SPEC 9.4.4） */
   .burst { display: none; }
   .card--faint { display: none; }
-  /* 手がかりは消さない。動きだけ止める（SPEC 9.3.2） */
-  .field__more { transition: none; }
+  /* 手がかりは消さない。動きだけ止める（SPEC 9.3.2 / 9.3.3） */
+  .field__more,
+  .field__less { transition: none; }
   /*
    * 毒の演出は止める。**「毒」の札は残る**ので、何が起きたかは読める（SPEC 9.4.7）
    */
