@@ -538,10 +538,24 @@ function boardCreatures(state: GameState): readonly Creature[] {
   return out
 }
 
-/** 直前の1手が絶技だったか。ログの末尾だけを見る */
-function lastUltimate(state: GameState): PlayerId | null {
-  const last = state.log.at(-1)
-  return last !== undefined && last.kind === 'ultimate' ? last.player : null
+/**
+ * 差分の中で絶技を撃った側。**末尾だけを見てはいけない。**
+ *
+ * もとは `state.log.at(-1)` を見ていたが、`ultimate` のログのあとには
+ * ダメージ・気絶・手番終了が必ず続くので、**末尾が `ultimate` になることが無い。**
+ * 2026-09-20 に2000試合で測ったところ、絶技は 1756 回撃たれているのに
+ * 末尾が `ultimate` だったのは **0回**（内訳は ko 816 / end 632 / beginTurn 308）。
+ * つまり `.card--ultimate`（一回転・SPEC 9.4.4）は**一度も画面に出ていなかった**。
+ *
+ * すぐ上の `lastAttacker` が同じ理由で差分を見る作りになっているのに、
+ * ここだけが末尾方式のまま取り残されていた。**同じ形にそろえる。**
+ */
+function lastUltimate(fresh: readonly LogEntry[]): PlayerId | null {
+  let who: PlayerId | null = null
+  for (const entry of fresh) {
+    if (entry.kind === 'ultimate') who = entry.player
+  }
+  return who
 }
 
 /**
@@ -605,7 +619,7 @@ function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
   const swap = makeSwap(state)
   return {
     hit, charged, drained, placed, envenom, pointsBefore: prevPoints,
-    ultimate: lastUltimate(state), lunge, burst,
+    ultimate: lastUltimate(fresh), lunge, burst,
     faint: makeFaint(state, fresh), swapIn: swap.in, swapOut: swap.out,
   }
 }

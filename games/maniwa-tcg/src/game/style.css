@@ -1374,6 +1374,27 @@ body {
   margin-left: -12px;
 }
 
+/*
+ * 11枚以上は重なりを深くする（SPEC 9.3.4）。
+ *
+ * 2026-09-20 の実測。`-12px` のままだと **11枚で 41×57px** になり、
+ * CLAUDE.md 6章の 44px を割る（10枚は 44×61px でちょうど満たす）。
+ * 2万試合では 11枚が3試合（0.01%）、12枚以上は0。稀だが起きる。
+ *
+ * **横スクロールは作らない**（6章）ので、幅は重なりで稼ぐ。
+ * カード幅は `(366 + (12 - margin) × (n-1)) / n` で決まるので、
+ * `-20px` なら 11〜12枚、`-26px` なら 13〜15枚が 44px を保つ。
+ *
+ * **10枚までの見え方は1pxも変えない。** 段を足すだけにしてある
+ */
+.hand:has(> .card:nth-child(11)) > .card + .card {
+  margin-left: -20px;
+}
+
+.hand:has(> .card:nth-child(13)) > .card + .card {
+  margin-left: -26px;
+}
+
 /* 選べるカードは重なりの上に出す。押せるものが隠れないようにする */
 /* 選べるカードは持ち上げる。落ち影を深くして、板が浮いていると分かるようにする */
 .hand > .card--selectable {
@@ -1819,6 +1840,71 @@ body {
   z-index: 2;
 }
 
+/*
+ * 絶技の溜めと放出（SPEC 9.4.10）。
+ *
+ * 音は「溜め 0.24秒 → 0.3秒目に一撃」で作ってある（9.6 の ultimate）のに、
+ * 一回転は 0% から始まるので、**耳だけが先に来るぞと言っていた**。
+ *
+ * **一回転（.card--ultimate）には一切触らない。** 同じ詳細度で `animation` を
+ * 書くと後勝ちで丸ごと置き換わり、一回転が消える（2026-09-14 の教訓）。
+ * 擬似要素に別の `animation` を置けば競合しない。
+ *
+ * **`::after` は使えない。** 毒（9.4.7）が `.card--envenom::after` を使っており、
+ * 毒を受けた姫神が絶技を撃つと片方が消える。
+ *
+ * **山は 26% に置く。** 擬似要素はカードの子なので一回転の rotateY を一緒に受ける。
+ * 40% あたりでは板が横を向いていて、実機の写真で halo がほとんど読めなかった
+ * （2026-09-20 に一度やり直した）。25% 時点の傾きは -24度なので、そこまでに出し切る。
+ *
+ * **色は2層にする。** 属性色（`--card-type`）だけだと、もり `#3f7452` と
+ * やみ `#4a3a5c` が森緑の盤に沈む。クリームの芯を内側に置いて必ず読めるようにし、
+ * 外側だけを属性で色づける。**専用の配色表は作らない**（9.4.4 と同じ）
+ */
+.card--ultimate::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  z-index: 3;
+  border-radius: 11px;
+  pointer-events: none;
+  opacity: 0;
+  animation: ultimateCharge 0.72s cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+@keyframes ultimateCharge {
+  /* 溜め: 外から内へ集める。板がまだ正面を向いているあいだに出し切る */
+  0% {
+    opacity: 0;
+    transform: scale(2.3);
+    box-shadow: 0 0 0 0 rgba(245, 240, 225, 0), 0 0 0 0 var(--card-type, #f5f0e1);
+  }
+  12% {
+    opacity: 0.85;
+    transform: scale(1.6);
+    box-shadow: 0 0 0 1px rgba(245, 240, 225, 0.7), 0 0 13px 3px var(--card-type, #f5f0e1);
+  }
+  26% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(245, 240, 225, 0.95), 0 0 22px 6px var(--card-type, #f5f0e1);
+  }
+  /* 放出: 内から外へ開いて消える */
+  44% {
+    opacity: 0.55;
+    transform: scale(1.5);
+    box-shadow: 0 0 0 1px rgba(245, 240, 225, 0.4), 0 0 28px 9px var(--card-type, #f5f0e1);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(1.9);
+    box-shadow: 0 0 0 0 rgba(245, 240, 225, 0), 0 0 0 0 var(--card-type, #f5f0e1);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @keyframes cardUltimate {
   0%   { transform: none; }
   25%  { transform: perspective(700px) rotateY(-24deg) scale(1.08); filter: brightness(1.3); }
@@ -2111,6 +2197,7 @@ body {
   .logo__sub,
   .title-screen__start,
   .card--ultimate,
+  .card--ultimate::before,
   .card--lunge,
   .card--swap-in,
   .card--swap-out,
@@ -2127,6 +2214,8 @@ body {
   /* 動かさないなら出さない。被弾は HP と .card__pop で分かる（SPEC 9.4.4） */
   .burst { display: none; }
   .card--faint { display: none; }
+  /* 絶技の溜めは出さない。撃たれたことはログと音で分かる（SPEC 9.4.10） */
+  .card--ultimate::before { display: none; }
   /* 手がかりは消さない。動きだけ止める（SPEC 9.3.2 / 9.3.3） */
   .field__more,
   .field__less { transition: none; }
