@@ -587,4 +587,38 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'searchCreature' },
     ],
   },
+  {
+    id: 'u019', name: '千の御名', ruby: 'せんのみな', kind: 'ultimate',
+    origin: 'india', rarity: 'ultra', requires: 'w010',
+    flavor: '千の名で呼ばれる維持の神。名をひとつ唱えるごとに世界が保たれ、唱えた者の内にも力が満ちる。',
+    cost: ['water', 'water', 'colorless'],
+    effects: [
+      /*
+       * ヴィシュヌの最強ワザ「十の顕現」は効率 30.00。ここを 35.00 にして比 1.167 に置く。
+       * **インド系統はこれが初の絶技**（16種を数えたところ india が0だった）。
+       *
+       * 絶技で attachEnergy を使うのも初。維持の神なので、討つと同時に
+       * 自分のバトル場を整える形にした。damage + attachEnergy の組も絶技では初
+       */
+      { type: 'damage', target: 'opponentActive', value: 70 },
+      { type: 'attachEnergy', target: 'ownActive', value: 1 },
+    ],
+  },
+  {
+    id: 'u020', name: '終わりなき夜', ruby: 'おわりなきよる', kind: 'ultimate',
+    origin: 'egypt', rarity: 'ultra', requires: 'd010',
+    flavor: '日輪の船を待ち伏せる大蛇。斬られても翌日にはまた地平へ戻り、夜ごと同じ戦いが繰り返される。',
+    cost: ['dark', 'dark', 'colorless'],
+    effects: [
+      /*
+       * アペプの最強ワザ「日輪を呑む」は効率 31.67。ここを 35.00 にして比 1.105 に置く。
+       * 闇属性の絶技は u008 の1種だけだったので、これで2種になる。
+       *
+       * **絶技で damagePerHeads を使うのは初。** 毎夜くり返され、そのたびに
+       * 結果が変わる戦いなので、確定打点にコイン3枚ぶんを重ねた
+       */
+      { type: 'damage', target: 'opponentActive', value: 75 },
+      { type: 'damagePerHeads', target: 'opponentActive', value: 20, count: 3 },
+    ],
+  },
 ]
