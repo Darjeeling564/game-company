@@ -2214,8 +2214,26 @@ body {
   /* 動かさないなら出さない。被弾は HP と .card__pop で分かる（SPEC 9.4.4） */
   .burst { display: none; }
   .card--faint { display: none; }
-  /* 絶技の溜めは出さない。撃たれたことはログと音で分かる（SPEC 9.4.10） */
-  .card--ultimate::before { display: none; }
+  /*
+   * 絶技は**動かさないが、消しもしない**（SPEC 9.4.10）。
+   *
+   * 2026-09-20 に実測したところ、`reduce` の端末では一回転（.card--ultimate）も
+   * 溜めも `none` になり、**絶技が撃たれたことが画面に一切残らなかった**。
+   * 「ログと音で分かる」と書いていたが、対戦画面のログは直近の数行しか出ないので、
+   * 絶技の行はダメージ・気絶の行に押し出されて消える（2026-09-20 の写真で確認）。
+   * 動かさないと情報が失われる演出は作らない、という決まりに反していた。
+   *
+   * 動き（集まる・開く）だけをやめ、**静止した輪**として1描画ぶん置く。
+   */
+  .card--ultimate::before {
+    display: block;
+    animation: none;
+    opacity: 1;
+    transform: none;
+    box-shadow:
+      0 0 0 2px rgba(245, 240, 225, 0.95),
+      0 0 22px 6px var(--card-type, #f5f0e1);
+  }
   /* 手がかりは消さない。動きだけ止める（SPEC 9.3.2 / 9.3.3） */
   .field__more,
   .field__less { transition: none; }
