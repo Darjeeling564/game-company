@@ -91,6 +91,24 @@ const SFX: Readonly<Record<string, Sfx>> = {
   ],
 
   // --- 盤面 ---
+  /**
+   * 対局の始まり（SPEC 9.6.4）。**400試合のログ種別を数えたところ、
+   * 音が無いのは `start`（毎試合1回）だけだった。**
+   * `end` にも定義は無いが、決着は `main.ts` が勝敗を見て
+   * win / lose / draw_game を鳴らし分けているので穴ではない。
+   *
+   * これが無いと、盤が出た瞬間が無音で、最初に鳴るのは配置の `setupPlace` になる。
+   * 「始まった」という区切りが耳に残らない。
+   *
+   * 都節・D主音の上行を開いて置く。`beginTurn` は同じ上行の短いものなので、
+   * **長く大きく取って段を変える**。ただし直後に配置が続くので尾は引かせない
+   */
+  start: [
+    { noise: true, from: 0, band: 700, bandTo: 3000, time: 0.2, gain: 0.08, attack: 0.05, space: 0.3 },
+    { wave: 'triangle', from: N.d4, to: N.a4, time: 0.26, gain: 0.22, cutoff: 1200, cutoffTo: 4200, detune: 7, space: 0.4 },
+    { wave: 'triangle', from: N.a4, to: N.d5, time: 0.3, gain: 0.18, delay: 0.16, cutoff: 1800, cutoffTo: 5200, detune: 7, space: 0.45 },
+    { wave: 'sine', from: N.d6, time: 0.34, gain: 0.07, delay: 0.2, attack: 0.004, space: 0.5 },
+  ],
   setupPlace: [
     { noise: true, from: 0, band: 1200, bandTo: 500, time: 0.09, gain: 0.18 },
     { wave: 'triangle', from: N.d4, to: N.d3, time: 0.13, gain: 0.26, cutoff: 1800, cutoffTo: 500, attack: 0.002 },
