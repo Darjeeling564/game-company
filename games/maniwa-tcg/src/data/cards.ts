@@ -499,6 +499,21 @@ const EARTH: readonly CreatureCard[] = [
         ] },
     ],
   },
+  {
+    id: 'e011', name: '黄帝EX', ruby: 'こうていEX', kind: 'creature',
+    flavor: '中華の始祖とされる帝。涿鹿の野で蚩尤の軍と戦い、霧を破って天下を定めた。',
+    origin: 'china', rarity: 'ultra',
+    type: 'earth', hp: 170, ex: true, retreatCost: 3, stage: 0,
+    attacks: [
+      { name: '土徳の帝', ruby: 'どとくのみかど', cost: ['earth', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+      { name: '涿鹿の戦い', ruby: 'たくろくのたたかい', cost: ['earth', 'earth', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 70 },
+          { type: 'damage', target: 'opponentBenchAll', value: 20 },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 雷
@@ -739,7 +754,23 @@ const WATER: readonly CreatureCard[] = [
       { name: '十の顕現', ruby: 'とおのけんげん', cost: ['water', 'water', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 90 }] },
     ],
-  },]
+  },
+  {
+    id: 'w011', name: 'ティアマトEX', kind: 'creature',
+    flavor: '原初の塩の海そのものである竜。神々の母でありながら、十一の魔獣を生んで神々に牙を剥いた。',
+    origin: 'mesopotamia', rarity: 'ultra',
+    type: 'water', hp: 180, ex: true, retreatCost: 3, stage: 0,
+    attacks: [
+      { name: '塩の水', ruby: 'しおのみず', cost: ['water', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+      { name: '十一の魔獣', ruby: 'じゅういちのまじゅう', cost: ['water', 'water', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 80 },
+          { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+        ] },
+    ],
+  },
+]
 
 // ------------------------------------------------ 光
 const LIGHT: readonly CreatureCard[] = [
