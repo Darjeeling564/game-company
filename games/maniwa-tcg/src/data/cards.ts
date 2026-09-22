@@ -372,7 +372,8 @@ const WIND: readonly CreatureCard[] = [
       { name: '隠れたる者', ruby: 'かくれたるもの', cost: ['wind', 'wind', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 80 }] },
     ],
-  },]
+  },
+]
 
 // ------------------------------------------------ 土
 const EARTH: readonly CreatureCard[] = [
