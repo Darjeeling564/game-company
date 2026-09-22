@@ -17,7 +17,7 @@ import type {
   PlayerState,
   Rarity,
 } from '../core/types.ts'
-import { BENCH_SIZE, WEAKNESS_CHART, weaknessBonus } from '../core/types.ts'
+import { BENCH_SIZE, WEAKNESS_CHART, opponentOf, weaknessBonus } from '../core/types.ts'
 import { requireCard, requireCreature } from '../data/cards.ts'
 import { artStage, artUrl } from './art.ts'
 import { ORIGIN_STYLE, RARITY_STYLE, TYPE_COLOR, applyCardTheme } from './theme.ts'
@@ -511,6 +511,12 @@ interface Fx {
    * 受け手の色で光ると、誰が撃ったのか分からない
    */
   readonly burst: BurstStyle | null
+  /**
+   * 今回**弱点の上乗せが乗ったダメージ**を受けた個体 -> **攻撃した側**の属性（SPEC 9.4.11）。
+   * 属性を持つのは色を引くためで、受け手の色で光らせると何に弱かったのかが伝わらない。
+   * 判定は `core` を変えず `WEAKNESS_CHART` から描画側で行う
+   */
+  readonly weak: ReadonlyMap<number, EnergyType>
   /** 気絶して消えた個体。1描画ぶんだけ幽霊として置く（SPEC 9.4.3） */
   readonly faint: ReadonlyMap<PlayerId, Creature>
   /** 入れ替えでバトル場に入った個体（SPEC 9.4.5） */
@@ -619,9 +625,37 @@ function makeFx(state: GameState, placed: ReadonlySet<number>): Fx {
   const swap = makeSwap(state)
   return {
     hit, charged, drained, placed, envenom, pointsBefore: prevPoints,
-    ultimate: lastUltimate(fresh), lunge, burst,
+    ultimate: lastUltimate(fresh), lunge, burst, weak: makeWeak(state, lunge, striker, hit),
     faint: makeFaint(state, fresh), swapIn: swap.in, swapOut: swap.out,
   }
+}
+
+/**
+ * 弱点に当たった瞬間を拾う（SPEC 9.4.11）。
+ *
+ * **ログからは判別できない。** ダメージのログ（`#12 +90`）には上乗せぶんが
+ * 混ざったまま出るので、素の値との差が分からない。`core` にログを足せば済むが、
+ * 出力が変わると決定論リプレイのハッシュが動く（CLAUDE.md 3章）ので触らない。
+ * 代わりに `WEAKNESS_CHART` を描画側で引き直す。詳細画面の「弱点」表示と同じ表である。
+ *
+ * **見るのは殴られた側のバトル場だけでよい。** 上乗せは
+ * `slot.isActive && slot.owner !== actor` のときにしか乗らない（`core/effects.ts`）。
+ * ベンチへのダメージには乗らないので、そちらは数えない。
+ */
+function makeWeak(
+  state: GameState,
+  lunge: PlayerId | null,
+  striker: Creature | null,
+  hit: ReadonlyMap<number, number>,
+): ReadonlyMap<number, EnergyType> {
+  const weak = new Map<number, EnergyType>()
+  if (lunge === null || striker === null) return weak
+  const defender = state.players[opponentOf(lunge)].active
+  if (defender === null || !hit.has(defender.instanceId)) return weak
+  const strikerType = requireCreature(striker.cardId).type
+  const defenderType = requireCreature(defender.cardId).type
+  if (weaknessBonus(strikerType, defenderType) > 0) weak.set(defender.instanceId, strikerType)
+  return weak
 }
 
 /**
@@ -756,6 +790,11 @@ function creatureCard(
     + `${damage !== undefined ? ' card--hit' : ''}`
     + `${fx.charged.has(creature.instanceId) ? ' card--charged' : ''}`
     + `${fx.drained.has(creature.instanceId) ? ' card--drained' : ''}`
+    /*
+     * 弱点に当たった（SPEC 9.4.11）。被弾（card--hit）と必ず同時に起きるので、
+     * CSS 側はカード本体の animation を使わず擬似要素だけで見せている
+     */
+    + `${fx.weak.has(creature.instanceId) ? ' card--weak' : ''}`
     + `${remaining <= card.hp / 2 ? ' card--wounded' : ''}`
     + `${isActive && fx.ultimate === owner ? ' card--ultimate' : ''}`
     /*
@@ -772,6 +811,12 @@ function creatureCard(
     + `${fx.swapOut.has(creature.instanceId) ? ' card--swap-out' : ''}`)
   node.type = 'button'
   applyCardTheme(node, card.origin, card.rarity, card.type)
+  /*
+   * 弱点の印の色は**攻撃した側**の属性から取る（SPEC 9.4.11 / 9.4.4 と同じ向き）。
+   * `--card-type` はこのカード自身の属性なので上書きせず、別の変数に置く
+   */
+  const weakType = fx.weak.get(creature.instanceId)
+  if (weakType !== undefined) node.style.setProperty('--weak-type', TYPE_COLOR[weakType])
 
   const body = el('span', 'card__body')
   // 絵は地に敷く。傷むと差し替わるので、詳細を開かなくても盤面で分かる

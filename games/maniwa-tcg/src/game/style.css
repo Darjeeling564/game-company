@@ -1913,6 +1913,77 @@ body {
   100% { transform: none; }
 }
 
+/*
+ * 弱点に当たった瞬間（SPEC 9.4.11）。
+ *
+ * **カード本体の `animation` も `transform` も使わない。** 弱点のダメージは必ず
+ * 被弾（`.card--hit`）と同時に起きるので、同じ詳細度で `animation` を置くと
+ * 後勝ちで揺れが丸ごと消える（毒 9.4.7・剥がし 9.4.9 で2度踏んでいる）。
+ *
+ * **`::after` は使えない。** 毒（9.4.7）が `.card--envenom::after` を使っており、
+ * 弱点属性で毒を付けるワザだと同じカードに両方が乗る。
+ * **`::before` は `.card--ultimate`（9.4.10）が使っているが、ぶつからない。**
+ * 弱点の上乗せは `slot.owner !== actor` のバトル場にしか乗らないので、
+ * 撃った側と殴られた側が同じカードになることが無い（`core/effects.ts`）。
+ *
+ * **色は攻撃した側の属性（`--weak-type`）から取る**（9.4.4 と同じ向き）。
+ * 芯はクリームにする。属性色だけだと もり `#3f7452`・やみ `#4a3a5c` が
+ * 森緑の盤に沈む（9.4.10 で実測済み）。
+ *
+ * **二度打ちにする。** 被弾も剥がしも一度きりの明滅なので、鋭く2回光らせて
+ * 「ただ当たった」のと形で区別できるようにする。
+ */
+.card--weak {
+  /* 擬似要素を重ねるための基準。ずらさないので配置は動かない */
+  position: relative;
+}
+
+.card--weak::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  z-index: 4;
+  border-radius: 10px;
+  pointer-events: none;
+  opacity: 0;
+  animation: weakStrike 0.54s cubic-bezier(0.25, 0, 0.2, 1);
+}
+
+@keyframes weakStrike {
+  /* 1打目。鋭く立ち上げて、すぐ引く */
+  0% {
+    opacity: 0;
+    transform: scale(1.22);
+    box-shadow: 0 0 0 0 rgba(245, 240, 225, 0), 0 0 0 0 var(--weak-type, #f5f0e1);
+  }
+  9% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(245, 240, 225, 0.95), 0 0 20px 6px var(--weak-type, #f5f0e1);
+  }
+  26% {
+    opacity: 0.18;
+    transform: scale(1.04);
+    box-shadow: 0 0 0 1px rgba(245, 240, 225, 0.3), 0 0 8px 2px var(--weak-type, #f5f0e1);
+  }
+  /* 2打目。1打目より少し太く、余韻を残して抜く */
+  40% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 3px rgba(245, 240, 225, 0.95), 0 0 26px 8px var(--weak-type, #f5f0e1);
+  }
+  72% {
+    opacity: 0.4;
+    transform: scale(1.1);
+    box-shadow: 0 0 0 1px rgba(245, 240, 225, 0.25), 0 0 14px 4px var(--weak-type, #f5f0e1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+    box-shadow: 0 0 0 0 rgba(245, 240, 225, 0), 0 0 0 0 var(--weak-type, #f5f0e1);
+  }
+}
+
 /* 半分以下まで削れた個体は、絵の差し替えに加えて枠でも分かるようにする */
 .card--wounded .card__bar span {
   background: var(--danger);
@@ -2198,6 +2269,7 @@ body {
   .title-screen__start,
   .card--ultimate,
   .card--ultimate::before,
+  .card--weak::before,
   .card--lunge,
   .card--swap-in,
   .card--swap-out,
@@ -2233,6 +2305,26 @@ body {
     box-shadow:
       0 0 0 2px rgba(245, 240, 225, 0.95),
       0 0 22px 6px var(--card-type, #f5f0e1);
+  }
+  /*
+   * 弱点も**動かさないが、消さない**（SPEC 9.4.11。9.4.10 で決めたとおり）。
+   *
+   * 弱点に当たったことは HP の減り方にしか出ない。ログのダメージ行には
+   * 上乗せ込みの数しか書かれないので、印を消すと「なぜ大きく減ったのか」を
+   * 知る手がかりが画面から完全に無くなる。
+   *
+   * 二度打ちをやめ、**静止した縁取り**として1描画ぶん置く。
+   * 絶技（.card--ultimate::before）とは inset と太さを変えて、
+   * 止まった状態でも取り違えないようにする。
+   */
+  .card--weak::before {
+    display: block;
+    animation: none;
+    opacity: 1;
+    transform: none;
+    box-shadow:
+      0 0 0 3px rgba(245, 240, 225, 0.95),
+      0 0 16px 4px var(--weak-type, #f5f0e1);
   }
   /* 手がかりは消さない。動きだけ止める（SPEC 9.3.2 / 9.3.3） */
   .field__more,
