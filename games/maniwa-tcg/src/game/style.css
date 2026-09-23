@@ -2034,6 +2034,65 @@ body {
 .side--cpu   .card--drained.card--swap-out { animation: cardDrain 0.5s ease-out, swapOutUp 0.36s ease-out both; }
 
 /*
+ * 被弾 + 絶技（実測 45件・SPEC 9.4.15）。
+ *
+ * `cardHit` も `cardUltimate` も transform と filter を動かすので、カンマでは
+ * 被弾が取り戻せない。**`cardHit` は1フレームも変えず**、box-shadow だけを動かす
+ * `hitRing` を足して、**transform が塞がっているこの組にだけ**カンマで並べる。
+ *
+ * `cardUltimate` が動かすのは transform と filter だけで、カードの box-shadow は
+ * 空いている（`.card--ultimate::before` の輪は擬似要素の側なので別）。
+ * `.card` 自体も平常時に box-shadow を持たない。
+ *
+ * **他の組に hitRing を足さないこと。** 剥がし（cardDrain）も box-shadow を使うので、
+ * `card--hit` + `card--drained`（実測85件）が今度は取り合いになる。
+ * 2026-09-24 の提案は「被弾そのものを box-shadow に作り替える」だったが、
+ * それだと 45件を救って 85件を壊す。
+ */
+.card--hit.card--ultimate {
+  /*
+   * **0.56秒遅らせる。** 置き場所は2つの条件で決まる。
+   *
+   * 1. 絶技の溜めの輪（.card--ultimate::before）が消えたあと。26%（約187ms）で山を迎え
+   *    70%（約504ms）で消える。同時に出すと、**雷や炎のように属性色が暖色の絶技では
+   *    2つが重なって見分けられない**（2026-09-25 に写真で確認した）
+   * 2. **板が正面を向いているとき。** box-shadow はカード本体に付くので一回転の
+   *    rotateY を一緒に受ける。**67%（約483ms）では板が横を向いていて輪が線になる**
+   *    （同じ日に写真で確認。SPEC 9.4.10 が溜めの輪で踏んだのと同じ）。
+   *    正面に戻るのは 85〜100%（約612〜720ms）
+   *
+   * **一回転が終わってから出す。** 643ms（0.56秒 遅らせた場合）では板がまだ裏を
+   * 向いていて、文字が反転したまま輪が出た（2026-09-25 に写真で確認）。
+   * 一回転は 0.72秒 で終わるので、そのあとに置けば必ず正面で、溜めの輪とも重ならない。
+   * 山を 18%（自分の 83ms）に置いてあるので、0.68秒 遅らせると約763ms になる。
+   * 「回して、放って、反動が来る」と順に読める。
+   * 反動や反撃は「放ったあと」に来るので、因果の順序としても正しい
+   */
+  animation: cardUltimate 0.72s cubic-bezier(0.3, 0, 0.2, 1), hitRing 0.46s ease-out 0.68s both;
+}
+
+/*
+ * 赤い輪。色は `--danger`（#b4472e）＝ HP が半分を切ったときと同じ赤で、
+ * すでに「痛んでいる」を表している。専用の配色表は作らない。
+ * 芯はクリーム。--danger 単独では森緑の盤に沈む（9.4.10 で実測済み）。
+ * 一回転（0.72秒）より短くして、回っている途中で消えるようにする
+ */
+@keyframes hitRing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 240, 225, 0), 0 0 0 0 rgba(180, 71, 46, 0);
+  }
+  18% {
+    box-shadow: 0 0 0 2px rgba(245, 240, 225, 0.95), 0 0 18px 7px rgba(180, 71, 46, 0.9);
+  }
+  55% {
+    box-shadow: 0 0 0 1px rgba(245, 240, 225, 0.4), 0 0 12px 4px rgba(180, 71, 46, 0.45);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 240, 225, 0), 0 0 0 0 rgba(180, 71, 46, 0);
+  }
+}
+
+/*
  * 被弾 + 踏み込み（実測 105件）。**こちらは transform が重なる。**
  * 踏み込みを勝たせ（カンマの後ろ）、被弾の `filter`（白く飛ぶ）だけを取り戻す。
  * 揺れは戻らないが、「殴られた」ことが色で残る。
@@ -2329,6 +2388,7 @@ body {
   .card--ultimate::before,
   .card--weak::before,
   .card--hit.card--drained,
+  .card--hit.card--ultimate,
   .card--drained.card--swap-in,
   .card--drained.card--swap-out,
   .card--hit.card--lunge,
@@ -2387,6 +2447,16 @@ body {
     box-shadow:
       0 0 0 3px rgba(245, 240, 225, 0.95),
       0 0 16px 4px var(--weak-type, #f5f0e1);
+  }
+  /*
+   * 絶技を受けた被弾も**動かさないが消さない**（SPEC 9.4.15）。
+   * この組では揺れも白飛びも一回転に取られているので、輪を消すと
+   * 「殴られた」手がかりが画面から無くなる。静止した赤い輪として1描画ぶん置く
+   */
+  .card--hit.card--ultimate {
+    box-shadow:
+      0 0 0 2px rgba(245, 240, 225, 0.95),
+      0 0 18px 7px rgba(180, 71, 46, 0.9);
   }
   /* 手がかりは消さない。動きだけ止める（SPEC 9.3.2 / 9.3.3） */
   .field__more,
