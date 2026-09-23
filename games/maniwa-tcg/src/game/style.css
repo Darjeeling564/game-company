@@ -1523,6 +1523,24 @@ body {
 .energy__orb--colorless{ --orb: #cfd3ca; }
 .energy__orb--none     { --orb: rgba(245, 240, 225, 0.22); }
 
+/*
+ * 「在庫なし」の丸だけが半透明で、盤の森緑と合成すると rgb(89,123,97) になる。
+ * そこに #10180f（ほぼ黒）の「—」が載っていて**コントラスト比 3.3:1**だった
+ * （CLAUDE.md 6章の下限は 4.5:1。2026-09-24 に実測）。
+ *
+ * **文字色をどう変えても届かない。** この背景（輝度 0.172）で 4.5:1 を満たす色は
+ * 白より明るいか黒より暗いかのどちらかで、存在しない。丸のほうを変えるしかない。
+ *
+ * すでに `.energy--used` が同じ問題を解いている（背景を 0.18 まで落とし、
+ * 文字をクリームに反転して 4.56:1）。**--none も同じ形にそろえる。**
+ * 「置くものが無い」状態なので、明るくして目を引かせるより沈めるほうが筋が通る。
+ * `--used` とはグリフ（「—」と「✓」）と行全体の opacity で区別できる。
+ */
+.energy__orb--none {
+  --orb: rgba(245, 240, 225, 0.18);
+  color: var(--cream);
+}
+
 /* ---------------- 盤面の演出 ---------------- */
 
 /*
@@ -1984,6 +2002,46 @@ body {
   }
 }
 
+/*
+ * 演出どうしの取り合いをほどく（SPEC 9.4.13）。
+ *
+ * 同じ詳細度の `animation` は後勝ちで丸ごと置き換わる。2026-09-24 に 120試合・
+ * 6378回の描き直しを走査したところ、**実際に同時に乗る8組のうち4組で片方が消えて**いた。
+ * しかも消えるのは毎回**被害を受けた側の合図**（被弾の揺れ・剥がしの光）で、
+ * 残るのは「自分が何をしたか」だった。伝える順序が逆になっている。
+ *
+ * **既存の規則は1つも書き換えない。** 2つのクラスを並べた詳細度の高い規則を足し、
+ * `animation` をカンマで並べる。**動かすプロパティが重ならない組は完全に両立する。**
+ * カンマの後ろに置いたほうが、重なるプロパティを取る。
+ */
+
+/*
+ * 被弾 + 剥がし（実測 85件）。`cardHit` は transform と filter、
+ * `cardDrain` は box-shadow だけなので**重ならない。両方そのまま走る**
+ */
+.card--hit.card--drained {
+  animation: cardDrain 0.5s ease-out, cardHit 0.42s ease-out;
+}
+
+/*
+ * 剥がし + 入れ替え（実測 44件。下がる側で出た）。
+ * swap 系は transform と opacity、`cardDrain` は box-shadow なので**重ならない**。
+ * 側で修飾された規則（.side--human .card--swap-out）に勝つよう、こちらも側を付ける
+ */
+.side--human .card--drained.card--swap-in { animation: cardDrain 0.5s ease-out, swapInUp 0.36s cubic-bezier(0.2, 0.85, 0.3, 1) both; }
+.side--cpu   .card--drained.card--swap-in { animation: cardDrain 0.5s ease-out, swapInDown 0.36s cubic-bezier(0.2, 0.85, 0.3, 1) both; }
+.side--human .card--drained.card--swap-out { animation: cardDrain 0.5s ease-out, swapOutDown 0.36s ease-out both; }
+.side--cpu   .card--drained.card--swap-out { animation: cardDrain 0.5s ease-out, swapOutUp 0.36s ease-out both; }
+
+/*
+ * 被弾 + 踏み込み（実測 105件）。**こちらは transform が重なる。**
+ * 踏み込みを勝たせ（カンマの後ろ）、被弾の `filter`（白く飛ぶ）だけを取り戻す。
+ * 揺れは戻らないが、「殴られた」ことが色で残る。
+ * `card--ultimate` と `card--lunge` は view.ts が排他にしているので、ここには来ない
+ */
+.side--human .card--hit.card--lunge { animation: cardHit 0.42s ease-out, lungeUp 0.34s cubic-bezier(0.3, 0, 0.3, 1); }
+.side--cpu   .card--hit.card--lunge { animation: cardHit 0.42s ease-out, lungeDown 0.34s cubic-bezier(0.3, 0, 0.3, 1); }
+
 /* 半分以下まで削れた個体は、絵の差し替えに加えて枠でも分かるようにする */
 .card--wounded .card__bar span {
   background: var(--danger);
@@ -2270,6 +2328,10 @@ body {
   .card--ultimate,
   .card--ultimate::before,
   .card--weak::before,
+  .card--hit.card--drained,
+  .card--drained.card--swap-in,
+  .card--drained.card--swap-out,
+  .card--hit.card--lunge,
   .card--lunge,
   .card--swap-in,
   .card--swap-out,
