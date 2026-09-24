@@ -175,6 +175,29 @@ export const ITEMS: readonly ItemCard[] = [
       { type: 'discardEnergy', target: 'opponentActive', value: 1 },
     ],
   },
+  {
+    id: 'i025', name: '九鼎', ruby: 'きゅうてい', kind: 'item', origin: 'china', rarity: 'superRare',
+    flavor: '禹が九州の金を集めて鋳た九つの鼎。王朝が移るたびに運ばれ、天下が定まったことの証しとされた。',
+    // 中国の神具は3種すべてが R で、8系統で唯一レアリティが1つに固まっていた（2026-09-25 実測）。
+    // あわせて**効果を3つ持つ神具は0種**だったので、ここで初めて作る。
+    // 鼎は集めて容れるものなので、エネルギー・手札・人の3つを集める形にした
+    effects: [
+      { type: 'gainEnergy' },
+      { type: 'draw', value: 1 },
+      { type: 'searchCreature' },
+    ],
+  },
+  {
+    id: 'i026', name: '黄金の林檎', ruby: 'おうごんのりんご', kind: 'item', origin: 'greece', rarity: 'rare',
+    flavor: '「最も美しい者へ」と刻まれ、宴のただ中に投げ込まれた。誰の手に落ちるかで、戦は始まった。',
+    // ギリシアの神具は C2 / SR1 で R が無かった（2026-09-25 実測）。
+    // あわせて**opponentBenchRandom を使う神具も0種**だったので、ここで初めて使う。
+    // 誰に当たるか分からない林檎なので、控えの1体を無作為に選ぶ形がそのまま合う
+    effects: [
+      { type: 'damage', target: 'opponentBenchRandom', value: 40 },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
