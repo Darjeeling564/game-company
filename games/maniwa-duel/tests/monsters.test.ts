@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { MONSTERS } from '../src/data/monsters.ts'
-import { CARD_INDEX, findMonster } from '../src/data/cards.ts'
+import { ALL_CARDS, CARD_INDEX, findMonster } from '../src/data/cards.ts'
 import { tributesRequired } from '../src/core/types.ts'
 
 describe('姫神のデータ', () => {
@@ -75,7 +75,11 @@ describe('参照表', () => {
     expect(findMonster('zzz999')).toBeNull()
   })
 
-  it('索引に全カードが入っている', () => {
-    expect(CARD_INDEX.size).toBe(MONSTERS.length)
+  it('索引に全カードが入っていて、IDが重複していない', () => {
+    expect(CARD_INDEX.size).toBe(ALL_CARDS.length)
+  })
+
+  it('姫神は全部索引から引ける', () => {
+    for (const m of MONSTERS) expect(findMonster(m.id)?.id).toBe(m.id)
   })
 })

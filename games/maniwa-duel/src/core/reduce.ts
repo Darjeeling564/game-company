@@ -7,10 +7,11 @@
  * 積むだけとする。これにより1万回シミュレーションとファジングを安全に回せる
  * （SPEC 4章）。
  */
-import { findCard, findMonster } from '../data/cards.ts'
+import { findCard, findMonster, findSpell } from '../data/cards.ts'
 import type { Action } from './actions.ts'
 import { describeAction, validateDeck } from './actions.ts'
 import { createRng, shuffle } from './rng.ts'
+import { applyEffects, needsChoice } from './effects.ts'
 import { battleResult, canAttack, canAttackDirectly, effectiveAtk, effectiveDef } from './rules.ts'
 import {
   findOnField,
@@ -434,6 +435,56 @@ function resolveAttack(state: GameState): GameState {
   return clear(next)
 }
 
+// ---------------------------------------------------------------- 魔法
+
+/**
+ * 魔法の発動（SPEC 6.3・6.4）。
+ *
+ * **v1 は通常魔法だけ。** 発動したら効果を解決して墓地へ送る。
+ * 永続・装備・フィールドは場に残るので `state: 'active'` として置くことになるが、
+ * v1 にはそのカードが無い。
+ *
+ * 絶技は `requires` の姫神が**自分の場に表側で**いるときだけ発動できる。
+ * maniwa-tcg では「バトル場にいること」＝1枠だったが、ここは3枠あるので条件は緩い。
+ */
+function activateSpell(state: GameState, handIndex: number, target: InstanceId | null): GameState {
+  const player = state.turnPlayer
+  if (state.phase !== 'main') return reject(state, player, 'メインフェイズではない')
+  if (state.priority !== player) return reject(state, player, '手番ではない')
+
+  const side = playerAt(state, player)
+  const cardId = side.hand[handIndex]
+  if (cardId === undefined) return reject(state, player, `手札${handIndex}が無い`)
+  const def = findSpell(cardId)
+  if (def === null) return reject(state, player, `${cardId} は神具でも絶技でもない`)
+  if (def.spellType !== 'normal') {
+    return reject(state, player, `${def.name} は通常魔法ではない（v1 では出せない）`)
+  }
+
+  if (def.requires !== undefined) {
+    const ok = monstersOf(side).some((m) => m.cardId === def.requires && !m.faceDown)
+    if (!ok) {
+      const name = findCard(def.requires)?.name ?? def.requires
+      return reject(state, player, `${def.name} は ${name} が自分の場に表側でいるときだけ`)
+    }
+  }
+
+  if (needsChoice(def.onActivate) && target === null) {
+    return reject(state, player, `${def.name} は対象を選ぶ必要がある`)
+  }
+
+  // 先に手札から抜き、解決してから墓地へ送る
+  let next = withPlayer(state, player, {
+    ...side,
+    hand: side.hand.filter((_, i) => i !== handIndex),
+  })
+  next = log(next, player, 'spell', `${def.name} を発動`)
+  next = applyEffects(next, def.onActivate, { player, chosen: target })
+  const after = playerAt(next, player)
+  next = withPlayer(next, player, { ...after, graveyard: [...after.graveyard, cardId] })
+  return checkLife(next)
+}
+
 // ---------------------------------------------------------------- 選べる操作
 
 /**
@@ -483,6 +534,20 @@ export function legalActions(state: GameState): readonly Action[] {
     for (const m of monstersOf(side)) {
       if (!m.summonedThisTurn && !m.changedThisTurn && !m.hasAttacked) {
         out.push({ type: 'changePosition', instanceId: m.instanceId })
+      }
+    }
+    for (let h = 0; h < side.hand.length; h += 1) {
+      const def = findSpell(side.hand[h] as string)
+      if (def === null || def.spellType !== 'normal') continue
+      if (def.requires !== undefined &&
+          !monstersOf(side).some((m) => m.cardId === def.requires && !m.faceDown)) continue
+      if (needsChoice(def.onActivate)) {
+        // 対象を選ぶ魔法は、相手の姫神1体ごとに候補を出す
+        for (const t of monstersOf(playerAt(state, opponentOf(player)))) {
+          out.push({ type: 'activateSpell', handIndex: h, target: t.instanceId })
+        }
+      } else {
+        out.push({ type: 'activateSpell', handIndex: h, target: null })
       }
     }
     const firstTurnOfFirstPlayer = state.turn === 1 && player === state.firstPlayer
@@ -574,6 +639,9 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case 'declareAttack':
       return declareAttack(state, action.attacker, action.target)
+
+    case 'activateSpell':
+      return activateSpell(state, action.handIndex, action.target)
 
     default:
       return reject(state, state.priority, `未実装の操作: ${describeAction(action)}`)
