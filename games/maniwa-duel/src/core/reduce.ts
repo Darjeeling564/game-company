@@ -11,13 +11,24 @@ import { findCard, findMonster } from '../data/cards.ts'
 import type { Action } from './actions.ts'
 import { describeAction, validateDeck } from './actions.ts'
 import { createRng, shuffle } from './rng.ts'
-import { findOnField, log, monstersOf, playerAt, reject, withPlayer } from './state.ts'
+import { battleResult, canAttack, canAttackDirectly, effectiveAtk, effectiveDef } from './rules.ts'
+import {
+  findOnField,
+  log,
+  monstersOf,
+  playerAt,
+  reject,
+  sendToGraveyard,
+  updateMonster,
+  withPlayer,
+} from './state.ts'
 import type {
   EndReason,
   GameState,
   InstanceId,
   MonsterOnField,
   PlayerId,
+  PendingAttack,
   PlayerSide,
   Position,
 } from './types.ts'
@@ -310,6 +321,119 @@ function changePosition(state: GameState, id: InstanceId): GameState {
     `${name} を${label}にした`)
 }
 
+// ---------------------------------------------------------------- バトル
+
+/**
+ * 攻撃宣言（SPEC 3.6）。
+ *
+ * 割り込みはまだ無いので、宣言したらそのまま戦闘計算へ進む。
+ * 割り込み（実装順序8）を入れるときは、ここと resolveAttack の間に
+ * priority の受け渡しが挟まる。
+ */
+function declareAttack(
+  state: GameState,
+  attackerId: InstanceId,
+  targetId: InstanceId | null,
+): GameState {
+  const player = state.turnPlayer
+  if (state.phase !== 'battle') return reject(state, player, 'バトルフェイズではない')
+  if (state.priority !== player) return reject(state, player, '手番ではない')
+  if (state.pendingAttack !== null) return reject(state, player, '前の攻撃の処理中')
+
+  const attacker = findOnField(state, attackerId)
+  if (attacker === null || attacker.player !== player) {
+    return reject(state, player, `#${attackerId} は自分の場にいない`)
+  }
+  if (!canAttack(state, attacker.monster)) {
+    return reject(state, player, `#${attackerId} は攻撃できない`)
+  }
+
+  if (targetId === null) {
+    if (!canAttackDirectly(state, player)) {
+      return reject(state, player, '相手に姫神がいるのでダイレクトアタックできない')
+    }
+  } else {
+    const target = findOnField(state, targetId)
+    if (target === null || target.player === player) {
+      return reject(state, player, `#${targetId} は相手の場にいない`)
+    }
+  }
+
+  const pending: PendingAttack = {
+    attacker: attackerId, target: targetId, responded: false, negated: false,
+  }
+  const name = findCard(attacker.monster.cardId)?.name ?? attacker.monster.cardId
+  const detail = targetId === null ? `${name} がダイレクトアタック` : `${name} が攻撃宣言`
+  return resolveAttack(log({ ...state, pendingAttack: pending }, player, 'attack', detail))
+}
+
+/**
+ * 戦闘計算（SPEC 3.6）。pendingAttack を消化する。
+ *
+ * 裏側守備表示の相手は、**計算の前に表にする**。
+ */
+function resolveAttack(state: GameState): GameState {
+  const pending = state.pendingAttack
+  if (pending === null) return state
+  const player = state.turnPlayer
+  const foe = opponentOf(player)
+
+  const clear = (s: GameState): GameState => ({ ...s, pendingAttack: null })
+
+  // 攻撃したという印は、無効化されても付く（1体1回）
+  let next = updateMonster(state, pending.attacker, (m) => ({ ...m, hasAttacked: true }))
+
+  if (pending.negated) {
+    return clear(log(next, player, 'battle', '攻撃は無効になった'))
+  }
+
+  const attacker = findOnField(next, pending.attacker)
+  if (attacker === null) {
+    // 割り込みで攻撃側が消えた場合
+    return clear(log(next, player, 'battle', '攻撃した姫神がいなくなった'))
+  }
+  const atk = effectiveAtk(next, pending.attacker)
+
+  if (pending.target === null) {
+    if (!canAttackDirectly(next, player)) {
+      return clear(log(next, player, 'battle', '相手に姫神が出たのでダイレクトアタックは通らない'))
+    }
+    next = log(next, player, 'battle', `ダイレクトアタック ${atk}`)
+    return clear(changeLife(next, foe, -atk))
+  }
+
+  const target = findOnField(next, pending.target)
+  if (target === null) {
+    return clear(log(next, player, 'battle', '相手の姫神がいなくなった'))
+  }
+
+  // 裏側なら先に表にする
+  if (target.monster.faceDown) {
+    next = updateMonster(next, pending.target, (m) => ({ ...m, faceDown: false }))
+    const name = findCard(target.monster.cardId)?.name ?? target.monster.cardId
+    next = log(next, foe, 'flip', `${name} が表になった`)
+  }
+
+  const defAtk = effectiveAtk(next, pending.target)
+  const defDef = effectiveDef(next, pending.target)
+  const result = battleResult(atk, defAtk, defDef, target.monster.position)
+
+  next = log(next, player, 'battle',
+    `${atk} vs ${target.monster.position === 'attack' ? defAtk : defDef}` +
+    `（${target.monster.position === 'attack' ? '攻撃表示' : '守備表示'}）`)
+
+  if (result.destroyed === 'attacker' || result.destroyed === 'both') {
+    next = sendToGraveyard(next, pending.attacker)
+  }
+  if (result.destroyed === 'defender' || result.destroyed === 'both') {
+    next = sendToGraveyard(next, pending.target)
+  }
+  if (result.damage > 0 && result.damageTo !== null) {
+    next = changeLife(next, result.damageTo === 'attacker' ? player : foe, -result.damage)
+  }
+  return clear(next)
+}
+
 // ---------------------------------------------------------------- 選べる操作
 
 /**
@@ -368,6 +492,18 @@ export function legalActions(state: GameState): readonly Action[] {
   }
 
   if (state.phase === 'battle') {
+    const foe = playerAt(state, opponentOf(player))
+    const targets = monstersOf(foe)
+    for (const m of monstersOf(side)) {
+      if (!canAttack(state, m)) continue
+      if (targets.length === 0) {
+        out.push({ type: 'declareAttack', attacker: m.instanceId, target: null })
+      } else {
+        for (const t of targets) {
+          out.push({ type: 'declareAttack', attacker: m.instanceId, target: t.instanceId })
+        }
+      }
+    }
     out.push({ type: 'endTurn' })
     return out
   }
@@ -435,6 +571,9 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case 'changePosition':
       return changePosition(state, action.instanceId)
+
+    case 'declareAttack':
+      return declareAttack(state, action.attacker, action.target)
 
     default:
       return reject(state, state.priority, `未実装の操作: ${describeAction(action)}`)
