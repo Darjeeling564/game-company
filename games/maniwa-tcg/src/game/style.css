@@ -95,10 +95,63 @@ body {
 
 /* ---------------- タイトル / デッキ選択 / 結果 ---------------- */
 
+/*
+ * 結果とデッキ選択の画面。**下端まで使う**（SPEC 9.8.1）。
+ *
+ * 結果画面は中身が上から383pxで終わり、下の461px（54.6%）が空いていた
+ * （2026-09-26 実測・390×844）。中身を上から積むだけだったためである。
+ */
+/*
+ * **grid ではなく flex にする。** grid だと `margin-top: auto` が効かず、
+ * ボタンを下端に寄せられない（2026-09-26 に実際に踏んだ）。
+ * 子は縦に積むだけなので、見た目は grid と変わらない。
+ */
 .screen {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   padding-top: 32px;
+  min-height: calc(100dvh - 24px);
+}
+
+.screen > .title,
+.screen > .muted {
+  flex: 0 0 auto;
+}
+
+/* 決着したときの姫神（SPEC 9.8.1）。**余った高さをここが吸う** */
+.finalArt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.finalArt__art {
+  width: min(62vw, 240px);
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  background-size: cover;
+  background-position: center 14%;
+  /* 盤の森緑から浮かせる。板として置くのは SPEC 9.7 と同じ考え方 */
+  border: 2px solid rgba(245, 240, 225, 0.5);
+  box-shadow: 0 10px 22px -8px rgba(0, 0, 0, 0.65);
+}
+
+.finalArt__name {
+  font-size: 15px;
+  letter-spacing: 0.06em;
+}
+
+/* ボタンは下端へ。縦持ちで親指が届くのは下側（SPEC 9.8.1） */
+.screen__actions {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
 }
 
 /* ================ 画面の切り替え（SPEC 9.4.1） ================ */
@@ -1201,11 +1254,15 @@ body {
  * 影の大きさは em で持たせる。バッジは 16px（カード上）と 40px（詳細のイラスト無し）で
  * 使い回すため、px で書くと大きいほうで効きが薄くなる。
  */
+/*
+ * 属性バッジ。**大きさは `--badge` から導く**（SPEC 9.1.3）。
+ * 名前の逃げ幅（`.card__name::before`）も同じ値から出すので、両者がずれない。
+ */
 .badge {
   display: inline-grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
+  width: var(--badge, 16px);
+  height: var(--badge, 16px);
   border-radius: 50%;
   background:
     /* 左上からの光 */
@@ -1220,7 +1277,8 @@ body {
     /* 面から浮かせる */
     0 0.1em 0.16em rgba(0, 0, 0, 0.45);
   color: #fff;
-  font-size: 10px;
+  /* 丸の 0.625 倍。丸が縮んでも字が丸からはみ出さない比率 */
+  font-size: calc(var(--badge, 16px) * 0.625);
   line-height: 1;
   /* 文字は彫り込み。上を明るくしたぶん白文字が沈むので、影で輪郭を戻す */
   text-shadow: 0 0.08em 0.08em rgba(0, 0, 0, 0.6);
@@ -1261,10 +1319,14 @@ body {
  * 2026-09-08 に float のバッジで踏んだのと同じ現象）。
  * 打ち切りは max-height に任せる。末尾の「…」は出なくなる。
  */
+/*
+ * **逃げ幅はバッジの大きさから導く**（SPEC 9.1.3）。
+ * 19px を直に書いていたため、バッジが縮んでも逃げが縮まなかった。
+ */
 .card__name::before {
   content: '';
   float: right;
-  width: 19px;
+  width: calc(var(--badge, 16px) + 3px);
   height: 1.25em;
 }
 
@@ -1426,6 +1488,33 @@ body {
  */
 .hand:has(> .card:nth-child(8)) .card__name {
   font-size: 9px;
+}
+
+/*
+ * **手札が混んだら、バッジも札と一緒に縮める**（SPEC 9.1.3）。
+ *
+ * 2026-09-26 の実測。カードは 84×118 → 44×61 まで縮むのに、バッジだけが
+ * 16px のまま残っていた。10枚のとき名前枠は 30px しか無く、そのうち 19px を
+ * 逃げが占めるので、**1行目に文字が1つも置けなかった**。
+ * 逃げ幅は `--badge` から導いてあるので、ここを変えるだけで両方が動く。
+ */
+.hand:has(> .card:nth-child(8)) > .card {
+  --badge: 13px;
+}
+
+.hand:has(> .card:nth-child(10)) > .card {
+  --badge: 11px;
+}
+
+/*
+ * **手札でも3行を許す**（SPEC 9.1.3）。
+ *
+ * 名前は絵の上に重ねてあるので（9.2）、行数を増やしてもレイアウトは1pxも動かない。
+ * ベンチが 3.75em を許しているのと同じ理由である。
+ * **バトル場は2行のまま**にする（下にワザ行が続くので、伸びると重なる）。
+ */
+.hand > .card .card__name {
+  max-height: 3.75em;
 }
 
 .hand .card__hp {
@@ -2098,6 +2187,33 @@ body {
  * 揺れは戻らないが、「殴られた」ことが色で残る。
  * `card--ultimate` と `card--lunge` は view.ts が排他にしているので、ここには来ない
  */
+/*
+ * 踏み込み + きぜつ（SPEC 9.4.16）。**実測 9件。**
+ *
+ * lungeUp は transform しか動かさず、cardFaint は transform と filter と opacity を
+ * 動かす。重なる transform を cardFaint が全部上書きするので、**併走させても
+ * 踏み込みは1フレームも残らない。** そこできぜつだけを出す。
+ * 踏み込んだ姫神がそのターンに倒れる場面で、倒れる姿を見せないほうが損である。
+ */
+.card--lunge.card--faint {
+  animation: cardFaint 0.45s ease-in both;
+}
+
+/*
+ * 被弾 + 入れ替え（SPEC 9.4.16）。**swap-in は実測 12件、swap-out は 0件。**
+ *
+ * swap* は transform と opacity、cardHit は transform と filter。
+ * 重なるのは transform だけなので、hit + lunge（下）と同じ形にする。
+ * **カンマの後ろに入れ替えを置き、被弾は filter の明滅を取り戻す。** 揺れは戻らない。
+ *
+ * swap-out の組は起きていないが、同じ仕組みで片方だけ直っている状態は
+ * あとで読み違えるので、対で足す。
+ */
+.side--human .card--hit.card--swap-in { animation: cardHit 0.42s ease-out, swapInUp 0.36s cubic-bezier(0.2, 0.85, 0.3, 1) both; }
+.side--cpu   .card--hit.card--swap-in { animation: cardHit 0.42s ease-out, swapInDown 0.36s cubic-bezier(0.2, 0.85, 0.3, 1) both; }
+.side--human .card--hit.card--swap-out { animation: cardHit 0.42s ease-out, swapOutDown 0.36s ease-out both; }
+.side--cpu   .card--hit.card--swap-out { animation: cardHit 0.42s ease-out, swapOutUp 0.36s ease-out both; }
+
 .side--human .card--hit.card--lunge { animation: cardHit 0.42s ease-out, lungeUp 0.34s cubic-bezier(0.3, 0, 0.3, 1); }
 .side--cpu   .card--hit.card--lunge { animation: cardHit 0.42s ease-out, lungeDown 0.34s cubic-bezier(0.3, 0, 0.3, 1); }
 
@@ -2391,6 +2507,9 @@ body {
   .card--hit.card--ultimate,
   .card--drained.card--swap-in,
   .card--drained.card--swap-out,
+  .card--lunge.card--faint,
+  .card--hit.card--swap-in,
+  .card--hit.card--swap-out,
   .card--hit.card--lunge,
   .card--lunge,
   .card--swap-in,
