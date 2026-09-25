@@ -165,59 +165,62 @@ body {
 /* ---------------------------------------------------------------- 盤面 */
 
 /*
- * 奥行きを付ける（SPEC 8.1）。実物は盤をかなり寝かせているが、同じ角度を DOM でやると
- * カード名と攻守の数字が読めなくなる（実物はタップで拡大できるので成立している）。
+ * **真上から見下ろす盤**（SPEC 8.1）。奥行きは付けない。
  *
- * そこで**相手側だけを奥へ縮め、カード自体は倒さない**。文字は常に正面を向く。
+ * 一度 rotateX で相手側を奥へ縮める形を作ったが、縮めると相手の魔法罠枠が
+ * 実測43px になって 44px の下限を割った。角度を緩めれば満たせるが、
+ * 見た目の都合で下限に張り付く形になる。奥行きを出すほど文字も読みにくくなる。
+ *
+ * 真上から見る形にすると両方とも起きない。**両者の場が同じ大きさ**になり、
+ * カード名も攻守の数字もどこでも同じように読める。
  */
 .board {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 4px;
   flex: 1 1 auto;
   min-height: 0;
-  perspective: 760px;
-  perspective-origin: 50% 0%;
+}
+
+/* 卓の面。枠が宙に浮かず、1枚の板の上に並んでいるように見せる */
+.board__table {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.22), rgba(0, 0, 0, 0.1) 48%, rgba(0, 0, 0, 0.22)),
+    var(--forest-dark);
+  border: 1px solid rgba(245, 240, 225, 0.18);
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.35);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  transform-style: flat;
+  gap: 5px;
 }
 
-/*
- * 奥。**枠の実寸が 44px を割らない角度にとどめる**（CLAUDE.md 6章）。
- *
- * 最初は rotateX(16deg) scale(0.9) にしたが、実機サイズで測ると
- * 相手の魔法罠枠が **43px** になって下限を割った（縮み率 0.865）。
- * 13度・0.93 に緩めて縮み率 0.906 とし、あわせて魔法罠の下限を 52px に上げた。
- * 52 × 0.906 = 47px で下限を満たす。
- */
-.field--far {
-  transform: perspective(760px) rotateX(13deg) scale(0.93);
-  transform-origin: 50% 100%;
-  opacity: 0.94;
-}
-
-.field--near {
-  transform: perspective(760px) rotateX(-4deg);
-  transform-origin: 50% 0%;
-}
-
+/* 自陣と敵陣を分ける中央線 */
 .board__line {
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--cream), transparent);
-  opacity: 0.45;
-  margin: 3px 0;
+  opacity: 0.4;
+  margin: 3px 2px;
 }
 
-/* 両端に札束の枠を置くので 44px + 3列 + 44px */
+/*
+ * 両端に札束の枠を置くので 44px + 3列 + 44px。
+ *
+ * **1fr ではなく minmax(0, 1fr) にする。** 1fr は minmax(auto, 1fr) と同じで
+ * 最小内容幅を下回れないため、カードが入った枠だけ 110px に広がり、
+ * **空いている枠が 35px まで潰れた**（実機サイズで実測。44px の下限割れ）。
+ * minmax(0, ...) にすると3枠が常に等分になる。
+ */
 .row {
   display: grid;
-  grid-template-columns: var(--tap) repeat(3, 1fr) var(--tap);
+  grid-template-columns: var(--tap) repeat(3, minmax(0, 1fr)) var(--tap);
   gap: 5px;
   align-items: center;
 }
@@ -229,8 +232,12 @@ body {
  * （最初にそう書いて実機サイズで確かめたら、ボタンが画面外に出た）。
  * 枠は幅いっぱいに取り、**中のカードだけが 3:4 を保って中央に載る**。
  */
+/*
+ * 高さは 3列の幅（約85px）に対して 3:4 に近くなるところで止める。
+ * 高くしすぎるとカードが枠より幅広になり、列からはみ出す。
+ */
 .slot {
-  height: clamp(92px, 19vh, 150px);
+  height: clamp(88px, 14vh, 118px);
   border: 1px dashed rgba(245, 240, 225, 0.25);
   border-radius: 6px;
   display: flex;
@@ -240,14 +247,13 @@ body {
 }
 
 .row--spell .slot {
-  /* 下限52px は「奥へ縮めても 44px を割らない」ところから決めた（.field--far 参照） */
-  height: clamp(52px, 8vh, 70px);
+  height: clamp(46px, 7.5vh, 66px);
 }
 
+/* 枠いっぱいに収める。aspect-ratio で幅を決めると列からはみ出す（上記） */
 .row--monster .card {
-  width: auto;
+  width: 100%;
   height: 100%;
-  aspect-ratio: 3 / 4;
 }
 
 /* 盤に置く札束。数を札の上に載せる（SPEC 8.1） */
@@ -392,6 +398,8 @@ body {
   padding: 1px 3px 2px;
   background: var(--card-deep, #222);
   font-size: 9px;
+  /* 攻守とレベルが枠を押し広げないように閉じる */
+  overflow: hidden;
 }
 
 .card__stat {
@@ -434,9 +442,13 @@ body {
   color: rgba(245, 240, 225, 0.55);
 }
 
-/* 守備表示は横向きに見せる。遊戯王の約束ごとなので形で伝える */
+/*
+ * 守備表示は横向きに見せる。遊戯王の約束ごとなので形で伝える。
+ * 倍率は「回した長辺が枠の幅（約85px）に収まる」ところから決めた。
+ * 枠の高さ118px × 0.70 = 83px。
+ */
 .card--defense {
-  transform: rotate(90deg) scale(0.74);
+  transform: rotate(90deg) scale(0.7);
 }
 
 .card--spent {

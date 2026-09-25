@@ -282,20 +282,24 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
   head.appendChild(ff)
   root.appendChild(head)
 
-  // --- 盤（SPEC 8.1）。相手側は奥へ、自分側は手前へ
+  // --- 盤（SPEC 8.1）。真上から見下ろす。奥行きは付けない
   const board = el('div', 'board')
-  const far = el('div', 'field field--far')
+  const table = el('div', 'board__table')
+
+  const far = el('div', 'field')
   far.appendChild(zoneRow(vm, foe, 'spell', h, pile('deck', them.deck.length), null))
   far.appendChild(zoneRow(vm, foe, 'monster', h, pile('grave', them.graveyard.length), null))
-  board.appendChild(far)
+  table.appendChild(far)
 
-  board.appendChild(el('div', 'board__line'))
+  table.appendChild(el('div', 'board__line'))
 
-  const near = el('div', 'field field--near')
+  const near = el('div', 'field')
   near.appendChild(zoneRow(vm, vm.human, 'monster', h, null, null))
   near.appendChild(zoneRow(vm, vm.human, 'spell', h,
     pile('grave', me.graveyard.length), pile('deck', me.deck.length)))
-  board.appendChild(near)
+  table.appendChild(near)
+
+  board.appendChild(table)
   root.appendChild(board)
 
   // --- 下部: 自分のライフ、手札、説明、ボタン
