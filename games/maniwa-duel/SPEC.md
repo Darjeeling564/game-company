@@ -61,8 +61,7 @@ CLAUDE.md 7章の「バーティカルスライス優先 — 全機能を薄く�
 |---|---|
 | エクストラデッキ（融合・シンクロ・エクシーズ・ペンデュラム・リンク） | 姫神87体はレベルとリリースだけで回せる。EMZ とリンク先の規則は v1 に不要 |
 | **スキル** | デュエルリンクス固有の要素だが、決闘が1本通ってから乗せる。**絶技を充てる案は取り下げた**（6.3） |
-| フィールド魔法ゾーン | 使うカードが無い |
-| 永続魔法・装備魔法・カウンター罠 | 効果の種類を増やす前にルールを固める。**v1 の魔法はすべて通常魔法**（6.3） |
+| **通常魔法・通常罠以外の魔法罠** | 永続・装備・フィールド・速攻・カウンター。**型だけ用意して実装しない**（6.4）。v1 の魔法はすべて通常魔法、罠はすべて通常罠 |
 | チェーン2段以上 | 11章。v1 は1段 |
 | 8属性すべてのデッキ | ロジックとテストが安定してから（CLAUDE.md 7章5） |
 | 時間制限 | 1人で遊ぶので不要。終局保証はターン上限で行う（3.7） |
@@ -233,9 +232,15 @@ export interface MonsterOnField {
 export interface SpellOnField {
   readonly instanceId: InstanceId
   readonly cardId: CardId
-  readonly faceDown: boolean
+  /**
+   * 'set'    伏せてある（裏側）
+   * 'active' 発動済みで場に残っている（永続・装備・フィールド。**v1 では発生しない**）
+   */
+  readonly state: 'set' | 'active'
   /** 伏せたターン。同一ターンの発動を禁じるため */
   readonly setTurn: number
+  /** 装備魔法だけ使う。装備先のモンスター（v1 では常に null） */
+  readonly equippedTo: InstanceId | null
 }
 
 export interface PlayerSide {
@@ -247,6 +252,8 @@ export interface PlayerSide {
   readonly monsters: readonly (MonsterOnField | null)[]
   /** 長さ SPELL_ZONES。空きは null */
   readonly spells: readonly (SpellOnField | null)[]
+  /** フィールド魔法ゾーン。**v1 では常に null**（6.4） */
+  readonly field: SpellOnField | null
   /** このターンに通常召喚を使ったか */
   readonly summonedThisTurn: boolean
 }
@@ -291,6 +298,11 @@ export interface GameState {
   必ず `phase === 'battle'`
 - 乱数は `rng` として持ち回る。`Math.random()` は使わない
 - `atkDelta` はターン終了時に 0 へ戻す。永続の増減は v1 では作らない
+- **攻撃力・守備力は毎回計算する。カードの値を直接読まない。**
+  `rules.ts` の `effectiveAtk(state, ref)` / `effectiveDef(state, ref)` だけを使う。
+  v1 では `カードの値 + atkDelta` を返すだけだが、**永続魔法・装備魔法を足す日に
+  ここ1か所を直せば済むようにしておく**（6.4）。直接読む場所が10か所あると、
+  その日に10か所を探すことになる
 
 ---
 
@@ -343,6 +355,14 @@ export function tributesRequired(level: number): 0 | 1 | 2
 export function battleResult(atk: number, def: number, position: Position):
   { readonly destroyed: 'attacker' | 'defender' | 'both' | 'none'
     readonly damageTo: PlayerId | null; readonly damage: number }
+
+/**
+ * **攻撃力・守備力はここだけで出す。カードの値を直接読まない**（6.4）。
+ * v1 は「カードの値 + atkDelta」を返すだけ。永続魔法・装備魔法を足す日に、
+ * 場の 'active' なカードの Continuous を走査して合算する処理をここに入れる。
+ */
+export function effectiveAtk(state: GameState, ref: InstanceId): number
+export function effectiveDef(state: GameState, ref: InstanceId): number
 ```
 
 ---
@@ -367,13 +387,19 @@ export interface MonsterDef {
   readonly def: number
 }
 
+/** 魔法の種類（6.4）。v1 が実装するのは 'normal' のみ */
+export type SpellType = 'normal' | 'continuous' | 'equip' | 'field' | 'quick'
+/** 罠の種類（6.4）。v1 が実装するのは 'normal' のみ */
+export type TrapType = 'normal' | 'continuous' | 'counter'
+
 export interface SpellDef {
   readonly id: CardId          // i001（神具）/ u001（絶技）
   readonly name: string
   readonly ruby?: string
   readonly kind: 'spell'
-  /** 出自。v2 で装備魔法・通常魔法に分けるときの手がかり（6.3） */
-  readonly form: 'artifact' | 'art'   // artifact = 神具 / art = 絶技
+  readonly spellType: SpellType
+  /** 出自。神具か絶技か（6.3） */
+  readonly form: 'artifact' | 'art'
   readonly flavor: string
   readonly origin: Origin
   readonly rarity: Rarity
@@ -383,7 +409,10 @@ export interface SpellDef {
    * maniwa-tcg の UltimateCard.requires をそのまま引き継ぐ。
    */
   readonly requires?: CardId
-  readonly effects: readonly Effect[]
+  /** 発動したとき1回だけ起きること */
+  readonly onActivate: readonly OneShot[]
+  /** 場にある間ずっと効いていること（永続・装備・フィールドのみ） */
+  readonly whileOnField?: readonly Continuous[]
 }
 
 export interface TrapDef {
@@ -391,10 +420,12 @@ export interface TrapDef {
   readonly name: string
   readonly ruby?: string
   readonly kind: 'trap'        // 道標
+  readonly trapType: TrapType
   readonly flavor: string
   readonly origin: Origin
   readonly rarity: Rarity
-  readonly effects: readonly Effect[]
+  readonly onActivate: readonly OneShot[]
+  readonly whileOnField?: readonly Continuous[]
 }
 ```
 
@@ -499,6 +530,87 @@ v1 の魔法はすべて通常魔法（発動して即墓地）にする。v2 �
 
 **種別を性格から決めておくと、あとの拡張も性格が決める。**
 
+### 6.4 魔法・罠の種類は3層に分かれる
+
+遊戯王の魔法5種・罠3種は、**engine に何を要求するかで3つの層**に分かれる。
+v1 は第1層だけを実装するが、**型と `effectiveAtk` は最初から3層ぶん用意する。**
+
+| 層 | 種類 | 要る仕組み | v1 |
+|---|---|---|---|
+| **第1層** | **通常魔法 / 通常罠** | 何も要らない。発動 → 解決 → 墓地 | **実装する** |
+| **第2層** | **永続魔法 / 装備魔法 / フィールド魔法 / 永続罠** | **継続効果の層**（下記） | 型だけ用意 |
+| **第3層** | **速攻魔法 / カウンター罠** | **スペルスピード付きのチェーン**（11章） | 型だけ用意 |
+
+#### 第2層が要求するもの ＝ 「攻撃力を保存せず、計算する」
+
+永続魔法「自分のモンスターの攻撃力を500上げる」が場にある間、**攻撃力はカードに
+書かれた値ではなくなる**。必要なのは次の4つ。
+
+1. 魔法罠ゾーンのカードが `state: 'active'` で**表側のまま残れる**こと
+2. **フィールド魔法ゾーン**（`PlayerSide.field`）
+3. **装備先へのリンク**（`equippedTo`）と、装備先が破壊されたときの後始末
+4. **攻撃力・守備力を計算で出すこと** — `effectiveAtk(state, ref)`
+
+**4 が本体である。** そして**あとから足すのが一番高くつく。**
+v1 で `def.atk` を10か所で直接読んでしまうと、永続魔法を足す日に10か所を探すことになる。
+
+だから **v1 は通常魔法しか出さないが、`effectiveAtk` は最初から通す。**
+v1 の実装は `カードの値 + atkDelta` を返すだけの3行でよい。
+
+#### 第3層が要求するもの ＝ スペルスピード
+
+- **速攻魔法**は、伏せておいて**相手のターンにも発動できる**（スペルスピード2）
+- **カウンター罠**は、**他の発動に対してだけ**チェーンできる（スペルスピード3）
+
+**カウンター罠はチェーンが無いと意味を持たない。** 無効にする相手の発動が存在しないため。
+速攻魔法も「相手のターンに使える」ことが定義なので、第3層が要る。
+
+v1 の割り込みは「相手のバトルフェイズ・攻撃宣言時の1段だけ」（11章）なので、
+**この2種類は v1 では作れない。** 型に名前だけ用意しておく。
+
+#### 効果は「1回きり」と「ずっと」に分ける
+
+CLAUDE.md 4章に従って効果はデータで書く。**第2層を足せる形にするため、
+最初から2種類に分ける。**
+
+| | いつ効くか | 例 |
+|---|---|---|
+| `onActivate` | 発動したとき**1回** | ライフを削る / モンスターを破壊する / 引く |
+| `whileOnField` | 場にある間**ずっと** | 攻撃力+500 / 攻撃できない / 戦闘ダメージを受けない |
+
+v1 のカードは `onActivate` しか持たない。`whileOnField` は型だけ存在する。
+
+#### 手元の70種を、種類に当てはめた案
+
+**提案であり、実装は v1 の範囲（通常魔法・通常罠）から始める。**
+
+| 種類 | 層 | 当てはまりそうなカード |
+|---|---|---|
+| **通常魔法** | 1 | **絶技18種すべて**（技は放てば終わる）＋ 消える神具（i001 神饌の香 / i002 供物の果実 / i006 不死の霊薬 / i019 アグニの火箭 / i026 黄金の林檎） |
+| **通常罠** | 1 | **道標の大半**（a003 交代の号令 / a006 祟りの札 / a008 焦土の誓い / a019 金翅鳥の急襲 / a023 ギャラルホルン …） |
+| **装備魔法** | 2 | i021 グングニル / i023 八尺瓊勾玉 / i024 天の牡牛の角 / i009 生贄の刃 / i005 護符の紐 / i016 銀の鍵。**i007 呪詛の釘は相手のモンスターに装備する弱体化**として使える |
+| **永続魔法** | 2 | i025 九鼎（王朝が定まった証しとして**在り続ける**もの）/ i008 星辰の羅針 / i010 双面の鏡 / i012 豊穣の壺 / i022 パンドラの匣 |
+| **永続罠** | 2 | a007 封印の陣（**陣は張られたまま**）/ a013 運命の三女神（糸を紡ぎ続ける）/ a020 セルケトの針 / a021 星辰の囁き |
+| **速攻魔法** | 3 | u009 光芒一閃（**一閃**なので割り込みそのもの）/ i015 亀甲の卜 |
+| **カウンター罠** | 3 | **a026 ヘカの言葉**（言葉で術を解くもの。カウンター罠そのもの）/ a012 神罰 |
+| **フィールド魔法** | 2 | **手持ちにほとんど無い。** 場所を表すカードは a016 イシュタルの門 と a018 七つの門 の2枚だけで、どちらも道標（罠）側にある |
+
+#### フィールド魔法は、カードが足りない
+
+**これは正直に書いておく。** フィールド魔法は「場所」を表すカードだが、
+神具26種はすべて「物」、絶技18種はすべて「技」なので、**1枚も該当しない**。
+道標の a016 イシュタルの門 / a018 七つの門 だけが場所だが、この2枚を罠から
+移すと「道標＝兆し」という 6.3 の対応が崩れる。
+
+選べるのは次の3つ。**v2 で決める。**
+
+1. **フィールド魔法を作らない**（v1・v2 とも。一番素直）
+2. **新しくカードを足す**（高天原・アスガルド・ルルイエ など、場所の札を作る）
+3. **門の2枚を魔法へ移す**（6.3 の対応に例外を作る）
+
+**1 を勧める。** 種類を埋めることが目的ではないし、カードが無いところに
+無理に作ると 6.3 の「性格から決める」という筋が崩れる。
+
 ---
 
 ## 7. 効果（Effect）の一覧
@@ -516,21 +628,45 @@ export type EffectTarget =
   | 'ownMonsterOne'
   | 'attacker'            // 罠専用。攻撃してきたモンスター
 
-export type Effect =
+/** 発動したとき1回だけ起きること。**v1 が実装するのはこちらだけ** */
+export type OneShot =
   | { type: 'lifeDamage';   target: 'opponent' | 'self'; value: number }
   | { type: 'lifeHeal';     target: 'opponent' | 'self'; value: number }
   | { type: 'destroy';      target: EffectTarget }
-  | { type: 'atkChange';    target: EffectTarget; value: number }  // 負値で弱体化
+  | { type: 'atkChange';    target: EffectTarget; value: number }  // 負値で弱体化。ターン終了で戻る
   | { type: 'draw';         value: number }
   | { type: 'discard';      target: 'opponent' | 'self'; value: number }
   | { type: 'search';       kind: 'monster' | 'spell' | 'trap' }
   | { type: 'negateAttack' }        // 罠専用
   | { type: 'position';     target: EffectTarget; position: Position }
   | { type: 'revive' }              // 自分の墓地のモンスター1体を特殊召喚
+
+/**
+ * 場にある間ずっと効いていること（6.4 第2層）。
+ * **v1 では型だけ存在し、これを持つカードを作らない。**
+ * effectiveAtk / effectiveDef が場の 'active' なカードを走査して合算する。
+ */
+export type Scope =
+  | 'ownMonsters'
+  | 'opponentMonsters'
+  | 'allMonsters'
+  | 'equippedMonster'     // 装備魔法。equippedTo の1体だけ
+
+export type Continuous =
+  | { type: 'atkBoost';        scope: Scope; value: number }
+  | { type: 'defBoost';        scope: Scope; value: number }
+  | { type: 'cannotAttack';    scope: Scope }
+  | { type: 'noBattleDamage';  scope: Scope }
+  /** 属性やレベルで絞りたいとき。省略なら全部 */
+  // filter?: { attribute?: Attribute; minLevel?: number }
 ```
 
 **`negateAttack` と `attacker` は罠でしか使えない。** `core/effects.ts` が
 `pendingAttack === null` のときに拒否する。データ側に書いてしまえる形にはしない。
+
+**`Continuous` は v1 では1枚も使わない。** それでも型を置くのは、
+`effectiveAtk` がこれを走査する形で最初から書かれていれば、
+第2層を足す日に `core` の他の場所を触らずに済むためである（6.4）。
 
 v1 で新しい効果タイプを足すときは、**先にこの表に追記してから**実装する。
 
@@ -690,6 +826,10 @@ CLAUDE.md 6章のとおり DotGothic16 / 森緑 `#2d5a3d` / クリーム `#f5f0e
 v2 でチェーンを深くするときは、`pendingAttack` を解決スタックに置き換える。
 **そのとき `core` の設計が変わる**ので、v1 のうちにテストを厚くしておく。
 
+**速攻魔法とカウンター罠は、この置き換えが済むまで作れない**（6.4 第3層）。
+カウンター罠は「相手の発動を無効にする」カードなので、
+**無効にする対象そのものがチェーンでしか生まれない**。
+
 ---
 
 ## 12. テスト方針
@@ -778,7 +918,8 @@ games/maniwa-duel/
 
 1. `core/types.ts` — 型だけ
 2. `core/rng.ts` — 複製とテスト
-3. `core/rules.ts` — `battleResult` と `tributesRequired`。**表(3.6)を全パターンテスト**
+3. `core/rules.ts` — `battleResult` / `tributesRequired` / **`effectiveAtk` `effectiveDef`**。
+   表(3.6)を全パターンテスト。**攻撃力を直接読む場所をこの時点で1か所に封じる**（6.4）
 4. `core/reduce.ts` — 開始・ドロー・ターン進行・勝敗。**まだ召喚できない**
 5. 召喚とセット（リリース含む）
 6. バトル（**割り込み無しで**戦闘計算まで）
@@ -801,10 +942,11 @@ games/maniwa-duel/
 |---|---|
 | **スキル** | デュエルリンクス固有の要素。デッキ外に置き、条件で発動する。**絶技とは無関係に設計する**（6.3 で絶技は魔法にしたため） |
 | チェーン2段以上 | 11章。`pendingAttack` を解決スタックに置き換える |
-| 永続魔法・装備魔法・カウンター罠 | **神具を装備・永続へ移す**（6.3）。効果の種類を増やす |
+| **第2層の魔法罠**（永続魔法・装備魔法・フィールド魔法・永続罠） | 6.4。`Continuous` を実装し、`effectiveAtk` に合算を足す。**チェーンは要らない**ので第3層より先に来る |
+| **第3層の魔法罠**（速攻魔法・カウンター罠） | 6.4。チェーンとスペルスピードが要る。11章の置き換えとセット |
+| フィールド魔法のカード | **該当するカードが手元に1枚も無い**（6.4）。作らない案を勧めている |
 | 8属性すべてのデッキ | 87体ぶんの数値を確定させてから |
 | エクストラデッキ | EMZ とリンク先の規則が要る。**入れるかどうかから判断する** |
-| フィールド魔法 | 使うカードを作るところから |
 | 時間制限 | 対人戦を作るなら |
 
 ---
@@ -821,6 +963,8 @@ games/maniwa-duel/
 | Q4 | 同名2枚制限でよいか（デュエルリンクスは3枚） | 2枚。カードプールが2枚前提で作られているため |
 | Q5 | `maniwa-tcg` の `src/data/art/README.md` に共有の旨を1行追記してよいか | **追記したい**（2章）。`maniwa-tcg` への唯一の変更になるので承認が要る |
 | Q6 | 6.3 の対応（神具・絶技→魔法 / 道標→罠）でよいか | この対応で進める。イラストが1枚も余らない |
+| Q7 | 6.4 のとおり、v1 は通常魔法・通常罠だけ実装し、**型と `effectiveAtk` だけ3層ぶん用意する**でよいか | この形で進める。第2層をあとから足すのが一番高くつくため |
+| Q8 | フィールド魔法をどうするか | **作らない**を勧める（6.4）。該当するカードが手元に無い |
 
 ---
 
