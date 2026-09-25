@@ -28,7 +28,8 @@ import {
 } from './view.ts'
 import type { CustomDeck } from './storage.ts'
 import { load, recordResult, save } from './storage.ts'
-import { artUrl } from './art.ts'
+import { artStage, artUrl } from './art.ts'
+import type { ArtStage } from './art.ts'
 import { applyCardTheme } from './theme.ts'
 import { hasSfx, isMuted, play, playBgm, setMuted, stopBgm } from './sound.ts'
 
@@ -714,16 +715,57 @@ function showResult(): void {
   )
   screen.append(el('p', 'muted', `通算 ${record.wins}勝 ${record.losses}敗 ${record.draws}分`))
 
+  /*
+   * 決着したときの姫神を大きく置く（SPEC 9.8.1）。
+   *
+   * 結果画面は中身が上から383pxで終わり、下の461px（54.6%）が空いていた
+   * （2026-09-20 の指摘・2026-09-26 に実測）。**余白を詰めるのではなく、
+   * 見せるものを足す。** 誰と戦い抜いたかが残るほうが、対戦の締めとして効く。
+   *
+   * 選び方はその場の状態から決まるので、乱数を使わない。
+   */
+  const mine = state.players[HUMAN]
+  let lastCardId: string | null = null
+  let lastStage: ArtStage = 'normal'
+  if (mine.active !== null) {
+    lastCardId = mine.active.cardId
+    lastStage = artStage(requireCreature(mine.active.cardId).hp, mine.active.damage)
+  } else {
+    // 最後にトラッシュへ送られた自分の姫神＝最後まで立っていた者。きぜつしているので d2
+    for (let i = mine.discard.length - 1; i >= 0; i -= 1) {
+      const id = mine.discard[i] as string
+      if (requireCard(id).kind === 'creature') {
+        lastCardId = id
+        lastStage = 'critical'
+        break
+      }
+    }
+  }
+  if (lastCardId !== null) {
+    const url = artUrl(lastCardId, lastStage)
+    if (url !== null) {
+      const figure = el('div', 'finalArt')
+      const img = el('div', 'finalArt__art')
+      img.style.backgroundImage = `url(${url})`
+      figure.append(img)
+      figure.append(el('span', 'finalArt__name', requireCard(lastCardId).name))
+      screen.append(figure)
+    }
+  }
+
+  /* ボタンは下に寄せる。縦持ちで親指が届くのは下側なので（SPEC 9.8.1） */
+  const actions = el('div', 'screen__actions')
   const again = el('button', 'btn', 'もう一度')
   again.type = 'button'
   again.addEventListener('click', showDeckSelect)
-  screen.append(again)
+  actions.append(again)
 
   const back = el('button', 'btn btn--ghost', 'タイトルへ')
   back.type = 'button'
   back.addEventListener('click', showTitle)
-  screen.append(back)
-  screen.append(soundToggle(showResult))
+  actions.append(back)
+  actions.append(soundToggle(showResult))
+  screen.append(actions)
   root.append(screen)
 }
 
