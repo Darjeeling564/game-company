@@ -7,17 +7,19 @@
  * 積むだけとする。これにより1万回シミュレーションとファジングを安全に回せる
  * （SPEC 4章）。
  */
-import { findCard } from '../data/cards.ts'
+import { findCard, findMonster } from '../data/cards.ts'
 import type { Action } from './actions.ts'
 import { describeAction, validateDeck } from './actions.ts'
 import { createRng, shuffle } from './rng.ts'
-import { log, playerAt, reject, withPlayer } from './state.ts'
+import { findOnField, log, monstersOf, playerAt, reject, withPlayer } from './state.ts'
 import type {
   EndReason,
   GameState,
+  InstanceId,
   MonsterOnField,
   PlayerId,
   PlayerSide,
+  Position,
 } from './types.ts'
 import {
   DECK_SIZE,
@@ -29,6 +31,7 @@ import {
   MONSTER_ZONES,
   SPELL_ZONES,
   opponentOf,
+  tributesRequired,
 } from './types.ts'
 
 // ---------------------------------------------------------------- 初期状態
@@ -200,6 +203,198 @@ function discardToLimit(state: GameState, handIndex: number): GameState {
   return endPhase(logged)
 }
 
+// ---------------------------------------------------------------- 召喚
+
+/**
+ * 通常召喚とセット（SPEC 3.5）。
+ *
+ * - **1ターンに1回**。セットも同じ枠を使う
+ * - レベル5〜6で1体、7以上で2体をリリースする
+ * - リリースは**先に済ませてから**置く。埋まっているゾーンを空けて置けるようにするため
+ */
+function summon(
+  state: GameState,
+  handIndex: number,
+  zone: number,
+  position: Position,
+  faceDown: boolean,
+  tributes: readonly InstanceId[],
+): GameState {
+  const player = state.turnPlayer
+  if (state.phase !== 'main') return reject(state, player, 'メインフェイズではない')
+  if (state.priority !== player) return reject(state, player, '手番ではない')
+
+  const side = playerAt(state, player)
+  if (side.summonedThisTurn) return reject(state, player, '通常召喚はこのターンもう使った')
+
+  const cardId = side.hand[handIndex]
+  if (cardId === undefined) return reject(state, player, `手札${handIndex}が無い`)
+  const def = findMonster(cardId)
+  if (def === null) return reject(state, player, `${cardId} は姫神ではない`)
+
+  const need = tributesRequired(def.level)
+  if (tributes.length !== need) {
+    return reject(state, player, `レベル${def.level}のリリースは${need}体（${tributes.length}体）`)
+  }
+  if (new Set(tributes).size !== tributes.length) {
+    return reject(state, player, '同じ姫神を二重にリリースしている')
+  }
+  for (const id of tributes) {
+    const found = findOnField(state, id)
+    if (found === null || found.player !== player) {
+      return reject(state, player, `#${id} は自分の場にいない`)
+    }
+  }
+
+  // リリースしてから置く
+  const released = side.monsters.map((m) =>
+    m !== null && tributes.includes(m.instanceId) ? null : m)
+  const graveyard = [...side.graveyard, ...side.monsters
+    .filter((m): m is MonsterOnField => m !== null && tributes.includes(m.instanceId))
+    .map((m) => m.cardId)]
+
+  if (zone < 0 || zone >= MONSTER_ZONES) return reject(state, player, `ゾーン${zone}は無い`)
+  if (released[zone] !== null) return reject(state, player, `ゾーン${zone}は埋まっている`)
+
+  const placed: MonsterOnField = {
+    instanceId: state.nextInstanceId,
+    cardId,
+    position,
+    faceDown,
+    hasAttacked: false,
+    summonedThisTurn: true,
+    changedThisTurn: false,
+    atkDelta: 0,
+  }
+  const monsters = released.map((m, i) => (i === zone ? placed : m))
+
+  const next = withPlayer({ ...state, nextInstanceId: state.nextInstanceId + 1 }, player, {
+    ...side,
+    hand: side.hand.filter((_, i) => i !== handIndex),
+    monsters,
+    graveyard,
+    summonedThisTurn: true,
+  })
+  const how = faceDown ? 'セット' : position === 'attack' ? '攻撃表示で召喚' : '守備表示で召喚'
+  const cost = need > 0 ? `（${need}体リリース）` : ''
+  return log(next, player, 'summon', `${def.name} を${how}${cost}`)
+}
+
+/**
+ * 表示形式の変更（SPEC 3.5）。
+ *
+ * 1ターンに1回まで。召喚したターンは変えられない。
+ * 裏側守備表示から変えるときは表側攻撃表示になる（リバース）。
+ */
+function changePosition(state: GameState, id: InstanceId): GameState {
+  const player = state.turnPlayer
+  if (state.phase !== 'main') return reject(state, player, 'メインフェイズではない')
+  const found = findOnField(state, id)
+  if (found === null || found.player !== player) {
+    return reject(state, player, `#${id} は自分の場にいない`)
+  }
+  const m = found.monster
+  if (m.summonedThisTurn) return reject(state, player, '召喚したターンは変えられない')
+  if (m.changedThisTurn) return reject(state, player, 'このターンもう変えた')
+  if (m.hasAttacked) return reject(state, player, '攻撃した後は変えられない')
+
+  const next: MonsterOnField = m.faceDown
+    ? { ...m, faceDown: false, position: 'attack', changedThisTurn: true }
+    : { ...m, position: m.position === 'attack' ? 'defense' : 'attack', changedThisTurn: true }
+
+  const side = playerAt(state, player)
+  const monsters = side.monsters.map((x, i) => (i === found.zone ? next : x))
+  const name = findCard(m.cardId)?.name ?? m.cardId
+  const label = next.position === 'attack' ? '攻撃表示' : '守備表示'
+  return log(withPlayer(state, player, { ...side, monsters }), player, 'position',
+    `${name} を${label}にした`)
+}
+
+// ---------------------------------------------------------------- 選べる操作
+
+/**
+ * いま出せる操作をすべて数え上げる（SPEC 5章）。
+ *
+ * CPU はここが返したものからしか選ばない。画面もここを使ってボタンの可否を決める。
+ * **priority が指す側の操作だけ**を返す。
+ */
+export function legalActions(state: GameState): readonly Action[] {
+  if (isOver(state)) return []
+  const player = state.priority
+  const side = playerAt(state, player)
+  const out: Action[] = []
+
+  if (state.phase === 'draw') {
+    out.push({ type: 'draw' })
+    return out
+  }
+
+  if (state.phase === 'end') {
+    if (side.hand.length > HAND_LIMIT) {
+      for (let i = 0; i < side.hand.length; i += 1) out.push({ type: 'discardToLimit', handIndex: i })
+    }
+    return out
+  }
+
+  if (state.phase === 'main') {
+    if (!side.summonedThisTurn) {
+      for (let h = 0; h < side.hand.length; h += 1) {
+        const def = findMonster(side.hand[h] as string)
+        if (def === null) continue
+        const need = tributesRequired(def.level)
+        const own = monstersOf(side)
+        if (own.length < need) continue
+        for (const tributes of combinations(own.map((m) => m.instanceId), need)) {
+          const free = side.monsters
+            .map((m, i) => (m === null || tributes.includes(m.instanceId) ? i : -1))
+            .filter((i) => i >= 0)
+          for (const zone of free) {
+            out.push({ type: 'normalSummon', handIndex: h, zone, position: 'attack', tributes })
+            out.push({ type: 'normalSummon', handIndex: h, zone, position: 'defense', tributes })
+            out.push({ type: 'setMonster', handIndex: h, zone, tributes })
+          }
+        }
+      }
+    }
+    for (const m of monstersOf(side)) {
+      if (!m.summonedThisTurn && !m.changedThisTurn && !m.hasAttacked) {
+        out.push({ type: 'changePosition', instanceId: m.instanceId })
+      }
+    }
+    const firstTurnOfFirstPlayer = state.turn === 1 && player === state.firstPlayer
+    if (!firstTurnOfFirstPlayer) out.push({ type: 'toBattle' })
+    out.push({ type: 'endTurn' })
+    return out
+  }
+
+  if (state.phase === 'battle') {
+    out.push({ type: 'endTurn' })
+    return out
+  }
+
+  return out
+}
+
+/** n個選ぶ組み合わせ。リリース候補の数え上げに使う */
+function combinations<T>(items: readonly T[], n: number): readonly (readonly T[])[] {
+  if (n === 0) return [[]]
+  if (items.length < n) return []
+  const out: T[][] = []
+  const walk = (start: number, acc: T[]) => {
+    if (acc.length === n) {
+      out.push([...acc])
+      return
+    }
+    for (let i = start; i < items.length; i += 1) {
+      acc.push(items[i] as T)
+      walk(i + 1, acc)
+      acc.pop()
+    }
+  }
+  walk(0, [])
+  return out
+}
+
 // ---------------------------------------------------------------- 入口
 
 export function reduce(state: GameState, action: Action): GameState {
@@ -231,6 +426,15 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case 'discardToLimit':
       return discardToLimit(state, action.handIndex)
+
+    case 'normalSummon':
+      return summon(state, action.handIndex, action.zone, action.position, false, action.tributes)
+
+    case 'setMonster':
+      return summon(state, action.handIndex, action.zone, 'defense', true, action.tributes)
+
+    case 'changePosition':
+      return changePosition(state, action.instanceId)
 
     default:
       return reject(state, state.priority, `未実装の操作: ${describeAction(action)}`)
