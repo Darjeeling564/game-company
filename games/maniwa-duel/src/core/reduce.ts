@@ -7,7 +7,7 @@
  * 積むだけとする。これにより1万回シミュレーションとファジングを安全に回せる
  * （SPEC 4章）。
  */
-import { findCard, findMonster, findSpell } from '../data/cards.ts'
+import { findCard, findMonster, findSpell, findTrap } from '../data/cards.ts'
 import type { Action } from './actions.ts'
 import { describeAction, validateDeck } from './actions.ts'
 import { createRng, shuffle } from './rng.ts'
@@ -32,6 +32,7 @@ import type {
   PendingAttack,
   PlayerSide,
   Position,
+  SpellOnField,
 } from './types.ts'
 import {
   DECK_SIZE,
@@ -365,7 +366,13 @@ function declareAttack(
   }
   const name = findCard(attacker.monster.cardId)?.name ?? attacker.monster.cardId
   const detail = targetId === null ? `${name} がダイレクトアタック` : `${name} が攻撃宣言`
-  return resolveAttack(log({ ...state, pendingAttack: pending }, player, 'attack', detail))
+  const declared = log({ ...state, pendingAttack: pending }, player, 'attack', detail)
+
+  // **伏せカードが1枚も無いときは priority を移さず、そのまま戦闘計算へ進む**（SPEC 5章）。
+  // 無意味な選択を求めないためで、CPU の手数も減る。
+  const foe = opponentOf(player)
+  if (openableTraps(declared, foe).length === 0) return resolveAttack(declared)
+  return log({ ...declared, priority: foe }, foe, 'respond', '割り込むかどうか')
 }
 
 /**
@@ -485,6 +492,112 @@ function activateSpell(state: GameState, handIndex: number, target: InstanceId |
   return checkLife(next)
 }
 
+// ---------------------------------------------------------------- 罠
+
+/**
+ * 伏せる（SPEC 3.4）。
+ *
+ * **v1 で伏せられるのは罠だけ。** 通常魔法は伏せても相手のターンに開けないので、
+ * 伏せる意味が無い（速攻魔法は第3層。SPEC 6.4）。
+ */
+function setSpell(state: GameState, handIndex: number, zone: number): GameState {
+  const player = state.turnPlayer
+  if (state.phase !== 'main') return reject(state, player, 'メインフェイズではない')
+  if (state.priority !== player) return reject(state, player, '手番ではない')
+
+  const side = playerAt(state, player)
+  const cardId = side.hand[handIndex]
+  if (cardId === undefined) return reject(state, player, `手札${handIndex}が無い`)
+  const def = findTrap(cardId)
+  if (def === null) return reject(state, player, `${cardId} は道標ではない（v1 で伏せられるのは罠だけ）`)
+  if (zone < 0 || zone >= SPELL_ZONES) return reject(state, player, `ゾーン${zone}は無い`)
+  if (side.spells[zone] !== null) return reject(state, player, `魔法罠ゾーン${zone}は埋まっている`)
+
+  const placed: SpellOnField = {
+    instanceId: state.nextInstanceId,
+    cardId,
+    state: 'set',
+    setTurn: state.turn,
+    equippedTo: null,
+  }
+  const next = withPlayer({ ...state, nextInstanceId: state.nextInstanceId + 1 }, player, {
+    ...side,
+    hand: side.hand.filter((_, i) => i !== handIndex),
+    spells: side.spells.map((x, i) => (i === zone ? placed : x)),
+  })
+  return log(next, player, 'set', '1枚伏せた')
+}
+
+/**
+ * いま開ける罠があるか（SPEC 11章）。
+ *
+ * **伏せたターンは開けない。** これが無いと、伏せた瞬間に使えてしまい
+ * 罠が実質の速攻魔法になる。
+ */
+function openableTraps(state: GameState, player: PlayerId): readonly number[] {
+  const side = playerAt(state, player)
+  const out: number[] = []
+  side.spells.forEach((card, zone) => {
+    if (card === null || card.state !== 'set') return
+    if (card.setTurn >= state.turn) return
+    const def = findTrap(card.cardId)
+    if (def === null || def.trapType !== 'normal') return
+    out.push(zone)
+  })
+  return out
+}
+
+/**
+ * 罠を開く（SPEC 11章）。
+ *
+ * 開けるのは**相手のバトルフェイズ・攻撃宣言時の1回だけ**。
+ * 解決してから戦闘計算へ進むので、攻撃してきた姫神の攻撃力を下げる罠は
+ * その場の勝ち負けをひっくり返せる。
+ */
+function activateTrap(state: GameState, zone: number): GameState {
+  const player = state.priority
+  const pending = state.pendingAttack
+  if (pending === null) return reject(state, player, '攻撃の最中ではない')
+  if (player === state.turnPlayer) return reject(state, player, '割り込めるのは攻撃されている側だけ')
+  if (pending.responded) return reject(state, player, 'この攻撃にはもう応答した（チェーンは1段まで）')
+
+  const side = playerAt(state, player)
+  const card = side.spells[zone]
+  if (card === undefined || card === null) return reject(state, player, `ゾーン${zone}に伏せカードが無い`)
+  if (card.state !== 'set') return reject(state, player, 'すでに表になっている')
+  if (card.setTurn >= state.turn) return reject(state, player, '伏せたターンには開けない')
+  const def = findTrap(card.cardId)
+  if (def === null) return reject(state, player, `${card.cardId} は道標ではない`)
+  if (def.trapType !== 'normal') {
+    return reject(state, player, `${def.name} は通常罠ではない（v1 では開けない）`)
+  }
+
+  let next = log({ ...state, pendingAttack: { ...pending, responded: true } },
+    player, 'trap', `${def.name} を発動`)
+  next = applyEffects(next, def.onActivate, { player, chosen: null })
+  // 使った罠は墓地へ
+  const after = playerAt(next, player)
+  next = withPlayer(next, player, {
+    ...after,
+    spells: after.spells.map((x, i) => (i === zone ? null : x)),
+    graveyard: [...after.graveyard, card.cardId],
+  })
+  next = checkLife(next)
+  if (isOver(next)) return next
+  return resolveAttack({ ...next, priority: next.turnPlayer })
+}
+
+/** 割り込まない（SPEC 11章） */
+function passResponse(state: GameState): GameState {
+  const player = state.priority
+  const pending = state.pendingAttack
+  if (pending === null) return reject(state, player, '攻撃の最中ではない')
+  if (player === state.turnPlayer) return reject(state, player, '応答するのは攻撃されている側')
+  const next = log({ ...state, pendingAttack: { ...pending, responded: true }, priority: state.turnPlayer },
+    player, 'pass', '割り込まなかった')
+  return resolveAttack(next)
+}
+
 // ---------------------------------------------------------------- 選べる操作
 
 /**
@@ -498,6 +611,13 @@ export function legalActions(state: GameState): readonly Action[] {
   const player = state.priority
   const side = playerAt(state, player)
   const out: Action[] = []
+
+  // 割り込みの最中。priority は防御側を指している（SPEC 11章）
+  if (state.pendingAttack !== null && player !== state.turnPlayer) {
+    for (const zone of openableTraps(state, player)) out.push({ type: 'activateTrap', zone })
+    out.push({ type: 'passResponse' })
+    return out
+  }
 
   if (state.phase === 'draw') {
     out.push({ type: 'draw' })
@@ -549,6 +669,11 @@ export function legalActions(state: GameState): readonly Action[] {
       } else {
         out.push({ type: 'activateSpell', handIndex: h, target: null })
       }
+    }
+    for (let h = 0; h < side.hand.length; h += 1) {
+      if (findTrap(side.hand[h] as string) === null) continue
+      const zone = side.spells.findIndex((x) => x === null)
+      if (zone >= 0) out.push({ type: 'setSpell', handIndex: h, zone })
     }
     const firstTurnOfFirstPlayer = state.turn === 1 && player === state.firstPlayer
     if (!firstTurnOfFirstPlayer) out.push({ type: 'toBattle' })
@@ -642,6 +767,15 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case 'activateSpell':
       return activateSpell(state, action.handIndex, action.target)
+
+    case 'setSpell':
+      return setSpell(state, action.handIndex, action.zone)
+
+    case 'activateTrap':
+      return activateTrap(state, action.zone)
+
+    case 'passResponse':
+      return passResponse(state)
 
     default:
       return reject(state, state.priority, `未実装の操作: ${describeAction(action)}`)
