@@ -24,8 +24,8 @@ export interface ViewHandlers {
   readonly onHandCard: (index: number) => void
   readonly onMonster: (player: PlayerId, instanceId: number) => void
   readonly onSpellZone: (player: PlayerId, zone: number) => void
-  readonly onAdvance: () => void
-  readonly onEndTurn: () => void
+  /** 相手の番の待ち時間を飛ばす（SPEC 8.1） */
+  readonly onFastForward: () => void
 }
 
 export interface ViewModel {
@@ -36,10 +36,14 @@ export interface ViewModel {
   readonly selectedHand: number | null
   /** いま選んでいる自分の姫神 */
   readonly selectedMonster: number | null
+  /** デッキの主の姫神。立ち絵に使う（SPEC 8.1）。無ければ null */
+  readonly leaders: readonly [CardId | null, CardId | null]
   /** 画面下に出す説明 */
   readonly message: string
   /** 出すボタン */
   readonly buttons: readonly { readonly label: string; readonly onTap: () => void }[]
+  /** 早送り中か */
+  readonly fast: boolean
 }
 
 function el(tag: string, className?: string, text?: string): HTMLElement {
@@ -165,9 +169,16 @@ function spellNode(vm: ViewModel, owner: PlayerId, zone: number, card: SpellOnFi
   return slot
 }
 
+/**
+ * 1列ぶん。両端に札束の枠を置く（SPEC 8.1）。
+ *
+ * 遊戯王の盤は自分から見て**デッキが右・墓地が左**なので、それに合わせる。
+ * 札束はモンスターの枠を狭めないよう、44px 角に固定する。
+ */
 function zoneRow(vm: ViewModel, owner: PlayerId, kind: 'monster' | 'spell',
-                 h: ViewHandlers): HTMLElement {
+                 h: ViewHandlers, left: HTMLElement | null, right: HTMLElement | null): HTMLElement {
   const row = el('div', `row row--${kind}`)
+  row.appendChild(left ?? el('div', 'pile pile--blank'))
   const side = vm.state.players[owner]
   if (kind === 'monster') {
     side.monsters.forEach((m, i) => {
@@ -182,24 +193,49 @@ function zoneRow(vm: ViewModel, owner: PlayerId, kind: 'monster' | 'spell',
   } else {
     side.spells.forEach((c, i) => row.appendChild(spellNode(vm, owner, i, c, h)))
   }
+  row.appendChild(right ?? el('div', 'pile pile--blank'))
   return row
 }
 
-/** ライフとデッキ・墓地の並び */
-function statusRow(vm: ViewModel, owner: PlayerId, label: string): HTMLElement {
-  const side = vm.state.players[owner]
-  const row = el('div', 'status')
-  row.appendChild(el('span', 'status__who', label))
-  const lp = el('span', 'status__lp', String(Math.max(0, side.lp)))
-  // ライフが減るほど赤く寄せる。絵の切り替わりと同じ合図を数字にも出す
-  const ratio = Math.max(0, Math.min(1, side.lp / 4000))
+/**
+ * ライフの帯と、決闘者の立ち絵（SPEC 8.1）。
+ *
+ * **ライフは画面で一番大きい要素にする。** 決着はライフでしか起きないので、
+ * 最も読む数字を最も大きく置く。斜めの帯は実物の見せ方から取った。
+ *
+ * 立ち絵は**デッキの主の姫神**で、**ライフで絵が切り替わる**（SPEC 9.3 と同じ規則）。
+ * 盤にカードが1枚も無いときでも劣勢が伝わる。
+ */
+function lifeBanner(vm: ViewModel, owner: PlayerId, side: 'top' | 'bottom'): HTMLElement {
+  const player = vm.state.players[owner]
+  const wrap = el('div', `banner banner--${side}`)
+
+  const face = el('div', 'banner__face')
+  const leader = vm.leaders[owner]
+  if (leader !== null) {
+    const url = artUrl(leader, artStage(player.lp))
+    if (url !== null) face.style.backgroundImage = `url(${url})`
+  }
+  wrap.appendChild(face)
+
+  const box = el('div', 'banner__box')
+  box.appendChild(el('span', 'banner__who', owner === vm.human ? '自分' : '相手'))
+  const lp = el('span', 'banner__lp', String(Math.max(0, player.lp)))
+  const ratio = Math.max(0, Math.min(1, player.lp / 4000))
   lp.style.setProperty('--lp-ratio', String(ratio))
-  if (ratio <= 0.4) lp.classList.add('status__lp--low')
-  row.appendChild(lp)
-  row.appendChild(el('span', 'status__count', `山${side.deck.length}`))
-  row.appendChild(el('span', 'status__count', `墓${side.graveyard.length}`))
-  row.appendChild(el('span', 'status__count', `手${side.hand.length}`))
-  return row
+  if (ratio <= 0.4) lp.classList.add('banner__lp--low')
+  box.appendChild(lp)
+  wrap.appendChild(box)
+  return wrap
+}
+
+/** 盤の上に置く札束。数を札の上に載せる（SPEC 8.1） */
+function pile(kind: 'deck' | 'grave', count: number): HTMLElement {
+  const node = el('div', `pile pile--${kind}`)
+  node.appendChild(el('span', 'pile__label', kind === 'deck' ? '山' : '墓'))
+  node.appendChild(el('span', 'pile__count', String(count)))
+  if (count === 0) node.classList.add('pile--empty')
+  return node
 }
 
 function handRow(vm: ViewModel, h: ViewHandlers): HTMLElement {
@@ -224,25 +260,47 @@ const PHASE_LABEL: Readonly<Record<string, string>> = {
 export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): void {
   root.textContent = ''
   const foe = opponentOf(vm.human)
+  const me = vm.state.players[vm.human]
+  const them = vm.state.players[foe]
 
+  // --- 上部: 相手のライフ / ターンとフェイズ / 早送り（SPEC 8.1）
+  const head = el('div', 'head')
+  head.appendChild(lifeBanner(vm, foe, 'top'))
+
+  const turn = el('div', 'turn')
+  turn.appendChild(el('span', 'turn__no', `ターン${vm.state.turn}`))
+  const who = vm.state.turnPlayer === vm.human ? '自分' : '相手'
+  const phase = PHASE_LABEL[vm.state.phase] ?? vm.state.phase
+  const label = el('span', 'turn__phase', `${who}の${phase}`)
+  if (vm.state.turnPlayer !== vm.human) label.classList.add('turn__phase--foe')
+  turn.appendChild(label)
+  head.appendChild(turn)
+
+  const ff = el('button', `ff${vm.fast ? ' ff--on' : ''}`, '≫')
+  ff.setAttribute('aria-label', '早送り')
+  ff.addEventListener('click', h.onFastForward)
+  head.appendChild(ff)
+  root.appendChild(head)
+
+  // --- 盤（SPEC 8.1）。相手側は奥へ、自分側は手前へ
   const board = el('div', 'board')
-  board.appendChild(statusRow(vm, foe, '相手'))
-  board.appendChild(zoneRow(vm, foe, 'spell', h))
-  board.appendChild(zoneRow(vm, foe, 'monster', h))
+  const far = el('div', 'field field--far')
+  far.appendChild(zoneRow(vm, foe, 'spell', h, pile('deck', them.deck.length), null))
+  far.appendChild(zoneRow(vm, foe, 'monster', h, pile('grave', them.graveyard.length), null))
+  board.appendChild(far)
+
   board.appendChild(el('div', 'board__line'))
-  board.appendChild(zoneRow(vm, vm.human, 'monster', h))
-  board.appendChild(zoneRow(vm, vm.human, 'spell', h))
-  board.appendChild(statusRow(vm, vm.human, '自分'))
+
+  const near = el('div', 'field field--near')
+  near.appendChild(zoneRow(vm, vm.human, 'monster', h, null, null))
+  near.appendChild(zoneRow(vm, vm.human, 'spell', h,
+    pile('grave', me.graveyard.length), pile('deck', me.deck.length)))
+  board.appendChild(near)
   root.appendChild(board)
 
+  // --- 下部: 自分のライフ、手札、説明、ボタン
+  root.appendChild(lifeBanner(vm, vm.human, 'bottom'))
   root.appendChild(handRow(vm, h))
-
-  const bar = el('div', 'bar')
-  const turnLabel = vm.state.turnPlayer === vm.human ? '自分のターン' : '相手のターン'
-  bar.appendChild(el('span', 'bar__phase',
-    `T${vm.state.turn} ${turnLabel} / ${PHASE_LABEL[vm.state.phase] ?? vm.state.phase}`))
-  root.appendChild(bar)
-
   root.appendChild(el('div', 'message', vm.message))
 
   const buttons = el('div', 'buttons')

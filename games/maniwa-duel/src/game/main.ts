@@ -11,7 +11,7 @@ import type { Rng } from '../core/rng.ts'
 import { findCard } from '../data/cards.ts'
 import { DECKS } from '../data/decks.ts'
 import { greedyPolicy } from '../../tools/ai.ts'
-import type { Deck, GameState, PlayerId } from '../core/types.ts'
+import type { CardId, Deck, GameState, PlayerId } from '../core/types.ts'
 import { HAND_LIMIT } from '../core/types.ts'
 import { cardNode, renderDuel } from './view.ts'
 import type { ViewHandlers, ViewModel } from './view.ts'
@@ -32,6 +32,18 @@ let selectedHand: number | null = null
 let selectedMonster: number | null = null
 let message = ''
 let cpuTimer: number | null = null
+/** 相手の番の待ち時間を飛ばす（SPEC 8.1） */
+let fast = false
+/** デッキの主の姫神。立ち絵に使う（SPEC 8.1） */
+let leaders: [CardId | null, CardId | null] = [null, null]
+
+/** そのデッキの顔になる姫神。1枚目の姫神を使う */
+function leaderOf(deck: Deck): CardId | null {
+  for (const id of deck.cards) {
+    if (findCard(id)?.kind === 'monster') return id
+  }
+  return null
+}
 
 function el(tag: string, className?: string, text?: string): HTMLElement {
   const node = document.createElement(tag)
@@ -79,7 +91,7 @@ function scheduleCpu(): void {
     state = reduce(state, choice.action)
     soundFor(choice.action)
     render()
-  }, 550)
+  }, fast ? 60 : 550)
 }
 
 // ---------------------------------------------------------------- ボタンの組み立て
@@ -186,7 +198,7 @@ function buildViewModel(): ViewModel {
   }
 
   return {
-    state, human: HUMAN, selectedHand, selectedMonster, message: msg, buttons,
+    state, human: HUMAN, leaders, selectedHand, selectedMonster, message: msg, buttons, fast,
   }
 }
 
@@ -233,8 +245,10 @@ const handlers: ViewHandlers = {
       }
     }
   },
-  onAdvance() { /* ボタン側で扱う */ },
-  onEndTurn() { /* ボタン側で扱う */ },
+  onFastForward() {
+    fast = !fast
+    render()
+  },
 }
 
 function render(): void {
@@ -243,7 +257,7 @@ function render(): void {
   message = ''
   // ドローフェイズは選択肢が1つしかないので自動で進める
   if (!isOver(state) && state.priority === HUMAN && state.phase === 'draw') {
-    window.setTimeout(() => apply({ type: 'draw' }), 300)
+    window.setTimeout(() => apply({ type: 'draw' }), fast ? 40 : 300)
     return
   }
   scheduleCpu()
@@ -271,6 +285,7 @@ function startDuel(myDeck: Deck, foeDeck: Deck): void {
   rng = createRng(seed ^ 0x5bf03635)
   // 先攻はランダム
   const first = ((seed >>> 3) & 1) as PlayerId
+  leaders = [leaderOf(myDeck), leaderOf(foeDeck)]
   state = reduce(EMPTY_STATE, {
     type: 'start', seed, decks: [myDeck, foeDeck], firstPlayer: first,
   })

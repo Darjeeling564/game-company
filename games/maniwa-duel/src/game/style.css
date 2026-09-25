@@ -111,12 +111,64 @@ body {
   gap: 4px;
 }
 
+/* ---------------------------------------------------------------- 上部 */
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.turn {
+  flex: 1 1 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  padding-top: 2px;
+}
+
+.turn__no {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* 相手の番か自分の番かを、目を動かさずに分かるようにする（SPEC 8.1） */
+.turn__phase {
+  font-size: 16px;
+  letter-spacing: 0.06em;
+}
+
+.turn__phase--foe {
+  color: #f0c9a8;
+}
+
+.ff {
+  flex: 0 0 auto;
+  width: var(--tap);
+  height: var(--tap);
+  border: 2px solid var(--cream);
+  border-radius: 8px;
+  background: var(--forest-dark);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.ff--on {
+  background: var(--cream);
+  color: var(--forest-dark);
+}
+
 /* ---------------------------------------------------------------- 盤面 */
 
 /*
- * 盤は余った高さを吸って**縦の中央**に来る。
- * 下に寄せた手札との間が空きっぱなしになると、maniwa-tcg の結果画面で
- * 指摘されている「下55%が空き」と同じ見え方になるため。
+ * 奥行きを付ける（SPEC 8.1）。実物は盤をかなり寝かせているが、同じ角度を DOM でやると
+ * カード名と攻守の数字が読めなくなる（実物はタップで拡大できるので成立している）。
+ *
+ * そこで**相手側だけを奥へ縮め、カード自体は倒さない**。文字は常に正面を向く。
  */
 .board {
   display: flex;
@@ -125,19 +177,49 @@ body {
   gap: 4px;
   flex: 1 1 auto;
   min-height: 0;
+  perspective: 760px;
+  perspective-origin: 50% 0%;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transform-style: flat;
+}
+
+/*
+ * 奥。**枠の実寸が 44px を割らない角度にとどめる**（CLAUDE.md 6章）。
+ *
+ * 最初は rotateX(16deg) scale(0.9) にしたが、実機サイズで測ると
+ * 相手の魔法罠枠が **43px** になって下限を割った（縮み率 0.865）。
+ * 13度・0.93 に緩めて縮み率 0.906 とし、あわせて魔法罠の下限を 52px に上げた。
+ * 52 × 0.906 = 47px で下限を満たす。
+ */
+.field--far {
+  transform: perspective(760px) rotateX(13deg) scale(0.93);
+  transform-origin: 50% 100%;
+  opacity: 0.94;
+}
+
+.field--near {
+  transform: perspective(760px) rotateX(-4deg);
+  transform-origin: 50% 0%;
 }
 
 .board__line {
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--cream), transparent);
   opacity: 0.45;
-  margin: 2px 0;
+  margin: 3px 0;
 }
 
+/* 両端に札束の枠を置くので 44px + 3列 + 44px */
 .row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: var(--tap) repeat(3, 1fr) var(--tap);
+  gap: 5px;
+  align-items: center;
 }
 
 /*
@@ -146,11 +228,9 @@ body {
  * 幅から aspect-ratio で決めると、3列なら1枠158px になって盤だけで画面が尽きる
  * （最初にそう書いて実機サイズで確かめたら、ボタンが画面外に出た）。
  * 枠は幅いっぱいに取り、**中のカードだけが 3:4 を保って中央に載る**。
- * 枠は幅119px・高さ104px あるので、タップ領域44px四方には余裕がある（SPEC 8.1）。
  */
 .slot {
-  /* 画面が高い端末では枠も大きくする。下限は 104px（タップ44px の余裕を確保） */
-  height: clamp(104px, 17vh, 148px);
+  height: clamp(92px, 19vh, 150px);
   border: 1px dashed rgba(245, 240, 225, 0.25);
   border-radius: 6px;
   display: flex;
@@ -160,7 +240,8 @@ body {
 }
 
 .row--spell .slot {
-  height: clamp(46px, 7vh, 62px);
+  /* 下限52px は「奥へ縮めても 44px を割らない」ところから決めた（.field--far 参照） */
+  height: clamp(52px, 8vh, 70px);
 }
 
 .row--monster .card {
@@ -169,42 +250,100 @@ body {
   aspect-ratio: 3 / 4;
 }
 
-.slot--empty {
-  background: rgba(0, 0, 0, 0.12);
+/* 盤に置く札束。数を札の上に載せる（SPEC 8.1） */
+.pile {
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 5px;
+  border: 2px solid rgba(245, 240, 225, 0.55);
+  background: linear-gradient(135deg, var(--forest-dark), #14281b);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  gap: 1px;
+}
+
+.pile--blank {
+  border: none;
+  background: none;
+}
+
+.pile--empty {
+  opacity: 0.35;
+}
+
+.pile__label {
+  font-size: 9px;
+  opacity: 0.8;
+}
+
+.pile__count {
+  font-size: 15px;
 }
 
 /* ---------------------------------------------------------------- ライフ */
 
-.status {
+/*
+ * ライフは画面で一番大きい要素にする（SPEC 8.1）。
+ * 決着はライフでしか起きないので、最も読む数字を最も大きく置く。
+ * 斜めの帯は実物の見せ方から取った。
+ */
+.banner {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 2px 4px;
-  font-size: 12px;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
 }
 
-.status__who {
+.banner--bottom {
+  flex-direction: row-reverse;
+}
+
+/* 決闘者の立ち絵。ライフで絵が切り替わる（SPEC 9.3 と同じ規則） */
+.banner__face {
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  border: 2px solid rgba(245, 240, 225, 0.6);
+  background-color: var(--forest-dark);
+  background-size: cover;
+  background-position: center 18%;
+  flex: 0 0 auto;
+}
+
+.banner__box {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 14px 2px 10px;
+  background: linear-gradient(90deg, var(--forest-dark), rgba(30, 61, 41, 0));
+  /* 斜めの帯。文字は傾けない */
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+}
+
+.banner--bottom .banner__box {
+  background: linear-gradient(270deg, var(--forest-dark), rgba(30, 61, 41, 0));
+  padding: 2px 10px 2px 14px;
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%);
+  flex-direction: row-reverse;
+}
+
+.banner__who {
+  font-size: 11px;
   opacity: 0.75;
 }
 
-.status__lp {
-  font-size: 20px;
-  letter-spacing: 0.04em;
+.banner__lp {
+  font-size: 30px;
+  letter-spacing: 0.02em;
   /* ライフが減るほど赤へ寄せる。絵の切り替わりと同じ合図を数字にも出す */
   color: color-mix(in srgb, var(--cream) calc(var(--lp-ratio, 1) * 100%), var(--danger));
 }
 
-.status__lp--low {
+.banner__lp--low {
   font-weight: bold;
-}
-
-.status__count {
-  opacity: 0.7;
-  margin-left: auto;
-}
-
-.status__count + .status__count {
-  margin-left: 0;
 }
 
 /* ---------------------------------------------------------------- カード */
@@ -357,9 +496,29 @@ body {
   display: none;
 }
 
+/*
+ * 実物と同じく、下端からはみ出して重ねる（SPEC 8.1）。
+ * 名前と絵の上半分だけで見分けが付くので、そのぶんの高さを盤に回せる。
+ */
 .hand__slot {
   flex: 0 0 62px;
   height: 84px;
+  margin-right: -14px;
+}
+
+.hand__slot:last-child {
+  margin-right: 0;
+}
+
+.hand__slot .card {
+  transition: transform 0.12s ease-out;
+}
+
+/* 選んだ札だけ前に出す。重なっていても、どれを選んだか分かるように */
+.hand__slot .card--selected {
+  transform: translateY(-8px);
+  z-index: 2;
+  position: relative;
 }
 
 .hand__empty {
