@@ -63,7 +63,7 @@ describe('通常魔法', () => {
   })
 
   it('メインフェイズ以外では拒否する', () => {
-    let s = { ...mainPhase(['i019']), phase: 'battle' as const }
+    let s: GameState = { ...mainPhase(['i019']), phase: 'battle' }
     s = reduce(s, { type: 'activateSpell', handIndex: 0, target: null })
     expect(s.log.at(-1)?.kind).toBe('rejected')
     expect(s.players[1].lp).toBe(LIFE_POINTS)
