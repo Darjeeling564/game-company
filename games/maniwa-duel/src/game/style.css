@@ -1,0 +1,428 @@
+/* CLAUDE.md 6章: DotGothic16 / 森緑・クリーム / タップ44px / ホバー非依存 / 横スクロール無し */
+:root {
+  --forest: #2d5a3d;
+  --forest-dark: #1e3d29;
+  --forest-light: #3f7452;
+  --cream: #f5f0e1;
+  --danger: #b4472e;
+  --tap: 44px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  max-width: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--forest);
+  color: var(--cream);
+  font-family: 'DotGothic16', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/*
+ * 画面の高さに合わせて閉じる。はみ出したぶんが下から切れると、
+ * ボタンと手札が押せなくなる（maniwa-tcg SPEC 9.3.1 で踏んだもの）。
+ */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---------------------------------------------------------------- タイトル */
+
+.title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 18px;
+  overflow-y: auto;
+}
+
+.title__name {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: 0.12em;
+}
+
+.title__sub {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.7;
+  letter-spacing: 0.3em;
+}
+
+.title__record {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.title__lead {
+  margin: 10px 0 0;
+  font-size: 14px;
+}
+
+.decklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.deckbtn {
+  min-height: var(--tap);
+  padding: 10px;
+  border: 2px solid var(--cream);
+  border-radius: 10px;
+  background: var(--forest-dark);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.deckbtn__name {
+  font-size: 18px;
+}
+
+.deckbtn__preview {
+  display: flex;
+  gap: 4px;
+}
+
+/* ---------------------------------------------------------------- 盤面 */
+
+/*
+ * 盤は余った高さを吸って**縦の中央**に来る。
+ * 下に寄せた手札との間が空きっぱなしになると、maniwa-tcg の結果画面で
+ * 指摘されている「下55%が空き」と同じ見え方になるため。
+ */
+.board {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.board__line {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cream), transparent);
+  opacity: 0.45;
+  margin: 2px 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+/*
+ * 12枠を縦持ちに収める。**高さは固定にする。**
+ *
+ * 幅から aspect-ratio で決めると、3列なら1枠158px になって盤だけで画面が尽きる
+ * （最初にそう書いて実機サイズで確かめたら、ボタンが画面外に出た）。
+ * 枠は幅いっぱいに取り、**中のカードだけが 3:4 を保って中央に載る**。
+ * 枠は幅119px・高さ104px あるので、タップ領域44px四方には余裕がある（SPEC 8.1）。
+ */
+.slot {
+  /* 画面が高い端末では枠も大きくする。下限は 104px（タップ44px の余裕を確保） */
+  height: clamp(104px, 17vh, 148px);
+  border: 1px dashed rgba(245, 240, 225, 0.25);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+}
+
+.row--spell .slot {
+  height: clamp(46px, 7vh, 62px);
+}
+
+.row--monster .card {
+  width: auto;
+  height: 100%;
+  aspect-ratio: 3 / 4;
+}
+
+.slot--empty {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* ---------------------------------------------------------------- ライフ */
+
+.status {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 4px;
+  font-size: 12px;
+}
+
+.status__who {
+  opacity: 0.75;
+}
+
+.status__lp {
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  /* ライフが減るほど赤へ寄せる。絵の切り替わりと同じ合図を数字にも出す */
+  color: color-mix(in srgb, var(--cream) calc(var(--lp-ratio, 1) * 100%), var(--danger));
+}
+
+.status__lp--low {
+  font-weight: bold;
+}
+
+.status__count {
+  opacity: 0.7;
+  margin-left: auto;
+}
+
+.status__count + .status__count {
+  margin-left: 0;
+}
+
+/* ---------------------------------------------------------------- カード */
+
+.card {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  border: 2px solid var(--card-frame, #7e7e7e);
+  background: var(--card-bg, #444);
+  color: var(--card-text, #fff);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+
+.card__art {
+  flex: 1;
+  background-size: cover;
+  background-position: center top;
+  min-height: 0;
+}
+
+.card__name {
+  font-size: 10px;
+  line-height: 1.15;
+  padding: 2px 3px;
+  background: var(--card-deep, #222);
+  text-shadow: 0 1px 0 var(--card-edge, #000);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card__name rt {
+  font-size: 6px;
+  opacity: 0.8;
+}
+
+.card__foot {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 3px 2px;
+  background: var(--card-deep, #222);
+  font-size: 9px;
+}
+
+.card__stat {
+  white-space: nowrap;
+}
+
+.card__badge {
+  margin-left: auto;
+  font-size: 8px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--card-type, #666);
+  color: #fff;
+}
+
+.card__badge--level {
+  letter-spacing: -1px;
+  max-width: 46px;
+  overflow: hidden;
+}
+
+.is-gradient-text .card__name,
+.is-gradient-text .card__stat {
+  background: var(--card-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 裏側 */
+.card--back {
+  background: linear-gradient(135deg, var(--forest-dark), #14281b);
+  border-color: rgba(245, 240, 225, 0.5);
+  align-items: center;
+  justify-content: center;
+}
+
+.card__crest {
+  font-size: 18px;
+  color: rgba(245, 240, 225, 0.55);
+}
+
+/* 守備表示は横向きに見せる。遊戯王の約束ごとなので形で伝える */
+.card--defense {
+  transform: rotate(90deg) scale(0.74);
+}
+
+.card--spent {
+  filter: brightness(0.7) saturate(0.7);
+}
+
+.card--selected {
+  outline: 3px solid var(--cream);
+  outline-offset: 1px;
+}
+
+.card--spellzone .card__art {
+  display: none;
+}
+
+/* 魔法罠ゾーンは絵を出さないので、名前の札として枠いっぱいに置く */
+.row--spell .card {
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+}
+
+.row--spell .card__name {
+  font-size: 9px;
+}
+
+.row--spell .card__foot {
+  font-size: 8px;
+}
+
+/* 開ける伏せカードは光らせる（SPEC 8.2） */
+.card--openable {
+  animation: openable 1.1s ease-in-out infinite;
+}
+
+@keyframes openable {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 240, 225, 0); }
+  50% { box-shadow: 0 0 10px 3px rgba(245, 240, 225, 0.8); }
+}
+
+/* ---------------------------------------------------------------- 手札 */
+
+/*
+ * 手札と操作は**画面の下に寄せる**。縦持ちで親指が届くのは下側なので。
+ * 盤面と手札のあいだに余りを置くことで、盤が小さい序盤でもボタンの位置が動かない。
+ */
+.hand {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 2px 0;
+  min-height: 84px;
+  scrollbar-width: none;
+}
+
+.hand::-webkit-scrollbar {
+  display: none;
+}
+
+.hand__slot {
+  flex: 0 0 62px;
+  height: 84px;
+}
+
+.hand__empty {
+  opacity: 0.6;
+  font-size: 12px;
+  align-self: center;
+}
+
+/* ---------------------------------------------------------------- 下部 */
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.message {
+  font-size: 13px;
+  min-height: 1.4em;
+  line-height: 1.4;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 2px;
+  min-height: var(--tap);
+}
+
+.button {
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: 6px 12px;
+  border: 2px solid var(--cream);
+  border-radius: 8px;
+  background: var(--forest-dark);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  flex: 1 1 auto;
+}
+
+.button:active {
+  background: var(--forest-light);
+}
+
+.button--quiet {
+  flex: 0 0 auto;
+  opacity: 0.85;
+  font-size: 12px;
+}
+
+/*
+ * アニメーションを切っている端末では、動かさないが**消さない**。
+ * 「動かさない＝何も出さない」にすると、開ける伏せカードが分からなくなる。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .card--openable {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(245, 240, 225, 0.85);
+  }
+}
