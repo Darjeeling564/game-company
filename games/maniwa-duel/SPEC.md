@@ -352,9 +352,15 @@ export function legalActions(state: GameState): readonly Action[]
 export function isOver(state: GameState): boolean
 export function canAttack(state: GameState, m: MonsterOnField): boolean
 export function tributesRequired(level: number): 0 | 1 | 2
-export function battleResult(atk: number, def: number, position: Position):
-  { readonly destroyed: 'attacker' | 'defender' | 'both' | 'none'
-    readonly damageTo: PlayerId | null; readonly damage: number }
+/**
+ * ダメージの受け手は**プレイヤー番号ではなく「攻撃側 / 防御側」**で返す。
+ * この関数は数値しか受け取らないので、どちらのプレイヤーかを知らないため。
+ * （初版では PlayerId と書いていたが、純粋な計算関数にできないので改めた）
+ */
+export function battleResult(
+  attackerAtk: number, defenderAtk: number, defenderDef: number, position: Position,
+): { readonly destroyed: 'attacker' | 'defender' | 'both' | 'none'
+     readonly damageTo: 'attacker' | 'defender' | null; readonly damage: number }
 
 /**
  * **攻撃力・守備力はここだけで出す。カードの値を直接読まない**（6.4）。
