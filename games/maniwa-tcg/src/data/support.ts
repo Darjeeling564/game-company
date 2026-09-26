@@ -421,6 +421,52 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'discardEnergy', target: 'opponentActive', value: 1 },
     ],
   },
+  {
+    id: 'a027', name: '天命', ruby: 'てんめい', kind: 'action',
+    origin: 'china', rarity: 'ultra',
+    flavor: '天が王を選び直す。与えられていた力は静かに離れ、別の手のひらへ移っていく。',
+    /*
+     * 道標の UR は egypt と india の2系統にしか無く、**6系統が空いていた**
+     * （2026-09-25 の報告で「次に支援カードの番が来たときは、系統の空きではなく
+     * UR の空きを埋めるのが効きそう」と提案したもの）。
+     * 中国の道標は C1 / R1 / SR1 で、**空いているのが UR だけ**なので、ここを埋めると
+     * 分布がちょうど揃う。
+     *
+     * 効果を3つ持つ支援カードは a026 ヘカの言葉の1種だけだった。ここで2種目にする。
+     *
+     * 天命は「与える側と奪う側が同時に動く」話なので、こちらが受け取り
+     * （gainEnergy / draw）、相手が落とす（discardEnergy）形にした。
+     *
+     * 評価値は 30 + 10 + 15 = 55 → 総合力 198.0。UR の帯（190以上）で、
+     * 同じ 198.0 の a026 ヘカの言葉と並ぶ。最上位の a002 招雷の儀（252.0）には届かない。
+     */
+    effects: [
+      { type: 'gainEnergy' },
+      { type: 'draw', value: 2 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
+  {
+    id: 'a028', name: '星辰正しき刻', ruby: 'せいしんただしきとき', kind: 'action',
+    origin: 'cthulhu', rarity: 'ultra',
+    flavor: '星が正しい位置に戻る刻。囁きは意味を持ちはじめ、控えていた者まで巻き込んでいく。',
+    /*
+     * クトゥルフの道標は C1 / R2 / SR1 で、こちらも**空いているのが UR だけ**。
+     *
+     * **a021 星辰の囁きの続き**として置いた。囁き（R・draw + 毒）が聞こえる夜の、
+     * その先にある刻。同じ系統の既存カードと対にすると据わりがよい（2026-09-23 の例）。
+     *
+     * あわせて**対象の偏りを埋める**。道標26種の対象は opponentActive 15 に対して
+     * opponentBenchAll は2しかない。控えている者まで巻き込む話なので、ここで3つ目にする。
+     *
+     * 評価値は 25×1.5 + 15 + 5 = 57.5 → 総合力 207.0。UR の帯の中。
+     */
+    effects: [
+      { type: 'damage', target: 'opponentBenchAll', value: 25 },
+      { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
