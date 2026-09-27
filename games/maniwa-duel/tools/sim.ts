@@ -17,6 +17,24 @@ import { greedyPolicy } from './ai.ts'
 const GAMES = Number(process.argv.find((a) => a.startsWith('--games='))?.slice(8) ?? 10000)
 const SEED = Number(process.argv.find((a) => a.startsWith('--seed='))?.slice(7) ?? 20260925)
 
+/**
+ * 解釈できる引数（2026-09-28 時点）。
+ *
+ * `npm run sim` は2本のゲームを続けて回し、**同じ process.argv を両方に渡す**。
+ * そのため maniwa-tcg 向けの引数がこちらにも届く。**知らない引数は黙って無視されるので、
+ * 「その条件で測ったつもり」になってしまう。**
+ * 実際 `--decks=pool` は maniwa-tcg のプール抽選を指すが、こちらは固定デッキのまま
+ * 完走し、下の「一度も使われなかったカード」を pool の結果だと読み違えられる。
+ *
+ * **知らない引数は必ず声を出す。** 終了コードは変えない（maniwa-tcg 側の実行を
+ * 妨げないため）。
+ */
+const KNOWN_OPTIONS: readonly string[] = ['--games', '--seed']
+const unknownOptions = process.argv
+  .slice(2)
+  .filter((a) => a.startsWith('-'))
+  .filter((a) => !KNOWN_OPTIONS.includes(a.split('=')[0] ?? a))
+
 interface Result {
   readonly winner: PlayerId | null
   readonly reason: EndReason | null
@@ -91,7 +109,16 @@ function median(xs: readonly number[]): number {
 // ---------------------------------------------------------------- 実行
 
 console.log('\n=== maniwa-duel バランスシミュレーション ===')
-console.log(`  ${GAMES} 戦 / policy=greedy / seed=${SEED} / デッキ ${DECKS.length}種\n`)
+console.log(`  ${GAMES} 戦 / policy=greedy / seed=${SEED} / デッキ ${DECKS.length}種（固定）\n`)
+
+for (const opt of unknownOptions) {
+  console.log(`  ⚠ ${opt} は maniwa-duel では解釈しません。無視して固定デッキで実行します`)
+  if (opt.startsWith('--decks')) {
+    console.log('     プール抽選は未実装です（SPEC 13.2）。下の「一度も使われなかったカード」は')
+    console.log('     **固定デッキの結果**であって、カードプール全体の検査ではありません')
+  }
+}
+if (unknownOptions.length > 0) console.log('')
 
 const results: Result[] = []
 const t0 = Date.now()
@@ -232,7 +259,12 @@ for (const r of rows) {
 // --- 未使用
 const deckCards = new Set(DECKS.flatMap((d) => d.cards))
 const unused = [...deckCards].filter((id) => !cardGames.has(id))
-console.log('\n■ 一度も使われなかったカード')
+/*
+ * **対象は固定デッキに入っているカードだけである**（プール全体ではない）。
+ * maniwa-tcg の `--decks=pool` にあたる検査は未実装（SPEC 13.2）。
+ * 見出しに範囲を書いておかないと、pool の結果と読み違えられる。
+ */
+console.log(`\n■ 一度も使われなかったカード（固定デッキの ${deckCards.size} 枚が対象。プール全体ではない）`)
 if (unused.length === 0) console.log('  なし')
 else for (const id of unused) console.log(`  ★ ${id} ${findCard(id)?.name ?? ''}`)
 
