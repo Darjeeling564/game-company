@@ -301,8 +301,8 @@ function showTitle(): void {
   if (cpuTimer !== null) window.clearTimeout(cpuTimer)
   root.textContent = ''
   const wrap = el('div', 'title')
-  wrap.appendChild(el('h1', 'title__name', '姫神速闘'))
-  wrap.appendChild(el('p', 'title__sub', 'ひめがみそくとう'))
+  wrap.appendChild(el('h1', 'title__name', '姫神戦記'))
+  wrap.appendChild(el('p', 'title__sub', 'きしんせんき'))
   const r = saveData.record
   wrap.appendChild(el('p', 'title__record', `${r.wins}勝 ${r.losses}敗 ${r.draws}分`))
 
