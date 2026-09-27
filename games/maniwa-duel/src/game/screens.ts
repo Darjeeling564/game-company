@@ -379,7 +379,8 @@ export function showDeckEdit(d: ScreenDeps, initial: CustomDeck, index: number |
     }
     page.appendChild(el('p', err === null ? 'ok' : 'warn', err ?? `${DECK_SIZE}枚そろっています`))
 
-    const bar = el('div', 'row')
+    // `.row` は対戦盤のゾーン列が使っている名前なので避ける（style.css の .actions を参照）
+    const bar = el('div', 'actions')
     bar.appendChild(button('カードを足す', () => {
       persist()
       showCardList(d, () => draw(), (id) => {
