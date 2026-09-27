@@ -13,9 +13,14 @@ import { DECKS } from '../data/decks.ts'
 import { greedyPolicy } from '../../tools/ai.ts'
 import type { CardId, Deck, GameState, PlayerId } from '../core/types.ts'
 import { HAND_LIMIT } from '../core/types.ts'
-import { cardNode, renderDuel } from './view.ts'
+import { renderDuel } from './view.ts'
 import type { ViewHandlers, ViewModel } from './view.ts'
 import { load, save } from './storage.ts'
+import type { SaveData } from './storage.ts'
+import { showHome } from './screens.ts'
+import type { ScreenDeps } from './screens.ts'
+import { buildDeck } from '../data/autodeck.ts'
+import { closeDetail } from './detail.ts'
 import { play as playSfx, setMuted } from './sound.ts'
 
 const root = document.getElementById('app') as HTMLElement
@@ -43,13 +48,6 @@ function leaderOf(deck: Deck): CardId | null {
     if (findCard(id)?.kind === 'monster') return id
   }
   return null
-}
-
-function el(tag: string, className?: string, text?: string): HTMLElement {
-  const node = document.createElement(tag)
-  if (className !== undefined) node.className = className
-  if (text !== undefined) node.textContent = text
-  return node
 }
 
 function apply(action: Action): void {
@@ -280,6 +278,18 @@ function recordResultOnce(): void {
 
 // ---------------------------------------------------------------- タイトルとデッキ選び
 
+/**
+ * 対戦を始める。**相手のデッキは主の姫神からその場で組む**（SPEC 8.4）。
+ *
+ * 組めなかったときは、これまでどおりプリセットの別デッキで代替する。
+ * ここで落とすと遊べなくなるためで、主の指名だけを諦める。
+ */
+function startDuelWithLeader(myDeck: Deck, leaderId: CardId): void {
+  const built = buildDeck(leaderId)
+  const foeDeck = built ?? DECKS.find((d) => d.name !== myDeck.name) ?? myDeck
+  startDuel(myDeck, foeDeck)
+}
+
 function startDuel(myDeck: Deck, foeDeck: Deck): void {
   const seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0
   rng = createRng(seed ^ 0x5bf03635)
@@ -297,43 +307,24 @@ function startDuel(myDeck: Deck, foeDeck: Deck): void {
   render()
 }
 
-function showTitle(): void {
-  if (cpuTimer !== null) window.clearTimeout(cpuTimer)
-  root.textContent = ''
-  const wrap = el('div', 'title')
-  wrap.appendChild(el('h1', 'title__name', '姫神戦記'))
-  wrap.appendChild(el('p', 'title__sub', 'きしんせんき'))
-  const r = saveData.record
-  wrap.appendChild(el('p', 'title__record', `${r.wins}勝 ${r.losses}敗 ${r.draws}分`))
-
-  wrap.appendChild(el('p', 'title__lead', 'デッキを選んでください'))
-  const list = el('div', 'decklist')
-  for (const deck of DECKS) {
-    const btn = el('button', 'deckbtn')
-    btn.appendChild(el('span', 'deckbtn__name', deck.name))
-    const preview = el('div', 'deckbtn__preview')
-    for (const id of deck.cards.slice(0, 4)) preview.appendChild(cardNode(id, { small: true }))
-    btn.appendChild(preview)
-    btn.addEventListener('click', () => {
-      const foe = DECKS.find((d) => d.name !== deck.name) ?? deck
-      saveData = { ...saveData, deckName: deck.name }
-      save(saveData)
-      startDuel(deck, foe)
-    })
-    list.appendChild(btn)
-  }
-  wrap.appendChild(list)
-
-  const mute = el('button', 'button button--quiet', saveData.muted ? '音を出す' : '音を消す')
-  mute.addEventListener('click', () => {
-    saveData = { ...saveData, muted: !saveData.muted }
+/** 画面から呼ばれる入口。対戦以外の画面は screens.ts が持つ（SPEC 8.3〜8.5） */
+const deps: ScreenDeps = {
+  root,
+  get save(): SaveData { return saveData },
+  setSave: (next: SaveData): void => {
+    saveData = next
     setMuted(saveData.muted)
     save(saveData)
-    showTitle()
-  })
-  wrap.appendChild(mute)
+  },
+  startDuel: (mine: Deck, leaderId: CardId): void => startDuelWithLeader(mine, leaderId),
+  showTitle: (): void => showTitle(),
+}
 
-  root.appendChild(wrap)
+/** 対戦から抜けるときは、開いている詳細とCPUの待ちを必ず片付ける */
+function showTitle(): void {
+  if (cpuTimer !== null) window.clearTimeout(cpuTimer)
+  closeDetail()
+  showHome(deps)
 }
 
 showTitle()

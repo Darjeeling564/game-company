@@ -17,6 +17,7 @@ import type {
 } from '../core/types.ts'
 import { opponentOf } from '../core/types.ts'
 import { artStage, artUrl } from './art.ts'
+import { attachLongPress } from './detail.ts'
 import { applyCardTheme, RARITY_STYLE } from './theme.ts'
 
 /** 画面が受け取る操作。main.ts が中身を詰める */
@@ -140,6 +141,8 @@ function monsterNode(vm: ViewModel, owner: PlayerId, m: MonsterOnField, h: ViewH
   if (m.hasAttacked) node.classList.add('card--spent')
   if (vm.selectedMonster === m.instanceId) node.classList.add('card--selected')
   node.addEventListener('click', () => h.onMonster(owner, m.instanceId))
+  // 長押しで詳細（SPEC 8.6）。相手の伏せカードは中身を見せない
+  attachLongPress(node, () => (hidden ? null : m.cardId))
   slot.appendChild(node)
   return slot
 }
@@ -165,6 +168,7 @@ function spellNode(vm: ViewModel, owner: PlayerId, zone: number, card: SpellOnFi
     card.setTurn < vm.state.turn
   if (canOpen) node.classList.add('card--openable')
   node.addEventListener('click', () => h.onSpellZone(owner, zone))
+  attachLongPress(node, () => (hidden ? null : card.cardId))
   slot.appendChild(node)
   return slot
 }
@@ -246,6 +250,7 @@ function handRow(vm: ViewModel, h: ViewHandlers): HTMLElement {
     const node = cardNode(id, { small: true })
     if (vm.selectedHand === i) node.classList.add('card--selected')
     node.addEventListener('click', () => h.onHandCard(i))
+    attachLongPress(node, () => id)
     wrap.appendChild(node)
     row.appendChild(wrap)
   })
