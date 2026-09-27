@@ -1507,6 +1507,20 @@ body {
 }
 
 /*
+ * **9枚を超えたら名前の文字も1段下げる**（SPEC 9.1.4）。
+ *
+ * 9.1.3 でバッジを縮めた直しは8枚までを救っていて、9枚から足りなくなる。
+ * プール最長の名前を流し込んで測ると、9枚で名前枠 34px に対し 45px 必要だった。
+ * バッジをこれ以上小さくしても効かないので、文字の側に段を足す。
+ *
+ * 実測 9枚 4件 → 0件 / 10枚 6件 → 4件。10枚で残る4件は、
+ * これ以上小さくすると読めなくなるので残す。
+ */
+.hand:has(> .card:nth-child(9)) .card__name {
+  font-size: 8px;
+}
+
+/*
  * **手札でも3行を許す**（SPEC 9.1.3）。
  *
  * 名前は絵の上に重ねてあるので（9.2）、行数を増やしてもレイアウトは1pxも動かない。
@@ -2200,6 +2214,23 @@ body {
 }
 
 /*
+ * 絶技 + きぜつ（SPEC 9.4.17）。**実測 1件。**
+ *
+ * cardUltimate は transform と filter、cardFaint は transform と filter と
+ * opacity を動かす。**重なりが完全なのでカンマでは救えない**（9.4.16 と同じ形）。
+ * 9.4.16 で決めた向き＝「残すのは『自分に何が起きたか』のほう」に従い、
+ * きぜつだけを出す。絶技は「自分が何をしたか」なので譲る。
+ *
+ * **一回転が消えても、絶技が撃たれたことは画面に残る。**
+ * 溜めの輪は .card--ultimate::before にあり、擬似要素は別の animation なので
+ * ここでは置き換わらない。輪の山は 0.72秒の26%（約187ms）で、
+ * cardFaint が透明になりきる 450ms より早い。撃った証しが出たあとで倒れる。
+ */
+.card--ultimate.card--faint {
+  animation: cardFaint 0.45s ease-in both;
+}
+
+/*
  * 被弾 + 入れ替え（SPEC 9.4.16）。**swap-in は実測 12件、swap-out は 0件。**
  *
  * swap* は transform と opacity、cardHit は transform と filter。
@@ -2508,6 +2539,7 @@ body {
   .card--drained.card--swap-in,
   .card--drained.card--swap-out,
   .card--lunge.card--faint,
+  .card--ultimate.card--faint,
   .card--hit.card--swap-in,
   .card--hit.card--swap-out,
   .card--hit.card--lunge,
