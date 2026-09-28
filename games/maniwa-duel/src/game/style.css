@@ -597,3 +597,441 @@ body {
     box-shadow: 0 0 0 3px rgba(245, 240, 225, 0.85);
   }
 }
+
+/* ================================================================
+   対戦以外の画面（SPEC 8.3 / 8.4 / 8.5 / 8.6）
+   タップ領域は最低 44px。ホバーに依存しない。横スクロールを作らない。
+   ================================================================ */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 12px 24px;
+}
+
+.home__name {
+  margin: 0;
+  font-size: 34px;
+  letter-spacing: 0.12em;
+}
+
+.home__sub {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.7;
+  letter-spacing: 0.3em;
+}
+
+.home__record {
+  margin: 0 0 6px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.home__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.menu {
+  min-height: 56px;
+  border: 2px solid var(--cream);
+  border-radius: 10px;
+  background: var(--forest-dark);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.menu--primary {
+  background: var(--forest-light);
+}
+
+/* ---------------------------------------------------------------- 画面の枠 */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 10px 24px;
+  min-height: 100dvh;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar__back {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  border: 2px solid var(--cream);
+  border-radius: 10px;
+  background: var(--forest-dark);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.topbar__titles {
+  /* 1fr は min-content より縮まない。長い注記で帯が押し広がるのを防ぐ */
+  min-width: 0;
+}
+
+.topbar__title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.topbar__note {
+  margin: 2px 0 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.section {
+  margin: 8px 0 0;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.warn {
+  margin: 0;
+  font-size: 13px;
+  color: #ffd7c9;
+  background: rgba(180, 71, 46, 0.35);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.ok {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.muted {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.6;
+}
+
+/*
+ * ボタンを横に並べる帯。
+ *
+ * **`.row` という名前は使えない。** 対戦盤のゾーン列が既に `.row` を使っており
+ * （5列グリッド。221行目）、あとから同じ名前で `display: flex` を書くと
+ * 同じ詳細度の後勝ちで**盤面がまるごと壊れる**。2026-09-28 に実際にやって、
+ * 札束の位置とゾーンの幅が崩れた状態で公開してしまった。
+ * 画面を足すときは、既にある名前と衝突していないか必ず確かめること。
+ */
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.input {
+  min-height: var(--tap);
+  border: 2px solid var(--cream);
+  border-radius: 10px;
+  background: var(--forest-dark);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 16px;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.button--wide {
+  width: 100%;
+}
+
+.button--small {
+  min-height: var(--tap);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.button--primary {
+  background: var(--forest-light);
+}
+
+.button--danger {
+  border-color: var(--danger);
+}
+
+/* ---------------------------------------------------------------- 絞り込みのチップ */
+
+.chips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chips__row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.chips__label {
+  font-size: 12px;
+  opacity: 0.75;
+  width: 34px;
+  flex: 0 0 auto;
+}
+
+/*
+ * チップは横に並べたいので 44px 四方を取れない。
+ * **高さは 44px を守り、幅だけ中身に合わせる。** 指の当たりは縦方向のほうが外しやすい。
+ */
+.chip {
+  min-height: var(--tap);
+  padding: 0 10px;
+  border: 2px solid rgba(245, 240, 225, 0.45);
+  border-radius: 10px;
+  background: var(--forest-dark);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip--on {
+  border-color: var(--cream);
+  background: var(--forest-light);
+}
+
+/* ---------------------------------------------------------------- 札を並べる格子 */
+
+/*
+ * 1行3枚（SPEC 8.3）。**minmax(0, 1fr) にする。**
+ * 1fr は minmax(auto, 1fr) なので min-content より縮まず、
+ * 札の中身しだいで横スクロールが生まれる（2026-09-25 に踏んだ）。
+ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.grid__cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-height: var(--tap);
+  padding: 4px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--cream);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.grid__count {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 26px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  font-size: 12px;
+  text-align: center;
+}
+
+.grid__caption {
+  font-size: 10px;
+  opacity: 0.8;
+  text-align: center;
+}
+
+.deckbtn--row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.deckbtn__open {
+  flex: 1 1 140px;
+  min-height: var(--tap);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.deckbtn__warn {
+  font-size: 11px;
+  color: #ffd7c9;
+}
+
+/* ---------------------------------------------------------------- カード詳細（SPEC 8.6） */
+
+.detail {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.72);
+  animation: detailIn 0.16s ease-out;
+}
+
+.detail__panel {
+  width: 100%;
+  max-width: 320px;
+  max-height: 92dvh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 3px solid var(--card-frame, var(--cream));
+  border-radius: 14px;
+  background: var(--card-deep, var(--forest-dark));
+}
+
+.detail__art {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  background-color: rgba(0, 0, 0, 0.35);
+  background-size: cover;
+  background-position: center;
+}
+
+.detail__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail__name {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.detail__ruby {
+  margin: 0;
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.detail__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.detail__tag {
+  padding: 2px 8px;
+  border: 2px solid rgba(245, 240, 225, 0.5);
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.detail__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.detail__effects {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail__effect {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.detail__requires {
+  margin: 0;
+  font-size: 12px;
+  color: #ffe6b0;
+}
+
+.detail__flavor {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  opacity: 0.85;
+}
+
+@keyframes detailIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/*
+ * 動かさない設定でも**出さないことはしない**。詳細は情報そのものなので、
+ * 動きだけをやめる（maniwa-tcg SPEC 9.4.10 と同じ方針）。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .detail {
+    animation: none;
+  }
+}
+
+/*
+ * **縦並びの画面では `.button` を伸ばさない。**
+ *
+ * `.button` は `flex: 1 1 auto` を持つ。対戦画面の横並び（`.row`）で
+ * 幅を分け合うための指定だが、`.page` は縦並びなので**縦に伸びる**。
+ * 実測で「おまかせで選ぶ」が高さ600pxになっていた（2026-09-28）。
+ * 既存の `.button` は触らず、縦に積む場所でだけ打ち消す。
+ */
+.page > .button,
+.home .button {
+  flex: 0 0 auto;
+}
+
+/*
+ * **一覧の札には縦横比を与える。**
+ *
+ * `.card` は `height: 100%` で、`.card__art` が `flex: 1` の余りを取る作りになっている。
+ * 対戦画面は枠（`.slot`）が高さを決めるので成り立つが、一覧の格子には枠が無いため
+ * 高さが名前と足元だけに潰れ、**絵の領域が 0px になって絵が出なかった**。
+ * 札の縦横比をここで決める。
+ */
+.grid__cell .card {
+  height: auto;
+  aspect-ratio: 5 / 7;
+}
