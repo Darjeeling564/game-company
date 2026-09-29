@@ -10,9 +10,10 @@ import { createRng } from '../src/core/rng.ts'
 import { ALL_CARDS, findCard } from '../src/data/cards.ts'
 import { DECKS } from '../src/data/decks.ts'
 import type { Deck, EndReason, GameState, PlayerId } from '../src/core/types.ts'
-import { LIFE_POINTS, MAX_TURNS } from '../src/core/types.ts'
+import { DECK_SIZE, LIFE_POINTS, MAX_SAME_NAME, MAX_TURNS } from '../src/core/types.ts'
 import { ART_D2 } from '../src/core/types.ts'
 import { greedyPolicy } from './ai.ts'
+import { validateDeck } from '../src/core/actions.ts'
 
 const GAMES = Number(process.argv.find((a) => a.startsWith('--games='))?.slice(8) ?? 10000)
 const SEED = Number(process.argv.find((a) => a.startsWith('--seed='))?.slice(7) ?? 20260925)
@@ -29,11 +30,50 @@ const SEED = Number(process.argv.find((a) => a.startsWith('--seed='))?.slice(7) 
  * **知らない引数は必ず声を出す。** 終了コードは変えない（maniwa-tcg 側の実行を
  * 妨げないため）。
  */
-const KNOWN_OPTIONS: readonly string[] = ['--games', '--seed']
+const KNOWN_OPTIONS: readonly string[] = ['--games', '--seed', '--swap']
 const unknownOptions = process.argv
   .slice(2)
   .filter((a) => a.startsWith('-'))
   .filter((a) => !KNOWN_OPTIONS.includes(a.split('=')[0] ?? a))
+
+/**
+ * `--swap=<デッキ名>:<抜くID>:<入れるID>` で、1枠だけ差し替えて回す（SPEC 13.4）。
+ *
+ * **decks.ts のファイルは書き換えない。** 書き換えると、失敗したときに
+ * 差し替えたまま残る危険がある。読み込んだ配列の写しを作って差し替える。
+ *
+ * tools/card-value.ts がこれを使って「抜いた札」と「入れた札」を並べる。
+ */
+function applySwap(decks: readonly Deck[]): readonly Deck[] {
+  const spec = process.argv.find((a) => a.startsWith('--swap='))?.slice(7)
+  if (spec === undefined) return decks
+  const [deckName, from, to] = spec.split(':')
+  if (deckName === undefined || from === undefined || to === undefined) {
+    console.error('--swap=<デッキ名>:<抜くID>:<入れるID> の形で渡すこと')
+    process.exit(2)
+  }
+  const target = decks.find((d) => d.name === deckName)
+  if (target === undefined) {
+    console.error(`デッキ「${deckName}」が無い。あるのは ${decks.map((d) => d.name).join(' / ')}`)
+    process.exit(2)
+  }
+  const at = target.cards.indexOf(from)
+  if (at < 0) {
+    console.error(`デッキ「${deckName}」に ${from} が入っていない`)
+    process.exit(2)
+  }
+  const cards = [...target.cards.slice(0, at), to, ...target.cards.slice(at + 1)]
+  const bad = validateDeck({ name: deckName, cards }, DECK_SIZE, MAX_SAME_NAME,
+    (id) => findCard(id)?.name ?? null)
+  if (bad !== null) {
+    console.error(`差し替えた結果デッキが不正になる: ${bad}`)
+    process.exit(2)
+  }
+  return decks.map((d) => (d.name === deckName ? { name: d.name, cards } : d))
+}
+
+/** 差し替えを反映したデッキ。**以降はこちらだけを使う** */
+const ACTIVE_DECKS = applySwap(DECKS)
 
 interface Result {
   readonly winner: PlayerId | null
@@ -109,7 +149,7 @@ function median(xs: readonly number[]): number {
 // ---------------------------------------------------------------- 実行
 
 console.log('\n=== maniwa-duel バランスシミュレーション ===')
-console.log(`  ${GAMES} 戦 / policy=greedy / seed=${SEED} / デッキ ${DECKS.length}種（固定）\n`)
+console.log(`  ${GAMES} 戦 / policy=greedy / seed=${SEED} / デッキ ${ACTIVE_DECKS.length}種（固定）\n`)
 
 for (const opt of unknownOptions) {
   console.log(`  ⚠ ${opt} は maniwa-duel では解釈しません。無視して固定デッキで実行します`)
@@ -125,13 +165,13 @@ const t0 = Date.now()
 let seed = SEED
 // 全組み合わせ（ミラーを含む）× 先後
 const pairs: [number, number][] = []
-for (let i = 0; i < DECKS.length; i += 1) {
-  for (let j = 0; j < DECKS.length; j += 1) pairs.push([i, j])
+for (let i = 0; i < ACTIVE_DECKS.length; i += 1) {
+  for (let j = 0; j < ACTIVE_DECKS.length; j += 1) pairs.push([i, j])
 }
 const perPair = Math.max(1, Math.floor(GAMES / (pairs.length * 2)))
 
 const firstWins = { win: 0, games: 0, draw: 0 }
-const deckWins = DECKS.map(() => ({ win: 0, games: 0 }))
+const deckWins = ACTIVE_DECKS.map(() => ({ win: 0, games: 0 }))
 const cardGames = new Map<string, number>()
 const cardWins = new Map<string, number>()
 
@@ -139,7 +179,7 @@ for (const [i, j] of pairs) {
   for (const first of [0, 1] as PlayerId[]) {
     for (let g = 0; g < perPair; g += 1) {
       seed += 1
-      const r = play(seed, [DECKS[i] as Deck, DECKS[j] as Deck], first)
+      const r = play(seed, [ACTIVE_DECKS[i] as Deck, ACTIVE_DECKS[j] as Deck], first)
       results.push(r)
 
       firstWins.games += 1
@@ -190,7 +230,7 @@ for (const reason of ['lifePoints', 'deckOut', 'turnLimit'] as EndReason[]) {
 // --- デッキ別
 console.log('\n■ デッキ別勝率')
 const rates = deckWins.map((d) => (d.win / d.games) * 100)
-DECKS.forEach((d, i) => {
+ACTIVE_DECKS.forEach((d, i) => {
   console.log(`  ${pad(d.name, 20)} ${rates[i]!.toFixed(1)}%`)
 })
 console.log(`  ${pad('レンジ（最大−最小）', 22)} ${(Math.max(...rates) - Math.min(...rates)).toFixed(2)}pt`)
@@ -257,7 +297,7 @@ for (const r of rows) {
 }
 
 // --- 未使用
-const deckCards = new Set(DECKS.flatMap((d) => d.cards))
+const deckCards = new Set(ACTIVE_DECKS.flatMap((d) => d.cards))
 const unused = [...deckCards].filter((id) => !cardGames.has(id))
 /*
  * **対象は固定デッキに入っているカードだけである**（プール全体ではない）。
