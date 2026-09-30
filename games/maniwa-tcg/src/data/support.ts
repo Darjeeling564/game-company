@@ -690,4 +690,43 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'damagePerHeads', target: 'opponentActive', value: 20, count: 3 },
     ],
   },
+  {
+    id: 'u021', name: '指南車', ruby: 'しなんしゃ', kind: 'ultimate',
+    origin: 'china', rarity: 'ultra', requires: 'e011',
+    flavor: '霧に巻かれても南を指しつづける車。隠れた者は引きずり出され、帝の正面に立たされる。',
+    cost: ['earth', 'earth', 'colorless'],
+    effects: [
+      /*
+       * 黄帝EX の最強ワザ「涿鹿の戦い」は効率 33.33。ここを 36.67 にして比 1.100 に置く。
+       * 中国系統の絶技は u013 の1種だけだったので、これで2種になる。
+       *
+       * **絶技で switchOpponent を使うのは初。** 支援カード7枚が使っているのに
+       * 絶技18種では一度も出ていなかった（2026-09-29 実測）。
+       *
+       * **順番に意味がある。** 効果は書いた順に適用される（core/effects.ts の
+       * applyEffects）ので、**引きずり出してから殴る**。霧の中の蚩尤を指南車が
+       * 見つけ出す話なので、当たるのは入れ替わって出てきたほうである。
+       * ベンチが空のときは switchOpponent が何もせず、打点だけが通る。
+       */
+      { type: 'switchOpponent' },
+      { type: 'damage', target: 'opponentActive', value: 100 },
+    ],
+  },
+  {
+    id: 'u022', name: '原初の海', ruby: 'げんしょのうみ', kind: 'ultimate',
+    origin: 'mesopotamia', rarity: 'ultra', requires: 'w011',
+    flavor: '真水と塩水が分かれる前の海。すべてはここから生まれ、呑まれれば元のひとつに戻る。',
+    cost: ['water', 'water', 'colorless'],
+    effects: [
+      /*
+       * ティアマトEX の最強ワザ「十一の魔獣」は効率 31.67。
+       * ここを 40.00 にして比 1.263 に置く。
+       * メソポタミア系統の絶技は u014 の1種だけだったので、これで2種になる。
+       *
+       * 生まれる前の海に戻す話なので、**バトル場とベンチの区別なく**波が及ぶ。
+       */
+      { type: 'damage', target: 'opponentActive', value: 90 },
+      { type: 'damage', target: 'opponentBenchAll', value: 20 },
+    ],
+  },
 ]

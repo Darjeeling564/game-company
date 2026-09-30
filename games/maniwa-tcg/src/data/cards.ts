@@ -146,6 +146,25 @@ const FIRE: readonly CreatureCard[] = [
           { type: 'switchOpponent' },
         ] },
     ],
+  },  {
+    // インド系統に UR が1体も居なかった（2026-09-23 から残っていた穴）。
+    // ほのお属性は UR が1体しかなく、インドの姫神は f004 アグニ（コモン）だけ。
+    // シヴァはプールに居なかったので、既存カードの EX 版ではなく新しい神を置く。
+    id: 'f011', name: 'シヴァEX', kind: 'creature',
+    flavor: '踊りによって世界を終わらせ、また始める破壊の神。額の第三の眼が開けば、何もかもを灼く。',
+    origin: 'india', rarity: 'ultra',
+    type: 'fire', hp: 180, ex: true, retreatCost: 3, stage: 0,
+    attacks: [
+      { name: '第三の眼', ruby: 'だいさんのめ', cost: ['fire', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+      // 終わらせて始める神なので、撃つ側も無傷では済まない形にした。
+      // SPEC 8.2 は回復を縛る規則で、自傷は対象外
+      { name: '破壊の舞', ruby: 'はかいのまい', cost: ['fire', 'fire', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 100 },
+          { type: 'selfDamage', value: 10 },
+        ] },
+    ],
   },
 ]
 
@@ -371,6 +390,27 @@ const WIND: readonly CreatureCard[] = [
       // 1体も居ないために絶技を作れなかった（SPEC 16.5.2）。その穴を開けるため
       { name: '隠れたる者', ruby: 'かくれたるもの', cost: ['wind', 'wind', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 80 }] },
+    ],
+  },
+  {
+    // エジプト系統に UR が1体も居なかった（2026-09-23 から残っていた穴）。
+    // かぜ属性を選んだのは、UR が1体しかない属性のうち、エジプトの姫神が
+    // 2体いるのがここだったためである（k005 シュウ / k009 アメン）。
+    // ラー（l002）の説明文が「隼の頭を持つ」なので、系統の中で呼応する。
+    id: 'k010', name: 'ホルスEX', kind: 'creature',
+    flavor: '失われた左眼を取り戻し、父の座を継いだ隼の神。その双眼は日と月である。',
+    origin: 'egypt', rarity: 'ultra',
+    type: 'wind', hp: 170, ex: true, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '隼の眼', ruby: 'はやぶさのめ', cost: ['wind', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 45 }] },
+      // opponentBenchRandom は全カードで5回しか使われていない薄い対象（2026-10-01 実測）。
+      // 空から降りて一体だけを掴む形なので、ここで使うと図と噛み合う
+      { name: '天空の裁き', ruby: 'てんくうのさばき', cost: ['wind', 'wind', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 90 },
+          { type: 'damage', target: 'opponentBenchRandom', value: 20 },
+        ] },
     ],
   },
 ]

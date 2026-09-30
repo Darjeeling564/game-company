@@ -1206,6 +1206,15 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
     more.classList.toggle('field__more--on', rest > 8)
     // 上に隠れている段の手がかり（SPEC 9.3.3）。しきい値は下と同じ8px
     less.classList.toggle('field__less--on', field.scrollTop > 8)
+    /*
+     * 上の印は**貼り付けた帯の下**に出す（SPEC 9.3.4）。
+     * 帯も印も sticky top:0 / z-index 3 なので、そのままだと帯が印を覆い隠す
+     * （2026-09-30 実測。帯の上端でも中央でも最前面が banner だった）。
+     * **帯の高さは文言で変わる**ので、数値を2か所に書かず、測った値を変数で渡す。
+     */
+    const banner = field.querySelector('.banner')
+    const h = banner === null ? 0 : Math.round(banner.getBoundingClientRect().height)
+    field.style.setProperty('--banner-h', `${h}px`)
   }
   syncMore()
   field.addEventListener('scroll', syncMore, { passive: true })
