@@ -9,6 +9,7 @@ import { EMPTY_STATE, isOver, reduce } from '../src/core/reduce.ts'
 import { createRng } from '../src/core/rng.ts'
 import { ALL_CARDS, findCard } from '../src/data/cards.ts'
 import { DECKS } from '../src/data/decks.ts'
+import { buildPoolDecks } from '../src/data/pool-decks.ts'
 import type { Deck, EndReason, GameState, PlayerId } from '../src/core/types.ts'
 import { DECK_SIZE, LIFE_POINTS, MAX_SAME_NAME, MAX_TURNS } from '../src/core/types.ts'
 import { ART_D2 } from '../src/core/types.ts'
@@ -30,7 +31,7 @@ const SEED = Number(process.argv.find((a) => a.startsWith('--seed='))?.slice(7) 
  * **知らない引数は必ず声を出す。** 終了コードは変えない（maniwa-tcg 側の実行を
  * 妨げないため）。
  */
-const KNOWN_OPTIONS: readonly string[] = ['--games', '--seed', '--swap']
+const KNOWN_OPTIONS: readonly string[] = ['--games', '--seed', '--swap', '--decks']
 const unknownOptions = process.argv
   .slice(2)
   .filter((a) => a.startsWith('-'))
@@ -74,6 +75,16 @@ function applySwap(decks: readonly Deck[]): readonly Deck[] {
 
 /** 差し替えを反映したデッキ。**以降はこちらだけを使う** */
 const ACTIVE_DECKS = applySwap(DECKS)
+
+/**
+ * `--decks=pool` でプール抽選に切り替える（SPEC 13.5）。
+ *
+ * 固定デッキだけで測っていると、プリセットに入っていないカードは永久に戦わない。
+ * **1つの抽選結果に固定すると、そのデッキに入ったカードしか測れない**ので、
+ * 試合数をラウンドに割り、ラウンドごとに引き直してプール全体に行き渡らせる。
+ */
+const POOL = process.argv.find((a) => a.startsWith('--decks='))?.slice(8) === 'pool'
+const POOL_ROUNDS = 12
 
 interface Result {
   readonly winner: PlayerId | null
@@ -149,56 +160,71 @@ function median(xs: readonly number[]): number {
 // ---------------------------------------------------------------- 実行
 
 console.log('\n=== maniwa-duel バランスシミュレーション ===')
-console.log(`  ${GAMES} 戦 / policy=greedy / seed=${SEED} / デッキ ${ACTIVE_DECKS.length}種（固定）\n`)
+console.log(POOL
+  ? `  ${GAMES} 戦 / policy=greedy / seed=${SEED} / decks=pool（${POOL_ROUNDS}ラウンドで引き直す）\n`
+  : `  ${GAMES} 戦 / policy=greedy / seed=${SEED} / デッキ ${ACTIVE_DECKS.length}種（固定）\n`)
 
 for (const opt of unknownOptions) {
-  console.log(`  ⚠ ${opt} は maniwa-duel では解釈しません。無視して固定デッキで実行します`)
-  if (opt.startsWith('--decks')) {
-    console.log('     プール抽選は未実装です（SPEC 13.2）。下の「一度も使われなかったカード」は')
-    console.log('     **固定デッキの結果**であって、カードプール全体の検査ではありません')
-  }
+  console.log(`  ⚠ ${opt} は maniwa-duel では解釈しません。無視して実行します`)
 }
 if (unknownOptions.length > 0) console.log('')
 
 const results: Result[] = []
 const t0 = Date.now()
 let seed = SEED
-// 全組み合わせ（ミラーを含む）× 先後
-const pairs: [number, number][] = []
-for (let i = 0; i < ACTIVE_DECKS.length; i += 1) {
-  for (let j = 0; j < ACTIVE_DECKS.length; j += 1) pairs.push([i, j])
-}
-const perPair = Math.max(1, Math.floor(GAMES / (pairs.length * 2)))
-
 const firstWins = { win: 0, games: 0, draw: 0 }
 const deckWins = ACTIVE_DECKS.map(() => ({ win: 0, games: 0 }))
 const cardGames = new Map<string, number>()
 const cardWins = new Map<string, number>()
 
-for (const [i, j] of pairs) {
-  for (const first of [0, 1] as PlayerId[]) {
-    for (let g = 0; g < perPair; g += 1) {
-      seed += 1
-      const r = play(seed, [ACTIVE_DECKS[i] as Deck, ACTIVE_DECKS[j] as Deck], first)
-      results.push(r)
+/**
+ * 1ラウンドぶんを回す。
+ *
+ * **fixed は1ラウンドだけ、pool はラウンドごとに引き直す。**
+ * デッキ別勝率は fixed のときだけ意味を持つ（pool は毎回中身が変わるため）。
+ */
+function runRound(decks: readonly Deck[], games: number, trackDecks: boolean): void {
+  const rounds: [number, number][] = []
+  for (let i = 0; i < decks.length; i += 1) {
+    for (let j = 0; j < decks.length; j += 1) rounds.push([i, j])
+  }
+  const per = Math.max(1, Math.floor(games / (rounds.length * 2)))
+  for (const [i, j] of rounds) {
+    for (const first of [0, 1] as PlayerId[]) {
+      for (let g = 0; g < per; g += 1) {
+        seed += 1
+        const r = play(seed, [decks[i] as Deck, decks[j] as Deck], first)
+        results.push(r)
 
-      firstWins.games += 1
-      if (r.winner === first) firstWins.win += 1
-      if (r.winner === null) firstWins.draw += 1
+        firstWins.games += 1
+        if (r.winner === first) firstWins.win += 1
+        if (r.winner === null) firstWins.draw += 1
 
-      deckWins[i]!.games += 1
-      deckWins[j]!.games += 1
-      if (r.winner === 0) deckWins[i]!.win += 1
-      if (r.winner === 1) deckWins[j]!.win += 1
+        if (trackDecks) {
+          deckWins[i]!.games += 1
+          deckWins[j]!.games += 1
+          if (r.winner === 0) deckWins[i]!.win += 1
+          if (r.winner === 1) deckWins[j]!.win += 1
+        }
 
-      for (const p of [0, 1] as PlayerId[]) {
-        for (const id of r.used[p] as readonly string[]) {
-          cardGames.set(id, (cardGames.get(id) ?? 0) + 1)
-          if (r.winner === p) cardWins.set(id, (cardWins.get(id) ?? 0) + 1)
+        for (const p of [0, 1] as PlayerId[]) {
+          for (const id of r.used[p] as readonly string[]) {
+            cardGames.set(id, (cardGames.get(id) ?? 0) + 1)
+            if (r.winner === p) cardWins.set(id, (cardWins.get(id) ?? 0) + 1)
+          }
         }
       }
     }
   }
+}
+
+if (POOL) {
+  for (let round = 0; round < POOL_ROUNDS; round += 1) {
+    const share = Math.floor(GAMES / POOL_ROUNDS) + (round === 0 ? GAMES % POOL_ROUNDS : 0)
+    runRound(buildPoolDecks(SEED + round * 104729), share, false)
+  }
+} else {
+  runRound(ACTIVE_DECKS, GAMES, true)
 }
 
 const n = results.length
@@ -228,12 +254,14 @@ for (const reason of ['lifePoints', 'deckOut', 'turnLimit'] as EndReason[]) {
 }
 
 // --- デッキ別
-console.log('\n■ デッキ別勝率')
-const rates = deckWins.map((d) => (d.win / d.games) * 100)
-ACTIVE_DECKS.forEach((d, i) => {
-  console.log(`  ${pad(d.name, 20)} ${rates[i]!.toFixed(1)}%`)
-})
-console.log(`  ${pad('レンジ（最大−最小）', 22)} ${(Math.max(...rates) - Math.min(...rates)).toFixed(2)}pt`)
+if (!POOL) {
+  console.log('\n■ デッキ別勝率')
+  const rates = deckWins.map((d) => (d.win / d.games) * 100)
+  ACTIVE_DECKS.forEach((d, i) => {
+    console.log(`  ${pad(d.name, 20)} ${rates[i]!.toFixed(1)}%`)
+  })
+  console.log(`  ${pad('レンジ（最大−最小）', 22)} ${(Math.max(...rates) - Math.min(...rates)).toFixed(2)}pt`)
+}
 
 // --- 動きの内訳
 console.log('\n■ 動きの内訳（1試合あたり）')
@@ -296,15 +324,36 @@ for (const r of rows) {
     `${r.winRate.toFixed(1).padStart(5)}% / ${(r.contrib >= 0 ? '+' : '')}${r.contrib.toFixed(1)}pt`)
 }
 
+// --- レアリティ別（pool のときだけ。fixed は2デッキぶんしか出ないので意味を持たない）
+if (POOL) {
+  console.log('\n■ レアリティ別（種類数 / 平均採用率 / 平均勝率寄与）')
+  const RARITY_LABEL: Readonly<Record<string, string>> = {
+    ultra: 'UR ウルトラレア', superRare: 'SR スーパーレア', rare: 'R レア', common: 'C コモン',
+  }
+  for (const r of ['ultra', 'superRare', 'rare', 'common']) {
+    const list = rows.filter((x) => x.c.rarity === r)
+    if (list.length === 0) continue
+    const use = list.reduce((a, x) => a + (x.games / (n * 2)) * 100, 0) / list.length
+    const con = list.reduce((a, x) => a + x.contrib, 0) / list.length
+    console.log(`  ${pad(RARITY_LABEL[r] ?? r, 22)} ${String(list.length).padStart(3)}種 / ` +
+      `${use.toFixed(1).padStart(5)}% / ${(con >= 0 ? '+' : '')}${con.toFixed(1)}pt`)
+  }
+}
+
 // --- 未使用
-const deckCards = new Set(ACTIVE_DECKS.flatMap((d) => d.cards))
+// pool ではプール全体が対象。fixed では固定デッキに入っている札だけ
+const deckCards = POOL
+  ? new Set(ALL_CARDS.map((c) => c.id))
+  : new Set(ACTIVE_DECKS.flatMap((d) => d.cards))
 const unused = [...deckCards].filter((id) => !cardGames.has(id))
 /*
  * **対象は固定デッキに入っているカードだけである**（プール全体ではない）。
  * maniwa-tcg の `--decks=pool` にあたる検査は未実装（SPEC 13.2）。
  * 見出しに範囲を書いておかないと、pool の結果と読み違えられる。
  */
-console.log(`\n■ 一度も使われなかったカード（固定デッキの ${deckCards.size} 枚が対象。プール全体ではない）`)
+console.log(POOL
+  ? `\n■ 一度も使われなかったカード（カードプール ${ALL_CARDS.length} 枚が対象）`
+  : `\n■ 一度も使われなかったカード（固定デッキの ${deckCards.size} 枚が対象。プール全体ではない）`)
 if (unused.length === 0) console.log('  なし')
 else for (const id of unused) console.log(`  ★ ${id} ${findCard(id)?.name ?? ''}`)
 
