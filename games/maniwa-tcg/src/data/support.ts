@@ -198,6 +198,35 @@ export const ITEMS: readonly ItemCard[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'i027', name: 'ネクロノミコン', kind: 'item', origin: 'cthulhu', rarity: 'ultra',
+    flavor: '狂えるアラブ人が書き遺した書。読み解いた者は世界の裏側を知り、知った量だけ正気を手放す。',
+    // 神具の UR は norse と japan の2系統だけだった（2026-10-01 実測。china / cthulhu /
+    // egypt / greece / india / mesopotamia に無い）。ここで cthulhu に1枚置く。
+    // あわせて**効果を4つ持つ支援カードは0種**だったので、ここで初めて作る（i025 の3つが最多だった）。
+    // selfDamage は神具で1種しか使っていない効果でもある。
+    // 禁書は何もかもを前借りさせる代わりに正気を削るので、引く・前借り・直付けの3つに
+    // 反動を添えた形がそのまま合う
+    effects: [
+      { type: 'draw', value: 4 },
+      { type: 'gainEnergy' },
+      { type: 'attachEnergy', target: 'ownActive', value: 1 },
+      { type: 'selfDamage', value: 20 },
+    ],
+  },
+  {
+    id: 'i028', name: 'ウジャトの眼', ruby: 'ウジャトのめ', kind: 'item', origin: 'egypt', rarity: 'ultra',
+    flavor: '抉り取られ、月の数だけ欠けたのち、ふたたび満ちた眼。見通し、癒し、そして射抜く。',
+    // 同じく UR の空いていた egypt に置く。前夜に足した k010 ホルスEX の眼にあたるので、
+    // 既存カードとの関係でも据わりがよい。
+    // damage + heal + searchCreature を組むのは支援カードでは初。
+    // 回復20はダメージ35より小さい（SPEC 8.2）
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 35 },
+      { type: 'heal', target: 'ownActive', value: 20 },
+      { type: 'searchCreature' },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
