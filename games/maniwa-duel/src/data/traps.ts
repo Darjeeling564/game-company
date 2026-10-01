@@ -83,4 +83,32 @@ export const TRAPS: readonly TrapDef[] = [
     origin: 'norse', rarity: 'superRare',
     onActivate: [{ type: 'negateAttack' }, { type: 'search', kind: 'monster' }],
   },
+
+  // --------------------------------- 2026-10-01 追加（待ち行列5・1晩目）
+  {
+    id: 'a002', name: '招雷の儀', ruby: 'しょうらいのぎ', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は attachEnergy 2。こちらにエネルギーは無いので「二重の力」は
+    // 表せない。雷を呼び下ろす側を採り、攻撃を止めてから場を薙ぐ形にした。
+    // 罠の UR はこれが初（これまで C3 / R3 / SR2 で UR が無かった）。
+    // 相手モンスター全体を破壊する札も初なので、最上位の1枚にふさわしい
+    flavor: '雷を呼び下ろす秘儀。触れた者の内に、二重の力が満ちる。',
+    origin: 'india', rarity: 'ultra',
+    onActivate: [
+      { type: 'negateAttack' },
+      { type: 'destroy', target: 'opponentMonsterAll' },
+    ],
+  },
+  {
+    id: 'a007', name: '封印の陣', ruby: 'ふういんのじん', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は discardEnergy 2。「踏み入った者から力を吸い上げる」ので、
+    // 攻撃を止めたうえで手札を1枚取り上げる形にした
+    flavor: '地に描いた八角の陣。踏み入った者は力を吸い上げられる。',
+    origin: 'china', rarity: 'rare',
+    onActivate: [
+      { type: 'negateAttack' },
+      { type: 'discard', target: 'opponent', value: 1 },
+    ],
+  },
 ]
