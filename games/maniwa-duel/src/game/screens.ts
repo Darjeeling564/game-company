@@ -321,7 +321,9 @@ export function showDeckList(d: ScreenDeps): void {
     b.appendChild(button('複製して直す', () => {
       const copy: CustomDeck = { name: `${deck.name}の写し`, cards: [...deck.cards] }
       d.setSave({ ...d.save, customDecks: [...d.save.customDecks, copy] })
-      showDeckEdit(d, copy, d.save.customDecks.length)
+      // 追加した直後なので、写しの位置は**新しい長さの1つ手前**である。
+      // `length` を渡すと範囲外を指し、以降の編集が黙って捨てられる
+      showDeckEdit(d, copy, d.save.customDecks.length - 1)
     }, 'button button--small'))
     preset.appendChild(b)
   }
@@ -341,12 +343,24 @@ export function showDeckEdit(d: ScreenDeps, initial: CustomDeck, index: number |
 
   const countOf = (id: CardId): number => cards.filter((c) => c === id).length
 
+  /**
+   * 保存先の位置。**新規のときは、最初の保存で確定させて以降は上書きにする。**
+   * null のままにすると、カードを1枚足すたびに `persist()` が走って
+   * **新しいデッキが増え続ける**（2026-10-02 の実機報告。15個できていた）。
+   */
+  let at: number | null = index
+
   const persist = (): void => {
     const deck: CustomDeck = { name, cards }
-    const next = index === null
-      ? [...d.save.customDecks, deck]
-      : d.save.customDecks.map((c, i) => (i === index ? deck : c))
-    d.setSave({ ...d.save, customDecks: next })
+    if (at === null) {
+      at = d.save.customDecks.length
+      d.setSave({ ...d.save, customDecks: [...d.save.customDecks, deck] })
+      return
+    }
+    d.setSave({
+      ...d.save,
+      customDecks: d.save.customDecks.map((c, i) => (i === at ? deck : c)),
+    })
   }
 
   const draw = (): void => {
