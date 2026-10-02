@@ -13,7 +13,7 @@ import { DECKS } from '../data/decks.ts'
 import { MONSTERS } from '../data/monsters.ts'
 import { buildDeck, leadersByAttribute } from '../data/autodeck.ts'
 import { cardNode } from './view.ts'
-import { openDetail } from './detail.ts'
+import { attachLongPress, openDetail } from './detail.ts'
 import type { CustomDeck, SaveData } from './storage.ts'
 
 const ATTRIBUTES: readonly Attribute[] = [
@@ -111,7 +111,12 @@ interface ListFilter {
   kind: string | null
   attribute: Attribute | null
   rarity: Rarity | null
+  /** 姫神のレベル。魔法・罠はレベルを持たないので、指定すると姫神だけが残る */
+  level: number | null
 }
+
+/** 実在するレベル。**データから作る**ので、姫神を足しても手で直す必要がない */
+const LEVELS: readonly number[] = [...new Set(MONSTERS.map((m) => m.level))].sort((a, b) => a - b)
 
 /**
  * カード一覧。
@@ -125,7 +130,7 @@ export function showCardList(
   onPick?: (id: CardId) => void,
   countOf?: (id: CardId) => number,
 ): void {
-  const filter: ListFilter = { kind: null, attribute: null, rarity: null }
+  const filter: ListFilter = { kind: null, attribute: null, rarity: null, level: null }
 
   const draw = (): void => {
     d.root.textContent = ''
@@ -133,6 +138,7 @@ export function showCardList(
       if (filter.kind !== null && c.kind !== filter.kind) return false
       if (filter.attribute !== null && (c.kind !== 'monster' || c.attribute !== filter.attribute)) return false
       if (filter.rarity !== null && c.rarity !== filter.rarity) return false
+      if (filter.level !== null && (c.kind !== 'monster' || c.level !== filter.level)) return false
       return true
     }).slice().sort(sortForList)
 
@@ -161,6 +167,10 @@ export function showCardList(
       filter.attribute, (v) => { filter.attribute = v as Attribute | null })
     row('レア', [{ v: null, t: 'すべて' }, ...RARITIES.map((r) => ({ v: r, t: RARITY_LABEL[r] }))],
       filter.rarity, (v) => { filter.rarity = v as Rarity | null })
+    // レベルは姫神しか持たない。選ぶと魔法・罠は自動的に消える
+    row('レベル', [{ v: null, t: 'すべて' }, ...LEVELS.map((n) => ({ v: String(n), t: `★${n}` }))],
+      filter.level === null ? null : String(filter.level),
+      (v) => { filter.level = v === null ? null : Number(v) })
     page.appendChild(chips)
 
     const grid = el('div', 'grid')
@@ -170,6 +180,11 @@ export function showCardList(
       cell.appendChild(cardNode(c.id))
       const n = countOf?.(c.id) ?? 0
       if (n > 0) cell.appendChild(el('span', 'grid__count', `×${n}`))
+      // 長押しで詳細（SPEC 8.6）。**選ぶ用のときに効く。**
+      // 1回押しは「選ぶ」に取られているので、長押しが唯一の見る手段になる。
+      // attachLongPress は詳細を出したあとの click を自分で止めるので、
+      // 長押しで札がデッキに入ってしまうことはない
+      attachLongPress(cell, () => c.id)
       cell.addEventListener('click', () => {
         if (onPick !== undefined) { onPick(c.id); draw() } else openDetail(c.id)
       })
@@ -418,7 +433,9 @@ export function showDeckEdit(d: ScreenDeps, initial: CustomDeck, index: number |
       const cell = el('button', 'grid__cell')
       cell.appendChild(cardNode(id))
       cell.appendChild(el('span', 'grid__count', `×${count}`))
-      cell.appendChild(el('span', 'grid__caption', 'タップで1枚戻す'))
+      cell.appendChild(el('span', 'grid__caption', 'タップで1枚戻す／長押しで詳細'))
+      // ここも1回押しは「戻す」に取られているので、長押しが見る手段になる
+      attachLongPress(cell, () => id)
       cell.addEventListener('click', () => {
         const at = cards.lastIndexOf(id)
         if (at >= 0) cards = [...cards.slice(0, at), ...cards.slice(at + 1)]
