@@ -1035,3 +1035,38 @@ body {
   height: auto;
   aspect-ratio: 5 / 7;
 }
+
+/* 効果を持つ姫神の印（SPEC 19.6）。絵の角に重ねる。
+   レベル星バッジ（.card__badge--level）と属性バッジは消さない。
+   クリーム色の芯に森緑の縁を付けて、暗い絵の上でも読めるようにする */
+.card__fx {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 2px;
+  box-sizing: border-box;
+  border-radius: 3px;
+  background: #f5f0e1;
+  color: #2d5a3d;
+  border: 1px solid #2d5a3d;
+  font-size: 9px;
+  line-height: 12px;
+  text-align: center;
+  font-weight: bold;
+  pointer-events: none;
+}
+.card__art { position: relative; }
+
+/* 詳細での「召喚時」「破壊時」の見出し */
+.detail__trigger {
+  margin: 8px 0 2px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #2d5a3d;
+  background: #f5f0e1;
+  border-radius: 4px;
+  padding: 2px 8px;
+  display: inline-block;
+}

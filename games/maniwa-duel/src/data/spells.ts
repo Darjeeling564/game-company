@@ -161,4 +161,51 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'lifeHeal', target: 'self', value: 400 },
     ],
   },
+
+  // --------------------------------- 2026-10-01 追加（待ち行列5・1晩目）
+  {
+    id: 'i009', name: '生贄の刃', ruby: 'いけにえのやいば', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は selfDamage 10 + draw 2。こちらは姫神ではなくライフが削れる
+    flavor: '己の血を捧げる儀式刀。痛みと引き換えに知恵を得る。',
+    origin: 'mesopotamia', rarity: 'common',
+    onActivate: [
+      { type: 'lifeDamage', target: 'self', value: 200 },
+      { type: 'draw', value: 2 },
+    ],
+  },
+  {
+    id: 'i011', name: '冥府の渡し銭', ruby: 'めいふのわたしせん', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は discardEnergy。こちらにエネルギーは無いので、
+    // 「渡し銭を払えない」側を採り、手札から1枚を取り上げる形にした。
+    // discard を使う最初のカードになる
+    flavor: '死者の口に含ませる銭。払えぬ者は岸で立ち尽くす。',
+    origin: 'norse', rarity: 'common',
+    onActivate: [{ type: 'discard', target: 'opponent', value: 1 }],
+  },
+
+  // --------------------------------- 2026-10-02 追加（待ち行列5・2晩目）
+  {
+    id: 'i006', name: '不死の霊薬', ruby: 'ふしのれいやく', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は heal 30。姫神ではなくライフが戻る。「量は限られている」ので
+    // a004 大癒しの祈り（1200）より控えめに置く
+    flavor: '仙人が練り上げた丹薬。飲めば傷は塞がるが、量は限られている。',
+    origin: 'china', rarity: 'rare',
+    onActivate: [{ type: 'lifeHeal', target: 'self', value: 600 }],
+  },
+  {
+    id: 'i016', name: '銀の鍵', ruby: 'ぎんのかぎ', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は switchOpponent + searchCreature。入れ替えが無いので
+    // 「門を開く」側だけを採り、開ける先を魔法にした。
+    // search kind: 'spell' を使う最初のカードになる
+    flavor: '幾つもの門を開く鍵。持つ者は、いま立つ世界の外側へ踏み出せる。',
+    origin: 'cthulhu', rarity: 'rare',
+    onActivate: [
+      { type: 'search', kind: 'spell' },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]

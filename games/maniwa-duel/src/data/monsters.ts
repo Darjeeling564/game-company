@@ -36,6 +36,8 @@ export const MONSTERS: readonly MonsterDef[] = [
     flavor: '荒ぶる火そのもの。鎮められてなお、封じた社の奥で熱を放ち続けている。',
     origin: 'japan', rarity: 'ultra', attribute: 'fire',
     level: 8, atk: 2100, def: 1800,
+    // 生まれた瞬間に母を焼いた火。出た瞬間に相手を焼く（SPEC 19）
+    onSummon: [{ type: 'lifeDamage', target: 'opponent', value: 500 }],
   },
   {
     id: 'f003', name: 'スルト', kind: 'monster',
@@ -90,6 +92,11 @@ export const MONSTERS: readonly MonsterDef[] = [
     flavor: '九つの世界を貫く大樹。根は泉に届き、枝は天を覆う。',
     origin: 'norse', rarity: 'ultra', attribute: 'forest',
     level: 7, atk: 2000, def: 1700,
+    // 根が泉に届く大樹。立てば水が湧き、先が見える（SPEC 19）
+    onSummon: [
+      { type: 'lifeHeal', target: 'self', value: 800 },
+      { type: 'draw', value: 1 },
+    ],
   },
   {
     id: 's002', name: 'セイオウボ', kind: 'monster',
@@ -174,6 +181,8 @@ export const MONSTERS: readonly MonsterDef[] = [
     flavor: '名を口にすることさえ憚られる存在。黄の印を見た者は正気を失う。',
     origin: 'cthulhu', rarity: 'ultra', attribute: 'wind',
     level: 8, atk: 2300, def: 1700,
+    // 黄の印を遺して去る者。倒れたあとに呪いが残る（SPEC 19）
+    onDestroyed: [{ type: 'lifeDamage', target: 'opponent', value: 600 }],
   },
   {
     id: 'k007', name: 'ニョルズ', kind: 'monster',
@@ -240,6 +249,8 @@ export const MONSTERS: readonly MonsterDef[] = [
     flavor: '地底の洞窟に眠る蟇蛙めいた神。眠りを妨げた者は闇に呑まれる。',
     origin: 'cthulhu', rarity: 'ultra', attribute: 'earth',
     level: 8, atk: 2100, def: 1700,
+    // 眠りから何度でも起き出す。倒れても墓所から1体が立つ（SPEC 19）
+    onDestroyed: [{ type: 'revive' }],
   },
   {
     id: 'e009', name: '女媧', ruby: 'じょか', kind: 'monster',
@@ -258,6 +269,8 @@ export const MONSTERS: readonly MonsterDef[] = [
     flavor: '中華の始祖とされる帝。涿鹿の野で蚩尤の軍と戦い、霧を破って天下を定めた。',
     origin: 'china', rarity: 'ultra', attribute: 'earth',
     level: 7, atk: 2000, def: 1700,
+    // 指南車で道を示す者。進むべき先の一柱を手元に呼ぶ（SPEC 19）
+    onSummon: [{ type: 'search', kind: 'monster' }],
   },
   {
     id: 't001', name: 'スサノオ', kind: 'monster',
@@ -276,6 +289,8 @@ export const MONSTERS: readonly MonsterDef[] = [
     flavor: '神々の王。振り下ろす雷霆に逆らえる者は、天にも地にもいない。',
     origin: 'greece', rarity: 'ultra', attribute: 'thunder',
     level: 7, atk: 1600, def: 1800,
+    // 振り下ろす雷霆。攻撃力はURで最も低いが、出た瞬間に場を薙ぎ払う（SPEC 19）
+    onSummon: [{ type: 'atkChange', target: 'opponentMonsterAll', value: -600 }],
   },
   {
     id: 't004', name: 'トール', kind: 'monster',
@@ -324,6 +339,8 @@ export const MONSTERS: readonly MonsterDef[] = [
     flavor: '海底の都に眠る巨大な存在。星の位置が正しくなるとき、再び目覚める。',
     origin: 'cthulhu', rarity: 'ultra', attribute: 'water',
     level: 7, atk: 1800, def: 1800,
+    // 見た者の正気が削れる。手にしていたものを落とす（SPEC 19）
+    onSummon: [{ type: 'discard', target: 'opponent', value: 1 }],
   },
   {
     id: 'w003', name: 'ヨルムンガンド', kind: 'monster',
@@ -378,12 +395,19 @@ export const MONSTERS: readonly MonsterDef[] = [
     flavor: '原初の塩の海そのものである竜。神々の母でありながら、十一の魔獣を生んで神々に牙を剥いた。',
     origin: 'mesopotamia', rarity: 'ultra', attribute: 'water',
     level: 8, atk: 1900, def: 1800,
+    // 裂かれた体が天と地になった。倒れることが次を生む（SPEC 19）
+    onDestroyed: [
+      { type: 'lifeDamage', target: 'opponent', value: 400 },
+      { type: 'draw', value: 1 },
+    ],
   },
   {
     id: 'l001', name: 'アマテラスEX', kind: 'monster',
     flavor: '高天原を統べる太陽の女神。岩戸に隠れると、世界から光が消えた。',
     origin: 'japan', rarity: 'ultra', attribute: 'light',
     level: 7, atk: 1900, def: 1700,
+    // 岩戸が開いて光が戻る。出た瞬間に大きく息を吹き返す（SPEC 19）
+    onSummon: [{ type: 'lifeHeal', target: 'self', value: 1000 }],
   },
   {
     id: 'l002', name: 'ラー', kind: 'monster',
@@ -438,6 +462,11 @@ export const MONSTERS: readonly MonsterDef[] = [
     flavor: '千の貌を持つ這い寄る混沌。神々の使者であり、人の理性を弄ぶ者。',
     origin: 'cthulhu', rarity: 'ultra', attribute: 'dark',
     level: 8, atk: 1900, def: 1800,
+    // 千の貌で人の理性を弄ぶ者。手札を奪い、心を削る（SPEC 19）
+    onSummon: [
+      { type: 'discard', target: 'opponent', value: 1 },
+      { type: 'lifeDamage', target: 'opponent', value: 400 },
+    ],
   },
   {
     id: 'd002', name: 'ヘル', kind: 'monster',

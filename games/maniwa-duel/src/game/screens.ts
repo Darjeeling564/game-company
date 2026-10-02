@@ -13,7 +13,7 @@ import { DECKS } from '../data/decks.ts'
 import { MONSTERS } from '../data/monsters.ts'
 import { buildDeck, leadersByAttribute } from '../data/autodeck.ts'
 import { cardNode } from './view.ts'
-import { openDetail } from './detail.ts'
+import { attachLongPress, openDetail } from './detail.ts'
 import type { CustomDeck, SaveData } from './storage.ts'
 
 const ATTRIBUTES: readonly Attribute[] = [
@@ -111,7 +111,14 @@ interface ListFilter {
   kind: string | null
   attribute: Attribute | null
   rarity: Rarity | null
+  /** 姫神のレベル。魔法・罠はレベルを持たないので、指定すると姫神だけが残る */
+  level: number | null
+  /** 効果を持つ姫神だけに絞る（SPEC 19.6）。null なら絞らない */
+  hasEffect: boolean
 }
+
+/** 実在するレベル。**データから作る**ので、姫神を足しても手で直す必要がない */
+const LEVELS: readonly number[] = [...new Set(MONSTERS.map((m) => m.level))].sort((a, b) => a - b)
 
 /**
  * カード一覧。
@@ -125,7 +132,7 @@ export function showCardList(
   onPick?: (id: CardId) => void,
   countOf?: (id: CardId) => number,
 ): void {
-  const filter: ListFilter = { kind: null, attribute: null, rarity: null }
+  const filter: ListFilter = { kind: null, attribute: null, rarity: null, level: null, hasEffect: false }
 
   const draw = (): void => {
     d.root.textContent = ''
@@ -133,6 +140,9 @@ export function showCardList(
       if (filter.kind !== null && c.kind !== filter.kind) return false
       if (filter.attribute !== null && (c.kind !== 'monster' || c.attribute !== filter.attribute)) return false
       if (filter.rarity !== null && c.rarity !== filter.rarity) return false
+      if (filter.level !== null && (c.kind !== 'monster' || c.level !== filter.level)) return false
+      if (filter.hasEffect && (c.kind !== 'monster'
+        || (c.onSummon === undefined && c.onDestroyed === undefined))) return false
       return true
     }).slice().sort(sortForList)
 
@@ -161,6 +171,13 @@ export function showCardList(
       filter.attribute, (v) => { filter.attribute = v as Attribute | null })
     row('レア', [{ v: null, t: 'すべて' }, ...RARITIES.map((r) => ({ v: r, t: RARITY_LABEL[r] }))],
       filter.rarity, (v) => { filter.rarity = v as Rarity | null })
+    // レベルは姫神しか持たない。選ぶと魔法・罠は自動的に消える
+    row('レベル', [{ v: null, t: 'すべて' }, ...LEVELS.map((n) => ({ v: String(n), t: `★${n}` }))],
+      filter.level === null ? null : String(filter.level),
+      (v) => { filter.level = v === null ? null : Number(v) })
+    // 効果持ち（SPEC 19.6）。姫神しか効果を持たないので、選ぶと魔法・罠は消える
+    row('効果', [{ v: null, t: 'すべて' }, { v: 'yes', t: '効果持ち' }],
+      filter.hasEffect ? 'yes' : null, (v) => { filter.hasEffect = v === 'yes' })
     page.appendChild(chips)
 
     const grid = el('div', 'grid')
@@ -170,6 +187,11 @@ export function showCardList(
       cell.appendChild(cardNode(c.id))
       const n = countOf?.(c.id) ?? 0
       if (n > 0) cell.appendChild(el('span', 'grid__count', `×${n}`))
+      // 長押しで詳細（SPEC 8.6）。**選ぶ用のときに効く。**
+      // 1回押しは「選ぶ」に取られているので、長押しが唯一の見る手段になる。
+      // attachLongPress は詳細を出したあとの click を自分で止めるので、
+      // 長押しで札がデッキに入ってしまうことはない
+      attachLongPress(cell, () => c.id)
       cell.addEventListener('click', () => {
         if (onPick !== undefined) { onPick(c.id); draw() } else openDetail(c.id)
       })
@@ -321,7 +343,9 @@ export function showDeckList(d: ScreenDeps): void {
     b.appendChild(button('複製して直す', () => {
       const copy: CustomDeck = { name: `${deck.name}の写し`, cards: [...deck.cards] }
       d.setSave({ ...d.save, customDecks: [...d.save.customDecks, copy] })
-      showDeckEdit(d, copy, d.save.customDecks.length)
+      // 追加した直後なので、写しの位置は**新しい長さの1つ手前**である。
+      // `length` を渡すと範囲外を指し、以降の編集が黙って捨てられる
+      showDeckEdit(d, copy, d.save.customDecks.length - 1)
     }, 'button button--small'))
     preset.appendChild(b)
   }
@@ -341,12 +365,24 @@ export function showDeckEdit(d: ScreenDeps, initial: CustomDeck, index: number |
 
   const countOf = (id: CardId): number => cards.filter((c) => c === id).length
 
+  /**
+   * 保存先の位置。**新規のときは、最初の保存で確定させて以降は上書きにする。**
+   * null のままにすると、カードを1枚足すたびに `persist()` が走って
+   * **新しいデッキが増え続ける**（2026-10-02 の実機報告。15個できていた）。
+   */
+  let at: number | null = index
+
   const persist = (): void => {
     const deck: CustomDeck = { name, cards }
-    const next = index === null
-      ? [...d.save.customDecks, deck]
-      : d.save.customDecks.map((c, i) => (i === index ? deck : c))
-    d.setSave({ ...d.save, customDecks: next })
+    if (at === null) {
+      at = d.save.customDecks.length
+      d.setSave({ ...d.save, customDecks: [...d.save.customDecks, deck] })
+      return
+    }
+    d.setSave({
+      ...d.save,
+      customDecks: d.save.customDecks.map((c, i) => (i === at ? deck : c)),
+    })
   }
 
   const draw = (): void => {
@@ -404,7 +440,9 @@ export function showDeckEdit(d: ScreenDeps, initial: CustomDeck, index: number |
       const cell = el('button', 'grid__cell')
       cell.appendChild(cardNode(id))
       cell.appendChild(el('span', 'grid__count', `×${count}`))
-      cell.appendChild(el('span', 'grid__caption', 'タップで1枚戻す'))
+      cell.appendChild(el('span', 'grid__caption', 'タップで1枚戻す／長押しで詳細'))
+      // ここも1回押しは「戻す」に取られているので、長押しが見る手段になる
+      attachLongPress(cell, () => id)
       cell.addEventListener('click', () => {
         const at = cards.lastIndexOf(id)
         if (at >= 0) cards = [...cards.slice(0, at), ...cards.slice(at + 1)]
