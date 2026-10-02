@@ -142,6 +142,15 @@ export function openDetail(cardId: CardId): void {
     const need = def.level >= 7 ? 2 : def.level >= 5 ? 1 : 0
     stats.appendChild(el('span', 'detail__stat', need === 0 ? '召喚にリリース不要' : `リリース${need}体`))
     panel.appendChild(stats)
+
+    // 姫神の効果（SPEC 19.6）。魔法・罠と同じ書式で、見出しだけを足す
+    for (const [label, effects] of [['召喚時', def.onSummon], ['破壊時', def.onDestroyed]] as const) {
+      if (effects === undefined || effects.length === 0) continue
+      panel.appendChild(el('p', 'detail__trigger', label))
+      const list = el('ul', 'detail__effects')
+      for (const e of effects) list.appendChild(el('li', 'detail__effect', describeEffect(e)))
+      panel.appendChild(list)
+    }
   } else {
     const list = el('ul', 'detail__effects')
     for (const e of def.onActivate) list.appendChild(el('li', 'detail__effect', describeEffect(e)))

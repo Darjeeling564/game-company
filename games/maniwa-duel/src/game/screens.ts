@@ -113,6 +113,8 @@ interface ListFilter {
   rarity: Rarity | null
   /** 姫神のレベル。魔法・罠はレベルを持たないので、指定すると姫神だけが残る */
   level: number | null
+  /** 効果を持つ姫神だけに絞る（SPEC 19.6）。null なら絞らない */
+  hasEffect: boolean
 }
 
 /** 実在するレベル。**データから作る**ので、姫神を足しても手で直す必要がない */
@@ -130,7 +132,7 @@ export function showCardList(
   onPick?: (id: CardId) => void,
   countOf?: (id: CardId) => number,
 ): void {
-  const filter: ListFilter = { kind: null, attribute: null, rarity: null, level: null }
+  const filter: ListFilter = { kind: null, attribute: null, rarity: null, level: null, hasEffect: false }
 
   const draw = (): void => {
     d.root.textContent = ''
@@ -139,6 +141,8 @@ export function showCardList(
       if (filter.attribute !== null && (c.kind !== 'monster' || c.attribute !== filter.attribute)) return false
       if (filter.rarity !== null && c.rarity !== filter.rarity) return false
       if (filter.level !== null && (c.kind !== 'monster' || c.level !== filter.level)) return false
+      if (filter.hasEffect && (c.kind !== 'monster'
+        || (c.onSummon === undefined && c.onDestroyed === undefined))) return false
       return true
     }).slice().sort(sortForList)
 
@@ -171,6 +175,9 @@ export function showCardList(
     row('レベル', [{ v: null, t: 'すべて' }, ...LEVELS.map((n) => ({ v: String(n), t: `★${n}` }))],
       filter.level === null ? null : String(filter.level),
       (v) => { filter.level = v === null ? null : Number(v) })
+    // 効果持ち（SPEC 19.6）。姫神しか効果を持たないので、選ぶと魔法・罠は消える
+    row('効果', [{ v: null, t: 'すべて' }, { v: 'yes', t: '効果持ち' }],
+      filter.hasEffect ? 'yes' : null, (v) => { filter.hasEffect = v === 'yes' })
     page.appendChild(chips)
 
     const grid = el('div', 'grid')

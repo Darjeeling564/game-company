@@ -11,7 +11,7 @@ import { findCard, findMonster, findSpell, findTrap } from '../data/cards.ts'
 import type { Action } from './actions.ts'
 import { describeAction, validateDeck } from './actions.ts'
 import { createRng, shuffle } from './rng.ts'
-import { applyEffects, needsChoice } from './effects.ts'
+import { applyEffects, applyTriggers, destroyMonster, needsChoice } from './effects.ts'
 import { battleResult, canAttack, canAttackDirectly, effectiveAtk, effectiveDef } from './rules.ts'
 import {
   findOnField,
@@ -19,7 +19,6 @@ import {
   monstersOf,
   playerAt,
   reject,
-  sendToGraveyard,
   updateMonster,
   withPlayer,
 } from './state.ts'
@@ -290,7 +289,15 @@ function summon(
   })
   const how = faceDown ? 'セット' : position === 'attack' ? '攻撃表示で召喚' : '守備表示で召喚'
   const cost = need > 0 ? `（${need}体リリース）` : ''
-  return log(next, player, 'summon', `${def.name} を${how}${cost}`)
+  let out = log(next, player, 'summon', `${def.name} を${how}${cost}`)
+
+  // 召喚時の効果（SPEC 19.3）。**セットでは出ない。** 表側で出したときだけ。
+  // リリースを使った上級召喚でも出る
+  if (!faceDown && def.onSummon !== undefined && def.onSummon.length > 0) {
+    out = log(out, player, 'effect', `${def.name} の召喚時の効果`)
+    out = applyTriggers(out, def.onSummon, player)
+  }
+  return out
 }
 
 /**
@@ -430,11 +437,13 @@ function resolveAttack(state: GameState): GameState {
     `${atk} vs ${target.monster.position === 'attack' ? defAtk : defDef}` +
     `（${target.monster.position === 'attack' ? '攻撃表示' : '守備表示'}）`)
 
+  // **戦闘による破壊は destroyMonster を通す**（SPEC 19.3）。
+  // sendToGraveyard を直に呼ぶと破壊時の効果が出ない
   if (result.destroyed === 'attacker' || result.destroyed === 'both') {
-    next = sendToGraveyard(next, pending.attacker)
+    next = destroyMonster(next, pending.attacker)
   }
   if (result.destroyed === 'defender' || result.destroyed === 'both') {
-    next = sendToGraveyard(next, pending.target)
+    next = destroyMonster(next, pending.target)
   }
   if (result.damage > 0 && result.damageTo !== null) {
     next = changeLife(next, result.damageTo === 'attacker' ? player : foe, -result.damage)

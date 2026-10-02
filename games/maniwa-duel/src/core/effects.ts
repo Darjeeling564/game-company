@@ -89,7 +89,15 @@ function playerOf(target: 'opponent' | 'self', ctx: EffectContext): PlayerId {
  * **ライフの増減だけは reduce 側の changeLife を通す必要がある**（決着判定を含むため）。
  * ここでは素朴に足し引きし、呼び出し元がまとめて決着を見る。
  */
-function applyOne(state: GameState, effect: OneShot, ctx: EffectContext): GameState {
+/**
+ * 効果1つ。`depth` は破壊の連鎖の深さで、`destroy` のときだけ先へ渡る（SPEC 19.5）。
+ */
+function applyOne(
+  state: GameState,
+  effect: OneShot,
+  ctx: EffectContext,
+  depth = 0,
+): GameState {
   switch (effect.type) {
     case 'lifeDamage': {
       const p = playerOf(effect.target, ctx)
@@ -109,7 +117,9 @@ function applyOne(state: GameState, effect: OneShot, ctx: EffectContext): GameSt
         const found = findOnField(next, id)
         if (found === null) continue
         const name = findCard(found.monster.cardId)?.name ?? found.monster.cardId
-        next = log(sendToGraveyard(next, id), ctx.player, 'destroy', `${name} を破壊した`)
+        // **破壊は必ず destroyMonster を通す**（SPEC 19.3）。
+        // ここで sendToGraveyard を直に呼ぶと、破壊時の効果が出なくなる
+        next = destroyMonster(log(next, ctx.player, 'destroy', `${name} を破壊した`), id, depth)
       }
       return next
     }
@@ -223,6 +233,57 @@ export function applyEffects(
 ): GameState {
   let next = state
   for (const e of effects) next = applyOne(next, e, ctx)
+  return next
+}
+
+/**
+ * 連鎖の深さの上限（SPEC 19.5）。
+ *
+ * 破壊時の効果が別の姫神を破壊すると、その姫神の破壊時の効果がまた動く。
+ * **深さ2段で打ち切る。** 無限に続かないことを型で示すのは難しいので数で止める。
+ * 11章で割り込みを1段に限ったのと同じ考え方である。
+ */
+const MAX_TRIGGER_DEPTH = 2
+
+/**
+ * 姫神を**破壊する**（SPEC 19.3）。墓地へ送ったあと `onDestroyed` を動かす。
+ *
+ * **リリース・デッキ切れ・墓地送りではこれを呼ばない。** それらは破壊ではないので、
+ * `sendToGraveyard` を直接使う。破壊だけがここを通る、という切り分けが
+ * 「どこで効果が出るか」を1か所に閉じ込めている。
+ *
+ * 効果の持ち主は**破壊された姫神を出していたプレイヤー**であって、破壊した側ではない。
+ */
+export function destroyMonster(state: GameState, id: InstanceId, depth = 0): GameState {
+  const found = findOnField(state, id)
+  if (found === null) return state
+  const owner = found.player
+  const def = findMonster(found.monster.cardId)
+  // **裏側のままなら破壊時の効果は出ない。** 表になっていない札の効果は働かない
+  const triggers = found.monster.faceDown ? undefined : def?.onDestroyed
+
+  let next = sendToGraveyard(state, id)
+  if (triggers === undefined || triggers.length === 0) return next
+  if (depth >= MAX_TRIGGER_DEPTH) return next
+
+  next = log(next, owner, 'effect', `${def?.name ?? found.monster.cardId} の破壊時の効果`)
+  return applyTriggers(next, triggers, owner, depth + 1)
+}
+
+/**
+ * 姫神の誘発効果を当てる（SPEC 19.4）。
+ *
+ * **1体を選ぶ効果は書かない約束**なので `chosen` は常に null でよい。
+ * 約束が破られていないことは tests/monster-effect.test.ts が見ている。
+ */
+export function applyTriggers(
+  state: GameState,
+  effects: readonly OneShot[],
+  owner: PlayerId,
+  depth = 0,
+): GameState {
+  let next = state
+  for (const e of effects) next = applyOne(next, e, { player: owner, chosen: null }, depth)
   return next
 }
 

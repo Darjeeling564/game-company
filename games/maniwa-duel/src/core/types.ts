@@ -167,6 +167,17 @@ export interface MonsterDef extends CardBase {
   readonly level: number
   readonly atk: number
   readonly def: number
+  /**
+   * **表側で召喚に成功したとき**に1回だけ起きること（SPEC 19）。
+   * セット（裏側守備表示）では出ない。持ち主は召喚したプレイヤー。
+   */
+  readonly onSummon?: readonly OneShot[]
+  /**
+   * **戦闘または `destroy` で破壊されたとき**に1回だけ起きること（SPEC 19）。
+   * リリース・デッキ切れ・墓地送りでは出ない。
+   * 持ち主は**破壊された姫神を出していたプレイヤー**である。
+   */
+  readonly onDestroyed?: readonly OneShot[]
 }
 
 export interface SpellDef extends CardBase {
