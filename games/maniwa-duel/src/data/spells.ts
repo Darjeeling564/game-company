@@ -161,4 +161,27 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'lifeHeal', target: 'self', value: 400 },
     ],
   },
+
+  // --------------------------------- 2026-10-01 追加（待ち行列5・1晩目）
+  {
+    id: 'i009', name: '生贄の刃', ruby: 'いけにえのやいば', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は selfDamage 10 + draw 2。こちらは姫神ではなくライフが削れる
+    flavor: '己の血を捧げる儀式刀。痛みと引き換えに知恵を得る。',
+    origin: 'mesopotamia', rarity: 'common',
+    onActivate: [
+      { type: 'lifeDamage', target: 'self', value: 200 },
+      { type: 'draw', value: 2 },
+    ],
+  },
+  {
+    id: 'i011', name: '冥府の渡し銭', ruby: 'めいふのわたしせん', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は discardEnergy。こちらにエネルギーは無いので、
+    // 「渡し銭を払えない」側を採り、手札から1枚を取り上げる形にした。
+    // discard を使う最初のカードになる
+    flavor: '死者の口に含ませる銭。払えぬ者は岸で立ち尽くす。',
+    origin: 'norse', rarity: 'common',
+    onActivate: [{ type: 'discard', target: 'opponent', value: 1 }],
+  },
 ]
