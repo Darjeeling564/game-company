@@ -111,4 +111,29 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'discard', target: 'opponent', value: 1 },
     ],
   },
+
+  // --------------------------------- 2026-10-02 追加（待ち行列5・2晩目）
+  {
+    id: 'a005', name: '招集の祈り', ruby: 'しょうしゅうのいのり', kind: 'trap',
+    trapType: 'normal',
+    // 攻められた側が応援を呼ぶ形。攻撃は止めない（止める罠は既に3種あるので、
+    // 「受けてから立て直す」側を増やす）
+    flavor: '八百万を呼び集める祝詞。応じた者が一柱、列に加わる。',
+    origin: 'japan', rarity: 'common',
+    onActivate: [
+      { type: 'search', kind: 'monster' },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'a010', name: '双龍の采配', ruby: 'そうりゅうのさいはい', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は attachEnergy ownBenchAll。エネルギーが無いので「控えの列すべてに
+    // 気が通る」を自分の姫神全体の攻撃力に読み替えた。
+    // **攻撃力を上げる向きの atkChange はこれが初**（既存は相手を下げるものだけ）。
+    // ターン終了で戻るので、迎え撃つ一度きりの采配になる
+    flavor: '二頭の龍を従えた将の指示。控えの列すべてに気が通る。',
+    origin: 'china', rarity: 'superRare',
+    onActivate: [{ type: 'atkChange', target: 'ownMonsterAll', value: 600 }],
+  },
 ]

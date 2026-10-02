@@ -184,4 +184,28 @@ export const SPELLS: readonly SpellDef[] = [
     origin: 'norse', rarity: 'common',
     onActivate: [{ type: 'discard', target: 'opponent', value: 1 }],
   },
+
+  // --------------------------------- 2026-10-02 追加（待ち行列5・2晩目）
+  {
+    id: 'i006', name: '不死の霊薬', ruby: 'ふしのれいやく', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は heal 30。姫神ではなくライフが戻る。「量は限られている」ので
+    // a004 大癒しの祈り（1200）より控えめに置く
+    flavor: '仙人が練り上げた丹薬。飲めば傷は塞がるが、量は限られている。',
+    origin: 'china', rarity: 'rare',
+    onActivate: [{ type: 'lifeHeal', target: 'self', value: 600 }],
+  },
+  {
+    id: 'i016', name: '銀の鍵', ruby: 'ぎんのかぎ', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は switchOpponent + searchCreature。入れ替えが無いので
+    // 「門を開く」側だけを採り、開ける先を魔法にした。
+    // search kind: 'spell' を使う最初のカードになる
+    flavor: '幾つもの門を開く鍵。持つ者は、いま立つ世界の外側へ踏み出せる。',
+    origin: 'cthulhu', rarity: 'rare',
+    onActivate: [
+      { type: 'search', kind: 'spell' },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]
