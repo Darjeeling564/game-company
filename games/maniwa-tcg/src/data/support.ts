@@ -496,6 +496,48 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'a029', name: '天命の粘土板', ruby: 'てんめいのねんばん', kind: 'action',
+    origin: 'mesopotamia', rarity: 'ultra',
+    flavor: '神々の序列を定める板。掲げた者が天の命を読み上げ、聞いた者は等しく従わされる。',
+    /*
+     * メソポタミアの道標は C2 / R1 で、**SR も UR も無い唯一の系統**だった
+     * （2026-10-03 実測）。道標の UR が無いのは greece / japan / mesopotamia / norse の
+     * 4系統で、今夜はそのうち mesopotamia と japan を埋める。
+     *
+     * あわせて**対象の偏りを埋める**。道標28種の対象は opponentActive 17 に対して
+     * opponentBenchAll は3しかない。読み上げは居並ぶ者すべてに届くので、ここで4つ目にする。
+     *
+     * 評価値は 30×1.5 + 2×5 = 55 → 総合力 198.0。UR の帯（190以上）の中。
+     */
+    effects: [
+      { type: 'damage', target: 'opponentBenchAll', value: 30 },
+      { type: 'draw', value: 2 },
+    ],
+  },
+  {
+    id: 'a030', name: '大祓', ruby: 'おおはらえ', kind: 'action',
+    origin: 'japan', rarity: 'ultra',
+    flavor: '半年ぶんの穢れを川に流す神事。負うた傷も、負わせた咎も、水に溶けて海へ下る。',
+    /*
+     * 日本の道標は C1 / SR2 で、R も UR も無かった。UR を埋める。
+     *
+     * **相手を見ない道標は初めてである。** 道標28種の対象は opponentActive に17も
+     * 寄っていて、ownBenchAll は2しかない。祓いは自分の側を清める神事なので、
+     * 控えまで含めて戻す形がそのまま合う。
+     *
+     * **ダメージを持たない回復専用なので、8.2 の「回復 < ダメージ」は字義どおりには
+     * 適用できない**（SPEC 16.7）。健全さは**ターン上限到達率 0%** で見る。
+     * a004 大癒しの祈り（回復のみ・R）が先例。
+     *
+     * 評価値は 40×0.4 + 40×0.6 + 3×5 = 55 → 総合力 198.0。UR の帯の中。
+     */
+    effects: [
+      { type: 'heal', target: 'ownBenchAll', value: 40 },
+      { type: 'heal', target: 'ownActive', value: 40 },
+      { type: 'draw', value: 3 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
