@@ -136,4 +136,31 @@ export const TRAPS: readonly TrapDef[] = [
     origin: 'china', rarity: 'superRare',
     onActivate: [{ type: 'atkChange', target: 'ownMonsterAll', value: 600 }],
   },
+
+  // --------------------------------- 2026-10-03 追加（待ち行列5・3晩目）
+  {
+    id: 'a009', name: '巫女の舞', ruby: 'みこのまい', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は gainEnergy + draw 1。エネルギーが無いので「場が清まる」側を採り、
+    // 攻撃を無効にしてから引く形にした
+    flavor: '鈴を鳴らして舞う奉納。場が清まり、力の巡りが早くなる。',
+    origin: 'japan', rarity: 'superRare',
+    onActivate: [
+      { type: 'negateAttack' },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'a020', name: 'セルケトの針', ruby: 'セルケトのはり', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は applyStatus（毒）+ discardEnergy。どちらも姫神戦記には無いので、
+    // 「毒に痺れて力の巡りが止まる」を**攻撃してきた姫神の弱体化と手札の剥がし**に
+    // 読み替えた。attacker を狙う罠は a006 / a019 に続いて3種目
+    flavor: '死者の内臓を守る蠍の女神。刺された者は毒に痺れ、力の巡りが止まる。',
+    origin: 'egypt', rarity: 'rare',
+    onActivate: [
+      { type: 'atkChange', target: 'attacker', value: -800 },
+      { type: 'discard', target: 'opponent', value: 1 },
+    ],
+  },
 ]
