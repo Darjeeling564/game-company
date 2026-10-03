@@ -208,4 +208,30 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'draw', value: 1 },
     ],
   },
+
+  // --------------------------------- 2026-10-03 追加（待ち行列5・3晩目）
+  {
+    id: 'u002', name: '世界樹の恵み', ruby: 'せかいじゅのめぐみ', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 's001',
+    // maniwa-tcg は damage 100 + heal self 20。×20 でライフに置き換える。
+    // 回復800はダメージ2000より小さい（SPEC 8.2 と同じ趣旨）
+    flavor: '枝が天を覆い、根が泉を汲み上げる。傷つきながらも立ち続ける大樹の力。',
+    origin: 'norse', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2000 },
+      { type: 'lifeHeal', target: 'self', value: 800 },
+    ],
+  },
+  {
+    id: 'u005', name: '神威の雷', ruby: 'しんいのいかずち', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 't003',
+    // maniwa-tcg は damage 120 + selfDamage 20。反動はライフへの自傷になる。
+    // 対応姫神のゼウスEX は召喚時に場を薙ぐので、こちらは真正面からの一撃にした
+    flavor: '天が裂け、逆らう者の上にだけ落ちる。神々の王が下す最後の答え。',
+    origin: 'greece', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2400 },
+      { type: 'lifeDamage', target: 'self', value: 400 },
+    ],
+  },
 ]
