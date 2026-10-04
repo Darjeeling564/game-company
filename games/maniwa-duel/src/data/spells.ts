@@ -234,4 +234,31 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'lifeDamage', target: 'self', value: 400 },
     ],
   },
+
+  // --------------------------------- 2026-10-04 追加（待ち行列5・4晩目）
+  {
+    id: 'i013', name: '劫初の猛毒', ruby: 'ごうしょのもうどく', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は damage 10 + 毒。姫神戦記に継続の毒は無い（SPEC 6.4 の第2層）ので、
+    // 「飲み干すまで効き続ける」側を**攻撃力の低下**に読み替えた。
+    // 相手の姫神すべてに効くのは、海ごと毒された話だから
+    flavor: '乳海を攪拌したとき、甘露より先に湧き出た毒。世界を焼くまえに飲み干された。',
+    origin: 'india', rarity: 'rare',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 200 },
+      { type: 'atkChange', target: 'opponentMonsterAll', value: -400 },
+    ],
+  },
+  {
+    id: 'i023', name: '八尺瓊勾玉', ruby: 'やさかにのまがたま', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は heal 30 + attachEnergy。エネルギーが無いので「隠れた光を招き出す」側を
+    // 採り、墓地から1体を呼び戻す形にした。回復と復活を組むのは魔法では初
+    flavor: '三種の神器のひとつ。岩戸の前に掲げられ、隠れた光を招き出した玉。',
+    origin: 'japan', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeHeal', target: 'self', value: 600 },
+      { type: 'revive' },
+    ],
+  },
 ]

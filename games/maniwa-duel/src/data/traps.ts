@@ -163,4 +163,30 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'discard', target: 'opponent', value: 1 },
     ],
   },
+
+  // --------------------------------- 2026-10-04 追加（待ち行列5・4晩目）
+  {
+    id: 'a015', name: '死者の書', ruby: 'ししゃのしょ', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は heal ownBenchAll + searchCreature。控えという概念が無いので、
+    // 「道案内」の側を採って自分のライフを戻し、次の一柱を呼ぶ形にした
+    flavor: '棺に納める道案内の巻物。冥界の門番の名と、通るための言葉が記してある。',
+    origin: 'egypt', rarity: 'rare',
+    onActivate: [
+      { type: 'lifeHeal', target: 'self', value: 600 },
+      { type: 'search', kind: 'monster' },
+    ],
+  },
+  {
+    id: 'a024', name: 'レテの水', ruby: 'レテのみず', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は discardEnergy + draw 2。エネルギーが無いので「握っていた力の名前を
+    // 思い出せなくなる」を**攻撃してきた姫神が攻撃を忘れる**＝無効化に読み替えた
+    flavor: '冥府を流れる忘却の川。ひと口飲んだ者は、握っていた力の名前を思い出せなくなる。',
+    origin: 'greece', rarity: 'rare',
+    onActivate: [
+      { type: 'negateAttack' },
+      { type: 'draw', value: 2 },
+    ],
+  },
 ]
