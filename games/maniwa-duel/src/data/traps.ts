@@ -189,4 +189,27 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'draw', value: 2 },
     ],
   },
+
+  // --------------------------------- 2026-10-05 追加（待ち行列5・5晩目）
+  {
+    id: 'a001', name: '天啓', ruby: 'てんけい', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg と同じ draw 3。攻撃を受けた側が次の道を示される形になる。
+    // 止めない罠なので、受けてから立て直す側に入る
+    flavor: '神託所に降りる啓示。問うた者の前に、進むべき道が三つ示される。',
+    origin: 'greece', rarity: 'common',
+    onActivate: [{ type: 'draw', value: 3 }],
+  },
+  {
+    id: 'a014', name: '二羽の渡り', ruby: 'フギンとムニン', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は draw 2 + searchCreature。こちらでも「見聞きしたすべてを
+    // 主の耳に囁く」ので、引いたうえで次の一柱を呼ぶ
+    flavor: '思考と記憶の名を持つ双烏。世界を巡り、見聞きしたすべてを主の耳に囁く。',
+    origin: 'norse', rarity: 'rare',
+    onActivate: [
+      { type: 'draw', value: 2 },
+      { type: 'search', kind: 'monster' },
+    ],
+  },
 ]
