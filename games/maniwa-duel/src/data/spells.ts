@@ -261,4 +261,29 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'revive' },
     ],
   },
+
+  // --------------------------------- 2026-10-05 追加（待ち行列5・5晩目）
+  {
+    id: 'i014', name: '真理の羽根', ruby: 'しんりのはね', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は discardEnergy + draw 1。エネルギーが無いので
+    // 「偽りを載せた皿は重く傾く」を**相手の手札を落とす**側に読み替えた。
+    // 釣り合わせる話なので、こちらは1枚引いて枚数を戻す
+    flavor: '死者の心臓と釣り合わせる一枚。偽りを載せた皿は、必ず重く傾く。',
+    origin: 'egypt', rarity: 'rare',
+    onActivate: [
+      { type: 'discard', target: 'opponent', value: 1 },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'i020', name: 'ウシャブティ', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は attachEnergy ownBenchAll。エネルギーが無いので
+    // 「名を呼ばれた数だけ起き上がる」側を採り、墓地から1体を立たせる形にした。
+    // 代わりに働く人形なので、立たせるだけで打点は持たない
+    flavor: '墓に納める従者の人形。死者の代わりに畑を耕すよう、名を呼ばれた数だけ起き上がる。',
+    origin: 'egypt', rarity: 'superRare',
+    onActivate: [{ type: 'revive' }],
+  },
 ]
