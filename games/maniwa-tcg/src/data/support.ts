@@ -800,4 +800,40 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'damage', target: 'opponentBenchAll', value: 20 },
     ],
   },
+  {
+    id: 'u023', name: '終末の舞踏', ruby: 'しゅうまつのぶとう', kind: 'ultimate',
+    origin: 'india', rarity: 'ultra', requires: 'f011',
+    flavor: '踏み鳴らす足が刻を終わらせる。灰になった世界の上で、同じ足がもう一度刻を始める。',
+    cost: ['fire', 'fire', 'colorless'],
+    effects: [
+      /*
+       * シヴァEX の最強ワザ「破壊の舞」は効率 30.00。
+       * ここを 34.17 にして比 1.139 に置く（SPEC 16.5.1 の 1.05〜1.30）。
+       *
+       * **踊り手も灼ける**ので、元のワザと同じく selfDamage を残す。
+       * 世界を終わらせる話なので、バトル場だけでなく控えにも灰が降る。
+       */
+      { type: 'damage', target: 'opponentActive', value: 90 },
+      { type: 'damage', target: 'opponentBenchAll', value: 15 },
+      { type: 'selfDamage', value: 10 },
+    ],
+  },
+  {
+    id: 'u024', name: '日月の双眼', ruby: 'じつげつのそうがん', kind: 'ultimate',
+    origin: 'egypt', rarity: 'ultra', requires: 'k010',
+    flavor: '右の眼が日を、左の眼が月を見る。二つが同時に開いたとき、隠れていられる者はいない。',
+    cost: ['wind', 'wind', 'colorless'],
+    effects: [
+      /*
+       * ホルスEX の最強ワザ「天空の裁き」は効率 33.33。
+       * ここを 38.33 にして比 1.150 に置く。
+       *
+       * **双眼なので的が2つ**になる。元のワザが
+       * opponentActive + opponentBenchRandom だったのを引き継ぎ、
+       * 「隠れていられる者はいない」ぶん控えへの一撃を強くした。
+       */
+      { type: 'damage', target: 'opponentActive', value: 100 },
+      { type: 'damage', target: 'opponentBenchRandom', value: 30 },
+    ],
+  },
 ]
