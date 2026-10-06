@@ -141,6 +141,29 @@ body {
   box-shadow: 0 10px 22px -8px rgba(0, 0, 0, 0.65);
 }
 
+/*
+ * 決着の姫神は、締めとして遅れて立ち上げる（SPEC 9.4.19）。
+ *
+ * 画面全体に `screenIn`（0.18秒）が1つ当たっているだけで、**この絵は通算の行や
+ * ボタンとまったく同時に出ていた**（2026-10-06 実測。`animation-name` は `none`）。
+ * 9.8.1 はここを「対戦の締め」と位置づけているのに、それが画面に現れていない。
+ *
+ * タイトル画面が同じことを既にやっている（9.4.2。ロゴが 0.1 秒、下の文が 0.34 秒
+ * 遅れて出る）。**同じ考え方を締めにも当てるだけで、新しい語彙は要らない。**
+ *
+ * 動かすのは `transform` と `opacity` だけ（9.4）。この要素は `animation` を
+ * 持っていなかったので取り合いは起きない（9.4.13）。
+ * `border` と `box-shadow` はこの要素が既に持っているので**触らない。**
+ */
+@keyframes finalArtRise {
+  from { opacity: 0; transform: translateY(14px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+.finalArt__art {
+  animation: finalArtRise 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) 0.16s backwards;
+}
+
 .finalArt__name {
   font-size: 15px;
   letter-spacing: 0.06em;
@@ -2963,5 +2986,20 @@ body {
     animation: none;
     outline: 2px solid var(--cream, #f5f0e1);
     outline-offset: 3px;
+  }
+
+  /*
+   * 決着の姫神（SPEC 9.4.19）。**動かさない代わりに何も出さないのは不可。**
+   * この演出が伝えているのは「**この絵が締めの主役である**」ことなので、
+   * 動かさない端末では枠を出して主役であることを示す。
+   *
+   * `border` と `box-shadow` はこの要素が通常時から持っている。そこへ割り込むと
+   * 動かさない端末だけ見た目が変わってしまうので、**空いている `outline` を使う**
+   * （2026-10-04 に `box-shadow` で同じ失敗をして `outline` に書き直した）。
+   */
+  .finalArt__art {
+    animation: none;
+    outline: 2px solid var(--cream, #f5f0e1);
+    outline-offset: 4px;
   }
 }

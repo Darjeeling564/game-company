@@ -23,10 +23,11 @@ import {
   el,
   formatCost,
   renderBattle,
+  endReasonLabel,
   renderChoices,
   renderFinish,
 } from './view.ts'
-import type { CustomDeck } from './storage.ts'
+import type { CustomDeck, SaveData } from './storage.ts'
 import { load, recordResult, save } from './storage.ts'
 import { artStage, artUrl } from './art.ts'
 import type { ArtStage } from './art.ts'
@@ -702,10 +703,22 @@ function showDeckSelect(): void {
   shell('battle', 'デッキを選ぶ', body)
 }
 
+/*
+ * **通算に数えるのは1回だけ。** 描き直しと数えるのを分ける。
+ *
+ * 以前は `showResult` の先頭で `recordResult` を呼んでいて、下の音ボタンが
+ * `soundToggle(showResult)` で同じ関数を呼び直していた。そのため
+ * **音を切り替えるたびに同じ対戦が通算に足されていた**（2026-10-06 実測。
+ * 「0勝 1敗 0分」が、音を1回押しただけで「0勝 2敗 0分」になった）。
+ */
 function showResult(): void {
+  const outcome = state.winner === null ? 'draw' : state.winner === HUMAN ? 'win' : 'loss'
+  renderResult(recordResult(outcome).record)
+}
+
+function renderResult(record: SaveData['record']): void {
   clearTimer()
   const outcome = state.winner === null ? 'draw' : state.winner === HUMAN ? 'win' : 'loss'
-  const record = recordResult(outcome).record
 
   root.replaceChildren()
   const screen = el('div', 'screen')
@@ -713,6 +726,14 @@ function showResult(): void {
   screen.append(
     el('p', 'muted', `ポイント ${state.players[HUMAN].points} - ${state.players[CPU].points} / ${state.turn}ターン`),
   )
+  /*
+   * 決着の理由も出す（SPEC 9.8.2）。**幕は1秒で押し飛ばされる一過性の表示で、
+   * 残るのは結果画面のほうである。** なぜ終わったのかが残るほうから落ちていた。
+   * 語は view.ts の END_REASON を両方が読む。書き写すと 9.10 が直した割れが再発する
+   */
+  const reason = endReasonLabel(state)
+  if (reason !== '') screen.append(el('p', 'muted', reason))
+
   screen.append(el('p', 'muted', `通算 ${record.wins}勝 ${record.losses}敗 ${record.draws}分`))
 
   /*
@@ -764,7 +785,8 @@ function showResult(): void {
   back.type = 'button'
   back.addEventListener('click', showTitle)
   actions.append(back)
-  actions.append(soundToggle(showResult))
+  // 数え直さずに描き直す（上の但し書き）
+  actions.append(soundToggle(() => renderResult(record)))
   screen.append(actions)
   root.append(screen)
 }
