@@ -286,4 +286,33 @@ export const SPELLS: readonly SpellDef[] = [
     origin: 'egypt', rarity: 'superRare',
     onActivate: [{ type: 'revive' }],
   },
+
+  // --------------------------------- 2026-10-06 追加（待ち行列5・6晩目）
+  {
+    id: 'i024', name: '天の牡牛の角', ruby: 'あめのおうしのつの', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は damage opponentBenchAll + discardEnergy。控えもエネルギーも
+    // 無いので、「踏み荒らされた地は七年のあいだ実らない」側を採り、
+    // **相手の場の全員を弱らせる**形に読み替えた。剥ぎ取るほうは手札に当てる
+    flavor: '天から降された牡牛の角。踏み荒らされた地は七年のあいだ実らない。',
+    origin: 'mesopotamia', rarity: 'superRare',
+    onActivate: [
+      { type: 'atkChange', target: 'opponentMonsterAll', value: -400 },
+      { type: 'discard', target: 'opponent', value: 1 },
+    ],
+  },
+  {
+    id: 'i028', name: 'ウジャトの眼', ruby: 'ウジャトのめ', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は damage 35 + heal 20 + searchCreature。姫神へのダメージが
+    // ライフへ移るだけで、3つの働き（射抜く・癒す・見通す）はそのまま残る。
+    // 回復はダメージより小さく保つ（SPEC 8.2 と同じ向き）
+    flavor: '抉り取られ、月の数だけ欠けたのち、ふたたび満ちた眼。見通し、癒し、そして射抜く。',
+    origin: 'egypt', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 700 },
+      { type: 'lifeHeal', target: 'self', value: 400 },
+      { type: 'search', kind: 'monster' },
+    ],
+  },
 ]
