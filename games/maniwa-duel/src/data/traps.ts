@@ -212,4 +212,33 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'search', kind: 'monster' },
     ],
   },
+
+  // --------------------------------- 2026-10-06 追加（待ち行列5・6晩目）
+  {
+    id: 'a018', name: '七つの門', ruby: 'ななつのもん', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は discardEnergy + switchOpponent。エネルギーが無いので
+    // 「身につけたものを一つ剥ぎ取る」を手札に当て、くぐらされるほうは
+    // **攻撃してきた者を守備に伏せる**形で残した
+    flavor: '冥界へ下るには七つの門をくぐる。門番は一つくぐるごとに、身につけたものを一つ剥ぎ取る。',
+    origin: 'mesopotamia', rarity: 'rare',
+    onActivate: [
+      { type: 'discard', target: 'opponent', value: 1 },
+      { type: 'position', target: 'attacker', position: 'defense' },
+    ],
+  },
+  {
+    id: 'a026', name: 'ヘカの言葉', ruby: 'ヘカのことば', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は switchOpponent + damage 30 + discardEnergy。
+    // 「逆らうことも隠れることもできない」ので、攻撃してきた者を伏せ、
+    // ライフを削り、手札を1枚落とす。3つの働きをそのまま移した
+    flavor: '魔法そのものを司る神。正しい名で呼ばれた者は、逆らうことも隠れることもできない。',
+    origin: 'egypt', rarity: 'ultra',
+    onActivate: [
+      { type: 'position', target: 'attacker', position: 'defense' },
+      { type: 'lifeDamage', target: 'opponent', value: 600 },
+      { type: 'discard', target: 'opponent', value: 1 },
+    ],
+  },
 ]
