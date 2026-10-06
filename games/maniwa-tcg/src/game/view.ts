@@ -1269,13 +1269,21 @@ export function renderFinish(root: HTMLElement, state: GameState, onNext: () => 
   inner.append(el('div', 'finish__title', drew ? '引き分け' : won ? '勝ち！' : '負け…'))
   inner.append(el('div', 'finish__score',
     `${state.players[HUMAN].points} - ${state.players[CPU].points}　${state.turn}ターン`))
-  inner.append(el('div', 'finish__reason', END_REASON[state.endReason ?? ''] ?? ''))
+  inner.append(el('div', 'finish__reason', endReasonLabel(state)))
   const next = el('button', 'btn finish__next', '結果を見る')
   next.type = 'button'
   next.addEventListener('click', onNext)
   inner.append(next)
   veil.append(inner)
   root.append(veil)
+}
+
+/**
+ * 決着の理由の文。**幕と結果画面の両方がここを読む**（SPEC 9.8.2 / 9.10）。
+ * 書き写すと、9.10 が直した「勝利／勝ち！」と同じ割れがまた起きる。
+ */
+export function endReasonLabel(state: GameState): string {
+  return END_REASON[state.endReason ?? ''] ?? ''
 }
 
 const END_REASON: Readonly<Record<string, string>> = {
