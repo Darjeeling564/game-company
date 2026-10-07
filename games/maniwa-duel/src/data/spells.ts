@@ -315,4 +315,29 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'search', kind: 'monster' },
     ],
   },
+
+  // --------------------------------- 2026-10-07 追加（待ち行列5・7晩目）
+  {
+    id: 'i004', name: '聖油の壺', ruby: 'せいゆのつぼ', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は gainEnergy。エネルギーが無いので「注がれた者は、その日に限り
+    // 二度の力を得る」側を採った。atkChange は**ターン終了で戻る**ので、
+    // 「その日に限り」がそのまま効果の寿命になる
+    flavor: '王の戴冠に用いる香油。注がれた者は、その日に限り二度の力を得る。',
+    origin: 'egypt', rarity: 'rare',
+    onActivate: [{ type: 'atkChange', target: 'ownMonsterOne', value: 600 }],
+  },
+  {
+    id: 'i027', name: 'ネクロノミコン', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は draw 4 + gainEnergy + attachEnergy + selfDamage 20。
+    // エネルギー2つは意味を失うが、「読み解いた者は世界の裏側を知り、
+    // 知った量だけ正気を手放す」という骨格は draw と自傷だけで立つ
+    flavor: '狂えるアラブ人が書き遺した書。読み解いた者は世界の裏側を知り、知った量だけ正気を手放す。',
+    origin: 'cthulhu', rarity: 'ultra',
+    onActivate: [
+      { type: 'draw', value: 4 },
+      { type: 'lifeDamage', target: 'self', value: 400 },
+    ],
+  },
 ]
