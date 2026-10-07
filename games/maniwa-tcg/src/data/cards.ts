@@ -1170,6 +1170,46 @@ const COLORLESS: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
     ],
   },
+
+  /*
+   * --------------------------------- 2026-10-07 追加（夜間ジョブ A の夜）
+   *
+   * **無属性にコモンより上が1体もいなかった**（実測 C:9 / R:0 / SR:0 / UR:0）。
+   * SPEC 8.3 の「無色は1段下げる」により、無属性で R を出すには総合力 255〜299
+   * （＝他属性なら SR の帯）が要る。既存9体の最高は n003 タオテツ の 232.0 で、
+   * 帯に届いていなかった。
+   *
+   * 系統は実測でいちばん薄い2つ（greece 10体 / cthulhu 10体）に当てた。
+   * 無属性には絶技を付けない（SPEC 16.5.3）。
+   */
+  {
+    id: 'n010', name: 'ケルベロス', kind: 'creature',
+    flavor: '冥府の門を守る三頭の番犬。入る者は通し、出る者は決して通さない。',
+    origin: 'greece', rarity: 'rare',
+    type: 'colorless', hp: 130, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '三つの顎', ruby: 'みつのあぎと', cost: ['colorless', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 35 }] },
+      { name: '冥府の門', ruby: 'めいふのもん', cost: ['colorless', 'colorless', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 80 }] },
+    ],
+  },
+  {
+    id: 'n011', name: 'ナイトゴーント', kind: 'creature',
+    flavor: '顔の無い痩せた飛行獣。声を立てずに掴み上げ、夢の淵へ運び去る。',
+    origin: 'cthulhu', rarity: 'rare',
+    type: 'colorless', hp: 130, ex: false, retreatCost: 1, stage: 0,
+    attacks: [
+      { name: '掴み上げる', ruby: 'つかみあげる', cost: ['colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 20 }] },
+      // 控えへの流れ弾は実測で薄い対象（2026-10-03 の道標で opponentBenchRandom は2件のみ）
+      { name: '夢の淵へ', ruby: 'ゆめのふちへ', cost: ['colorless', 'colorless', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 75 },
+          { type: 'damage', target: 'opponentBenchRandom', value: 20 },
+        ] },
+    ],
+  },
 ]
 
 /** キャラ */
