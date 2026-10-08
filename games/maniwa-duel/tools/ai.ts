@@ -39,7 +39,17 @@ function score(state: GameState, me: PlayerId): number {
 
   // 手札と伏せ札は、いつか盤面に変わる分だけ軽く見る
   value += mine.hand.length * 120 - theirs.hand.length * 120
-  value += spellsOf(mine).length * 150 - spellsOf(theirs).length * 150
+  /*
+   * **チェーンに積んだ札も、まだ自分のものとして数える**（SPEC 11.1）。
+   *
+   * 積んだ時点でカードは伏せゾーンから外れるので、数えないと
+   * 「積む」という手がその場では 150 点の損に見える。効果が出るのは
+   * 解決してからなので、1手先しか読まないこの評価では**積む手が常に損**になり、
+   * チェーンを組む判断ができなくなる。
+   */
+  const onChain = (p: PlayerId): number => state.chain.filter((l) => l.player === p).length
+  value += (spellsOf(mine).length + onChain(me)) * 150
+  value -= (spellsOf(theirs).length + onChain(foe)) * 150
   return value
 }
 

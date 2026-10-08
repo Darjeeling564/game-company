@@ -166,15 +166,24 @@ function buildViewModel(): ViewModel {
   } else if (state.priority !== HUMAN) {
     msg = msg === '' ? '相手の番です' : msg
   } else if (state.pendingAttack !== null) {
-    // 割り込み（SPEC 8.2）。伏せカードを光らせ、2択だけを出す
-    msg = '攻撃されています。伏せカードを開きますか？'
+    /*
+     * チェーン（SPEC 11.1.8）。伏せカードを光らせ、2択を出す。
+     * **1段目かどうかで言葉を変える。** 1段目は「攻撃されている」場面だが、
+     * 2段目以降は「相手が積んだ札に重ねるか」を訊いている
+     */
+    const last = state.chain.at(-1)
+    msg = state.chain.length === 0
+      ? '攻撃されています。伏せカードを開きますか？'
+      : `${findCard(last?.cardId ?? '')?.name ?? '相手の札'} に重ねますか？`
     for (const a of legalActions(state)) {
       if (a.type === 'activateTrap') {
         const card = state.players[HUMAN].spells[a.zone]
         const name = card === null || card === undefined ? '伏せカード' : findCard(card.cardId)?.name ?? '?'
-        buttons.push({ label: `${name} を開く`, onTap: () => apply(a) })
+        buttons.push({ label: state.chain.length === 0 ? `${name} を開く` : `${name} を重ねる`, onTap: () => apply(a) })
       }
-      if (a.type === 'passResponse') buttons.push({ label: '開かない', onTap: () => apply(a) })
+      if (a.type === 'passResponse') {
+        buttons.push({ label: state.chain.length === 0 ? '開かない' : '重ねない', onTap: () => apply(a) })
+      }
     }
   } else if (state.phase === 'end' && state.players[HUMAN].hand.length > HAND_LIMIT) {
     msg = `手札が ${state.players[HUMAN].hand.length} 枚。${HAND_LIMIT} 枚まで捨ててください`

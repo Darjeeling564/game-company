@@ -276,10 +276,19 @@ export interface PendingAttack {
   readonly attacker: InstanceId
   /** null はダイレクトアタック */
   readonly target: InstanceId | null
-  /** 防御側がすでに応答したか。true なら二度目は求めない（チェーン1段） */
-  readonly responded: boolean
   /** 罠によって無効化されたか */
   readonly negated: boolean
+}
+
+/**
+ * チェーンに積まれた1枚（SPEC 11.1）。
+ *
+ * **積んだ時点で伏せゾーンから外し、ここに持つ。** 同じ札を二度積めないようにする
+ * ためで、墓地へ送るのは解決したときである。
+ */
+export interface ChainLink {
+  readonly player: PlayerId
+  readonly cardId: CardId
 }
 
 export interface LogEntry {
@@ -305,6 +314,16 @@ export interface GameState {
   readonly firstPlayer: PlayerId
   readonly players: readonly [PlayerSide, PlayerSide]
   readonly pendingAttack: PendingAttack | null
+  /**
+   * 積まれたチェーン（SPEC 11.1）。**末尾が最後に積まれた札＝最初に解決する札。**
+   * 空でないあいだは必ず `pendingAttack !== null`。
+   */
+  readonly chain: readonly ChainLink[]
+  /**
+   * 連続でパスした回数。**2 になったらチェーンを逆順に解決する**（SPEC 11.1.3）。
+   * 誰かが積んだら 0 に戻る。
+   */
+  readonly chainPasses: number
   readonly rng: Rng
   readonly log: readonly LogEntry[]
   readonly winner: PlayerId | null

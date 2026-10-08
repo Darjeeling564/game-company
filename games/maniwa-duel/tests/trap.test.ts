@@ -1,7 +1,8 @@
 /**
- * 罠のセットと、バトル中の割り込み1段（SPEC 11章）。
+ * 罠のセットと、バトル中のチェーン（SPEC 11.1）。
  *
  * **このゲームの中心**なので、境目を細かく押さえる。
+ * 2026-10-08 に割り込み1段（旧11章）を LIFO のチェーンに置き換えた。
  */
 import { describe, expect, it } from 'vitest'
 import { EMPTY_STATE, isOver, legalActions, reduce } from '../src/core/reduce.ts'
@@ -40,6 +41,22 @@ function battle(
         monsters: [...defenders, null, null, null].slice(0, 3),
         spells: [...traps, null, null, null].slice(0, 3),
       },
+    ],
+  }
+}
+
+/** 両者が伏せカードを持つバトルフェイズ。チェーンの積み合いを見るため */
+function battleBoth(
+  attacker: MonsterOnField,
+  myTraps: readonly (SpellOnField | null)[],
+  foeTraps: readonly (SpellOnField | null)[],
+): GameState {
+  const s = battle(attacker, [], foeTraps)
+  return {
+    ...s,
+    players: [
+      { ...s.players[0], spells: [...myTraps, null, null, null].slice(0, 3) },
+      s.players[1],
     ],
   }
 }
@@ -153,27 +170,109 @@ describe('割り込みの解決', () => {
   })
 })
 
-describe('チェーンは1段まで（SPEC 11章）', () => {
-  it('同じ攻撃に二度は割り込めない', () => {
+describe('チェーン（SPEC 11.1）', () => {
+  it('同じ側が2枚続けて積める。積んだ札はゾーンから外れる', () => {
+    // 3枚目を残しておく。**応答できる側が尽きた時点でチェーンは即解決する**ので、
+    // 積まれた途中の姿を見るには余力が要る
+    let s = battle(onField(strong.id, 1), [],
+      [setTrap('a004', 10), setTrap('a006', 11), setTrap('a004', 12)])
+    s = reduce(s, { type: 'declareAttack', attacker: 1, target: null })
+    s = reduce(s, { type: 'activateTrap', zone: 0 })
+    expect(s.chain.map((l) => l.cardId)).toEqual(['a004'])
+    expect(s.players[1].spells[0]).toBeNull()
+    // 攻撃側は積む札が無いので自動パス。優先権は防御側に戻っている
+    expect(s.priority).toBe(1)
+    s = reduce(s, { type: 'activateTrap', zone: 1 })
+    expect(s.chain.map((l) => l.cardId)).toEqual(['a004', 'a006'])
+    // まだ解決していないので墓地は空
+    expect(s.players[1].graveyard).toEqual([])
+  })
+
+  it('両者がパスすると、積んだ逆順に解決される', () => {
     let s = battle(onField(strong.id, 1), [], [setTrap('a004', 10), setTrap('a006', 11)])
     s = reduce(s, { type: 'declareAttack', attacker: 1, target: null })
     s = reduce(s, { type: 'activateTrap', zone: 0 })
-    // すでに解決が終わっているので、2枚目は開けない
     s = reduce(s, { type: 'activateTrap', zone: 1 })
-    expect(s.log.at(-1)?.kind).toBe('rejected')
-    expect(s.players[1].spells[1]?.state).toBe('set')
+    s = reduce(s, { type: 'passResponse' })
+    // 攻撃側にも積む札が無いので、ここで解決まで進む
+    expect(s.chain).toEqual([])
+    expect(s.pendingAttack).toBeNull()
+    // 解決は a006 → a004 の逆順
+    const order = s.log.filter((l) => l.kind === 'trap' && l.detail.includes('の効果'))
+      .map((l) => l.detail)
+    expect(order[0]).toContain('祟りの札')
+    expect(order[1]).toContain('大癒しの祈り')
+    // 2枚とも墓地へ
+    expect(s.players[1].graveyard).toEqual(['a006', 'a004'])
   })
 
-  it('攻撃側は自分の攻撃に割り込めない', () => {
-    let s = battle(onField(strong.id, 1), [], [setTrap('a006', 10)])
+  it('攻撃側はチェーンの1段目を積めない', () => {
+    let s = battleBoth(onField(strong.id, 1), [setTrap('a006', 20)], [setTrap('a004', 10)])
     s = reduce(s, { type: 'declareAttack', attacker: 1, target: null })
-    // priority は 1 なので、0 の操作として扱われる activateTrap は通らない
+    // 優先権は防御側。攻撃側に無理やり持たせても拒まれる
     const forced: GameState = { ...s, priority: 0 }
     const after = reduce(forced, { type: 'activateTrap', zone: 0 })
     expect(after.log.at(-1)?.kind).toBe('rejected')
+    expect(after.log.at(-1)?.detail).toContain('1段目')
   })
 
-  it('攻撃の最中でなければ罠は開けない', () => {
+  it('攻撃側は2段目以降なら積める', () => {
+    // 防御側に2枚目を残して、積み合いの途中で止まるようにする
+    let s = battleBoth(onField(strong.id, 1), [setTrap('a006', 20)],
+      [setTrap('a004', 10), setTrap('a004', 11)])
+    s = reduce(s, { type: 'declareAttack', attacker: 1, target: null })
+    expect(s.priority).toBe(1)
+    s = reduce(s, { type: 'activateTrap', zone: 0 })
+    // 1段積まれたので、こんどは攻撃側に優先権が回る
+    expect(s.priority).toBe(0)
+    expect(legalActions(s).some((a) => a.type === 'activateTrap')).toBe(true)
+    s = reduce(s, { type: 'activateTrap', zone: 0 })
+    expect(s.chain.map((l) => l.player)).toEqual([1, 0])
+  })
+
+  it('積む札が無い側には優先権を渡さないので、応答が尽きたらその場で解決する', () => {
+    let s = battle(onField(strong.id, 1), [], [setTrap('a004', 10)])
+    s = reduce(s, { type: 'declareAttack', attacker: 1, target: null })
+    s = reduce(s, { type: 'activateTrap', zone: 0 })
+    // 攻撃側は伏せを持たず、防御側も使い切った。**誰にも訊かずに解決まで進む**
+    expect(s.chain).toEqual([])
+    expect(s.pendingAttack).toBeNull()
+    expect(s.priority).toBe(0)
+    expect(s.players[1].graveyard).toEqual(['a004'])
+  })
+
+  it('チェーンは伏せゾーンの数で必ず止まる（SPEC 11.1.5）', () => {
+    let s = battleBoth(
+      onField(strong.id, 1),
+      [setTrap('a004', 20), setTrap('a004', 21), setTrap('a004', 22)],
+      [setTrap('a004', 10), setTrap('a004', 11), setTrap('a004', 12)],
+    )
+    s = reduce(s, { type: 'declareAttack', attacker: 1, target: null })
+    // 積めるかぎり積み続ける。6枚使い切ったら解決へ進むはず
+    for (let i = 0; i < 20; i += 1) {
+      const acts = legalActions(s)
+      const put = acts.find((a) => a.type === 'activateTrap')
+      if (put === undefined) break
+      s = reduce(s, put)
+    }
+    expect(s.chain.length).toBeLessThanOrEqual(6)
+    expect(s.players[0].spells.every((x) => x === null)).toBe(true)
+    expect(s.players[1].spells.every((x) => x === null)).toBe(true)
+  })
+
+  it('チェーンのどこにあっても negateAttack は効く', () => {
+    // 1段目に無効化、2段目に回復。解決は 回復 → 無効化 の順になる
+    let s = battle(onField(strong.id, 1), [], [setTrap('a012', 10), setTrap('a004', 11)])
+    s = reduce(s, { type: 'declareAttack', attacker: 1, target: null })
+    s = reduce(s, { type: 'activateTrap', zone: 0 })
+    s = reduce(s, { type: 'activateTrap', zone: 1 })
+    s = reduce(s, { type: 'passResponse' })
+    expect(s.pendingAttack).toBeNull()
+    // 無効化されたのでライフは減らない（回復ぶんだけ増える）
+    expect(s.players[1].lp).toBe(LIFE_POINTS + 1200)
+  })
+
+  it('攻撃の最中でなければ罠は積めない', () => {
     const s = battle(onField(strong.id, 1), [], [setTrap('a006', 10)])
     const after = reduce({ ...s, priority: 1 }, { type: 'activateTrap', zone: 0 })
     expect(after.log.at(-1)?.detail).toContain('攻撃の最中ではない')
