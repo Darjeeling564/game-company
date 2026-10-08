@@ -165,9 +165,11 @@ function spellNode(vm: ViewModel, owner: PlayerId, zone: number, card: SpellOnFi
   const node = cardNode(card.cardId, { faceDown: hidden, small: true })
   node.classList.add('card--spellzone')
   // 割り込みで開ける伏せカードは光らせる（SPEC 8.2）
+  // チェーンの1段目を積めるのは攻撃されている側だけ（SPEC 11.1.4）
   const canOpen =
     vm.state.pendingAttack !== null &&
     vm.state.priority === vm.human &&
+    (vm.state.chain.length > 0 || vm.human !== vm.state.turnPlayer) &&
     owner === vm.human &&
     card.state === 'set' &&
     card.setTurn < vm.state.turn
@@ -315,6 +317,8 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
   // --- 下部: 自分のライフ、手札、説明、ボタン
   root.appendChild(lifeBanner(vm, vm.human, 'bottom'))
   root.appendChild(handRow(vm, h))
+  const chainStrip = chainRow(vm)
+  if (chainStrip !== null) root.appendChild(chainStrip)
   root.appendChild(el('div', 'message', vm.message))
 
   const buttons = el('div', 'buttons')
@@ -324,6 +328,24 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     buttons.appendChild(btn)
   }
   root.appendChild(buttons)
+}
+
+/**
+ * 積まれたチェーンを見せる（SPEC 11.1.8）。
+ *
+ * **解決は逆順なので、最後に積んだ札を右端に置く。** 右から順に消えていく、
+ * という見え方にそろえる。チェーンが空のときは帯ごと出さない。
+ */
+function chainRow(vm: ViewModel): HTMLElement | null {
+  if (vm.state.chain.length === 0) return null
+  const row = el('div', 'chain')
+  row.appendChild(el('span', 'chain__label', `チェーン${vm.state.chain.length}段`))
+  vm.state.chain.forEach((link, i) => {
+    const name = findCard(link.cardId)?.name ?? link.cardId
+    const who = link.player === vm.human ? 'mine' : 'theirs'
+    row.appendChild(el('span', `chain__link chain__link--${who}`, `${i + 1}. ${name}`))
+  })
+  return row
 }
 
 /** 場に出ている姫神の数。main.ts が表示の判断に使う */

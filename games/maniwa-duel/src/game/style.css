@@ -549,6 +549,45 @@ body {
   opacity: 0.9;
 }
 
+/*
+ * 積まれたチェーン（SPEC 11.1.8）。
+ *
+ * **解決は逆順なので、最後に積んだ札が右端**になる。右から消えていく見え方にそろえる。
+ * 自分の札と相手の札を色で分ける。横に溢れたらスクロールさせ、
+ * 盤面に横スクロールを出さない（CLAUDE.md 6章）
+ */
+.chain {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 2px 0;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.chain__label {
+  flex: 0 0 auto;
+  opacity: 0.75;
+}
+
+.chain__link {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+/* 自分が積んだ札はクリーム、相手の札は控えめに。森緑の盤でどちらも読める */
+.chain__link--mine {
+  color: var(--cream, #f5f0e1);
+}
+
+.chain__link--theirs {
+  color: #d9b08c;
+}
+
 .message {
   font-size: 13px;
   min-height: 1.4em;

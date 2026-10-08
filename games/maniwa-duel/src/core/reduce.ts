@@ -23,6 +23,7 @@ import {
   withPlayer,
 } from './state.ts'
 import type {
+  ChainLink,
   EndReason,
   GameState,
   InstanceId,
@@ -67,6 +68,8 @@ export const EMPTY_STATE: GameState = {
   firstPlayer: 0,
   players: [EMPTY_SIDE, EMPTY_SIDE],
   pendingAttack: null,
+  chain: [],
+  chainPasses: 0,
   rng: createRng(1),
   log: [],
   winner: null,
@@ -83,7 +86,8 @@ export function isOver(state: GameState): boolean {
 function finish(state: GameState, winner: PlayerId | null, reason: EndReason): GameState {
   const detail =
     winner === null ? `引き分け（${reason}）` : `プレイヤー${winner}の勝ち（${reason}）`
-  return log({ ...state, phase: 'over', winner, endReason: reason, pendingAttack: null },
+  return log({ ...state, phase: 'over', winner, endReason: reason,
+    pendingAttack: null, chain: [], chainPasses: 0 },
     state.turnPlayer, 'end', detail)
 }
 
@@ -130,7 +134,8 @@ function beginTurn(state: GameState, player: PlayerId): GameState {
     clearTurnMarks(state.players[1]),
   )
   return log(
-    { ...cleared, turn, turnPlayer: player, priority: player, phase: 'draw', pendingAttack: null },
+    { ...cleared, turn, turnPlayer: player, priority: player, phase: 'draw',
+      pendingAttack: null, chain: [], chainPasses: 0 },
     player, 'turn', `ターン${turn} 開始`)
 }
 
@@ -368,18 +373,69 @@ function declareAttack(
     }
   }
 
-  const pending: PendingAttack = {
-    attacker: attackerId, target: targetId, responded: false, negated: false,
-  }
+  const pending: PendingAttack = { attacker: attackerId, target: targetId, negated: false }
   const name = findCard(attacker.monster.cardId)?.name ?? attacker.monster.cardId
   const detail = targetId === null ? `${name} がダイレクトアタック` : `${name} が攻撃宣言`
-  const declared = log({ ...state, pendingAttack: pending }, player, 'attack', detail)
+  const declared = log({ ...state, pendingAttack: pending, chain: [], chainPasses: 0 },
+    player, 'attack', detail)
 
-  // **伏せカードが1枚も無いときは priority を移さず、そのまま戦闘計算へ進む**（SPEC 5章）。
-  // 無意味な選択を求めないためで、CPU の手数も減る。
-  const foe = opponentOf(player)
-  if (openableTraps(declared, foe).length === 0) return resolveAttack(declared)
-  return log({ ...declared, priority: foe }, foe, 'respond', '割り込むかどうか')
+  // チェーンの窓が開く。1段目を積めるのは攻撃された側だけ（SPEC 11.1.4）
+  return advanceChain({ ...declared, priority: opponentOf(player) })
+}
+
+/**
+ * チェーンの窓を1歩進める（SPEC 11.1.3）。
+ *
+ * **いま優先権を持つ側が積めないなら、自動でパスしたものとして扱う。**
+ * 伏せカードが1枚も無い側に無意味な選択を求めないためで、
+ * 旧実装が「伏せが無ければ priority を移さない」としていたのと同じ考え方である。
+ *
+ * `chainPasses` が 2 になったら逆順に解決して戦闘計算へ進む。
+ * **積むたびに `chainPasses` は 0 に戻るが、積めるのは伏せゾーンの数まで**
+ * （1人3つ・合計6段）なので、この往復は必ず止まる（SPEC 11.1.5）。
+ */
+function advanceChain(state: GameState): GameState {
+  let next = state
+  for (;;) {
+    if (next.pendingAttack === null) return next
+    if (next.chainPasses >= 2) return resolveAttack(resolveChain(next))
+    if (canChain(next, next.priority)) {
+      // 入力を待つ
+      return log(next, next.priority, 'respond', 'チェーンするかどうか')
+    }
+    next = { ...next, chainPasses: next.chainPasses + 1, priority: opponentOf(next.priority) }
+  }
+}
+
+/** その側がいまチェーンに積めるか（SPEC 11.1.4） */
+function canChain(state: GameState, player: PlayerId): boolean {
+  if (state.pendingAttack === null) return false
+  // 1段目を積めるのは攻撃された側だけ。2段目以降は両者が積める
+  if (state.chain.length === 0 && player === state.turnPlayer) return false
+  return openableTraps(state, player).length > 0
+}
+
+/**
+ * 積まれたチェーンを**逆順に**解決する（SPEC 11.1.6）。
+ *
+ * 末尾が最後に積まれた札なので、そこから先頭へ向かって解く。
+ * **決着したらそこで止める。** 以降のリンクは解決しない。
+ */
+function resolveChain(state: GameState): GameState {
+  let next = state
+  for (let i = next.chain.length - 1; i >= 0; i -= 1) {
+    const link = next.chain[i] as ChainLink
+    const def = findTrap(link.cardId)
+    const name = def?.name ?? link.cardId
+    next = log(next, link.player, 'trap', `${name} の効果`)
+    if (def !== null) next = applyEffects(next, def.onActivate, { player: link.player, chosen: null })
+    // 解決したカードを墓地へ（積んだ時点でゾーンからは外してある）
+    const side = playerAt(next, link.player)
+    next = withPlayer(next, link.player, { ...side, graveyard: [...side.graveyard, link.cardId] })
+    next = checkLife(next)
+    if (isOver(next)) return next
+  }
+  return { ...next, chain: [], chainPasses: 0, priority: next.turnPlayer }
 }
 
 /**
@@ -393,7 +449,7 @@ function resolveAttack(state: GameState): GameState {
   const player = state.turnPlayer
   const foe = opponentOf(player)
 
-  const clear = (s: GameState): GameState => ({ ...s, pendingAttack: null })
+  const clear = (s: GameState): GameState => ({ ...s, pendingAttack: null, chain: [], chainPasses: 0 })
 
   // 攻撃したという印は、無効化されても付く（1体1回）
   let next = updateMonster(state, pending.attacker, (m) => ({ ...m, hasAttacked: true }))
@@ -557,18 +613,21 @@ function openableTraps(state: GameState, player: PlayerId): readonly number[] {
 }
 
 /**
- * 罠を開く（SPEC 11章）。
+ * 罠をチェーンに積む（SPEC 11.1）。
  *
- * 開けるのは**相手のバトルフェイズ・攻撃宣言時の1回だけ**。
- * 解決してから戦闘計算へ進むので、攻撃してきた姫神の攻撃力を下げる罠は
- * その場の勝ち負けをひっくり返せる。
+ * **効果はここでは適用しない。** 積むだけで、解決は両者がパスしたあと逆順に行う。
+ * 旧実装（11章）はここで即時に適用して戦闘計算まで進めていた。
+ *
+ * **積んだ時点で伏せゾーンから外す。** 同じ札を二度積めないようにするためで、
+ * カードは `ChainLink` が持ち、墓地へ送るのは解決したときである。
  */
 function activateTrap(state: GameState, zone: number): GameState {
   const player = state.priority
   const pending = state.pendingAttack
   if (pending === null) return reject(state, player, '攻撃の最中ではない')
-  if (player === state.turnPlayer) return reject(state, player, '割り込めるのは攻撃されている側だけ')
-  if (pending.responded) return reject(state, player, 'この攻撃にはもう応答した（チェーンは1段まで）')
+  if (state.chain.length === 0 && player === state.turnPlayer) {
+    return reject(state, player, 'チェーンの1段目を積めるのは攻撃されている側だけ')
+  }
 
   const side = playerAt(state, player)
   const card = side.spells[zone]
@@ -581,30 +640,32 @@ function activateTrap(state: GameState, zone: number): GameState {
     return reject(state, player, `${def.name} は通常罠ではない（v1 では開けない）`)
   }
 
-  let next = log({ ...state, pendingAttack: { ...pending, responded: true } },
-    player, 'trap', `${def.name} を発動`)
-  next = applyEffects(next, def.onActivate, { player, chosen: null })
-  // 使った罠は墓地へ
-  const after = playerAt(next, player)
-  next = withPlayer(next, player, {
-    ...after,
-    spells: after.spells.map((x, i) => (i === zone ? null : x)),
-    graveyard: [...after.graveyard, card.cardId],
+  // ゾーンから外してチェーンへ積む
+  const moved = withPlayer(state, player, {
+    ...side,
+    spells: side.spells.map((x, i) => (i === zone ? null : x)),
   })
-  next = checkLife(next)
-  if (isOver(next)) return next
-  return resolveAttack({ ...next, priority: next.turnPlayer })
+  const next = log({
+    ...moved,
+    chain: [...moved.chain, { player, cardId: card.cardId }],
+    // 積まれたので連続パスは途切れる
+    chainPasses: 0,
+    priority: opponentOf(player),
+  }, player, 'trap', `${def.name} をチェーン${moved.chain.length + 1}段目に積んだ`)
+  return advanceChain(next)
 }
 
-/** 割り込まない（SPEC 11章） */
+/** チェーンに積まない（SPEC 11.1.3） */
 function passResponse(state: GameState): GameState {
   const player = state.priority
   const pending = state.pendingAttack
   if (pending === null) return reject(state, player, '攻撃の最中ではない')
-  if (player === state.turnPlayer) return reject(state, player, '応答するのは攻撃されている側')
-  const next = log({ ...state, pendingAttack: { ...pending, responded: true }, priority: state.turnPlayer },
-    player, 'pass', '割り込まなかった')
-  return resolveAttack(next)
+  const next = log({
+    ...state,
+    chainPasses: state.chainPasses + 1,
+    priority: opponentOf(player),
+  }, player, 'pass', 'チェーンしなかった')
+  return advanceChain(next)
 }
 
 // ---------------------------------------------------------------- 選べる操作
@@ -621,9 +682,17 @@ export function legalActions(state: GameState): readonly Action[] {
   const side = playerAt(state, player)
   const out: Action[] = []
 
-  // 割り込みの最中。priority は防御側を指している（SPEC 11章）
-  if (state.pendingAttack !== null && player !== state.turnPlayer) {
-    for (const zone of openableTraps(state, player)) out.push({ type: 'activateTrap', zone })
+  /*
+   * チェーンの最中（SPEC 11.1）。
+   *
+   * **積めない側がここで優先権を持つことは無い。** `advanceChain` が
+   * 自動でパスさせているので、ここに来たら必ず積める札がある。
+   * 1段目かどうかで積める側が変わるのも `canChain` が見ている。
+   */
+  if (state.pendingAttack !== null) {
+    if (canChain(state, player)) {
+      for (const zone of openableTraps(state, player)) out.push({ type: 'activateTrap', zone })
+    }
     out.push({ type: 'passResponse' })
     return out
   }
