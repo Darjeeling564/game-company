@@ -11,6 +11,7 @@ import type {
   CardDef,
   CardId,
   GameState,
+  LogEntry,
   MonsterOnField,
   PlayerId,
   SpellOnField,
@@ -269,6 +270,77 @@ const PHASE_LABEL: Readonly<Record<string, string>> = {
   setup: '準備', draw: 'ドロー', main: 'メイン', battle: 'バトル', end: 'エンド', over: '終了',
 }
 
+/**
+ * ログの種別を画面の言葉にする（SPEC 8.7）。
+ *
+ * `LogEntry.kind` は内部の識別子なので、そのまま出さない。
+ * **表に無いものは識別子をそのまま返す。** 黙って消すと、新しい kind を足したときに
+ * 履歴から抜けたことに気付けない。
+ */
+const LOG_LABEL: Readonly<Record<string, string>> = {
+  turn: 'ターン', phase: 'フェイズ', draw: 'ドロー',
+  summon: '召喚', set: 'セット', spell: '魔法', trap: '罠', effect: '効果',
+  attack: '攻撃', battle: '戦闘', destroy: '破壊', damage: 'ダメージ', heal: '回復',
+  discard: '手札を捨てる', search: 'サーチ', revive: '蘇生',
+  respond: '応答', pass: 'スルー', negate: '無効',
+  flip: '反転', position: '表示形式', over: '決着',
+}
+
+function logLabel(kind: string): string {
+  return LOG_LABEL[kind] ?? kind
+}
+
+/**
+ * 履歴に出す出来事だけを取り出す（SPEC 8.7）。
+ *
+ * **`rejected` は出さない。** 「その操作はできない」という画面と CPU への返事で、
+ * 盤の上で起きた出来事ではない。混ぜると起きていないことが起きたように読める。
+ */
+export function historyOf(state: GameState): readonly LogEntry[] {
+  return state.log.filter((l) => l.kind !== 'rejected')
+}
+
+/** 直前の1件。説明の行に出す（SPEC 8.7） */
+export function lastEvent(state: GameState, human: PlayerId): string {
+  const l = historyOf(state).at(-1)
+  if (l === undefined) return ''
+  const who = l.player === human ? '自分' : '相手'
+  return `${who}: ${logLabel(l.kind)} — ${l.detail}`
+}
+
+/**
+ * 履歴の幕（SPEC 8.7）。ターンごとにまとめ、**開いたら一番下へ送る**。
+ * どこを押しても閉じる（8.6 と同じ）。
+ */
+export function openHistory(state: GameState, human: PlayerId): void {
+  document.querySelector('.history')?.remove()
+  const back = el('div', 'history')
+  const panel = el('div', 'history__panel')
+  panel.appendChild(el('h2', 'history__title', '履歴'))
+
+  const list = el('div', 'history__list')
+  let turn = -1
+  const rows = historyOf(state)
+  if (rows.length === 0) list.appendChild(el('p', 'history__empty', 'まだ何も起きていません'))
+  for (const l of rows) {
+    if (l.turn !== turn) {
+      turn = l.turn
+      list.appendChild(el('div', 'history__turn', `ターン${turn}`))
+    }
+    const row = el('div', `history__row history__row--${l.player === human ? 'mine' : 'theirs'}`)
+    row.appendChild(el('span', 'history__who', l.player === human ? '自分' : '相手'))
+    row.appendChild(el('span', 'history__kind', logLabel(l.kind)))
+    row.appendChild(el('span', 'history__detail', l.detail))
+    list.appendChild(row)
+  }
+  panel.appendChild(list)
+  back.appendChild(panel)
+  back.addEventListener('click', () => back.remove())
+  document.body.appendChild(back)
+  // 新しいものが下なので、開いたら一番下を見せる
+  list.scrollTop = list.scrollHeight
+}
+
 export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): void {
   root.textContent = ''
   const foe = opponentOf(vm.human)
@@ -319,7 +391,21 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
   root.appendChild(handRow(vm, h))
   const chainStrip = chainRow(vm)
   if (chainStrip !== null) root.appendChild(chainStrip)
-  root.appendChild(el('div', 'message', vm.message))
+
+  /*
+   * 説明の行と履歴ボタン（SPEC 8.7）。
+   *
+   * **上部（早送りの隣）には置かない。** そこは「相手のメイン」を大きく出す場所で、
+   * 44px のボタンを足すと帯の幅が 73px に落ちて文字が2行に折れる（2026-10-08 実測）。
+   * **文脈で変わるボタン列にも置かない**（割り込み中は出ないため）。
+   */
+  const msgRow = el('div', 'msgRow')
+  msgRow.appendChild(el('div', 'message', vm.message))
+  const hist = el('button', 'histBtn', '履歴')
+  hist.setAttribute('aria-label', '履歴')
+  hist.addEventListener('click', (e) => { e.stopPropagation(); openHistory(vm.state, vm.human) })
+  msgRow.appendChild(hist)
+  root.appendChild(msgRow)
 
   const buttons = el('div', 'buttons')
   for (const b of vm.buttons) {
