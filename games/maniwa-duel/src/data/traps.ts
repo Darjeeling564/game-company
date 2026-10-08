@@ -241,4 +241,32 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'discard', target: 'opponent', value: 1 },
     ],
   },
+
+  // --------------------------------- 2026-10-08 追加（待ち行列5・8晩目）
+  {
+    id: 'a022', name: '深淵の呼び声', ruby: 'しんえんのよびごえ', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は damage 20 + discardEnergy。エネルギーが無いので
+    // 「応えた者は、二度と浮かんでこない」側を採り、**呼びかけに応えた者**
+    // ＝攻撃してきた姫神を沈める形にした。罠なので attacker を指せる
+    flavor: '海の底から呼ばれている。応えた者は、二度と浮かんでこない。',
+    origin: 'cthulhu', rarity: 'superRare',
+    onActivate: [
+      { type: 'destroy', target: 'attacker' },
+      { type: 'lifeDamage', target: 'opponent', value: 400 },
+    ],
+  },
+  {
+    id: 'a025', name: 'ドゥルガーの凱旋', ruby: 'ドゥルガーのがいせん', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は damage 30 + heal 20。姫神へのダメージはライフへ移る。
+    // 回復のほうは「倒れていた者も、その姿を見て立ち上がった」をそのまま採り、
+    // 墓地から1体を立たせる形にした
+    flavor: '水牛の魔神を討ち取った女神が、十の腕に武器を提げて帰ってくる。倒れていた者も、その姿を見て立ち上がった。',
+    origin: 'india', rarity: 'superRare',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 600 },
+      { type: 'revive' },
+    ],
+  },
 ]
