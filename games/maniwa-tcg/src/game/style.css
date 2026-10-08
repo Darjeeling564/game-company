@@ -1305,7 +1305,12 @@ body {
     inset 0 -0.12em 0.16em rgba(0, 0, 0, 0.45),
     /* 面から浮かせる */
     0 0.1em 0.16em rgba(0, 0, 0, 0.45);
-  color: #fff;
+  /*
+   * 中の文字色は丸の明るさから決まる（SPEC 9.11）。theme.ts の `badgeInk` が
+   * `--badge-ink` に入れる。**明るい丸（光・雷・風・無）では白が読めない**ので墨になる。
+   * 変数が無い場所では従来どおり白。
+   */
+  color: var(--badge-ink, #fff);
   /* 丸の 0.625 倍。丸が縮んでも字が丸からはみ出さない比率 */
   font-size: calc(var(--badge, 16px) * 0.625);
   line-height: 1;
