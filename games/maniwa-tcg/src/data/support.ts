@@ -227,6 +227,34 @@ export const ITEMS: readonly ItemCard[] = [
       { type: 'searchCreature' },
     ],
   },
+  {
+    id: 'i029', name: '軒轅剣', ruby: 'けんえんけん', kind: 'item', origin: 'china', rarity: 'ultra',
+    flavor: '黄帝が蚩尤を討ったときの剣。抜けば刃の光が後ろに控える者まで届き、構えた力を削ぎ落とす。',
+    // 神具の UR が無い系統は china / greece / india / mesopotamia の4つだった（2026-10-09 実測）。
+    // ここで china を埋める。既存カードとの関係では e011 黄帝EX の剣にあたる。
+    // **ダメージ効果を2つ持つ支援カードは0種だった**ので、ここで初めて作る。
+    // あわせて opponentBenchRandom は神具で1種しか使っていない最も薄い対象である
+    // （opponentActive 9 / ownActive 8 に対して1）。
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 35 },
+      { type: 'damage', target: 'opponentBenchRandom', value: 20 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
+  {
+    id: 'i030', name: '運命の粘土板', ruby: 'うんめいのねんどばん', kind: 'item', origin: 'mesopotamia', rarity: 'ultra',
+    flavor: '天の定めが刻まれた板。書き換えられた者は、立つ場所も蓄えた力も、気づかぬうちに入れ替わっている。',
+    // 同じく UR の空いていた mesopotamia に置く。w011 ティアマトEX が持ち、
+    // t009 マルドゥク が奪った板なので、既存カード2枚との関係で据わりがよい。
+    // switchOpponent + discardEnergy + draw を組むのは支援カードでは初
+    // （a026 ヘカの言葉 は switchOpponent + damage + discardEnergy、a018 七つの門 は
+    //  discardEnergy + switchOpponent の2つ）。
+    effects: [
+      { type: 'switchOpponent' },
+      { type: 'discardEnergy', target: 'opponentActive', value: 2 },
+      { type: 'draw', value: 3 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
