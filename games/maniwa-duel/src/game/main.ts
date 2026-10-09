@@ -13,7 +13,7 @@ import { DECKS } from '../data/decks.ts'
 import { greedyPolicy } from '../../tools/ai.ts'
 import type { CardId, Deck, GameState, PlayerId } from '../core/types.ts'
 import { HAND_LIMIT } from '../core/types.ts'
-import { renderDuel } from './view.ts'
+import { lastEvent, renderDuel } from './view.ts'
 import type { ViewHandlers, ViewModel } from './view.ts'
 import { load, save } from './storage.ts'
 import type { SaveData } from './storage.ts'
@@ -164,7 +164,12 @@ function buildViewModel(): ViewModel {
     msg = state.winner === HUMAN ? '勝ち！' : state.winner === null ? '引き分け' : '負け…'
     buttons.push({ label: 'もう一度', onTap: () => showTitle() })
   } else if (state.priority !== HUMAN) {
-    msg = msg === '' ? '相手の番です' : msg
+    /*
+     * 相手の番は「相手の番です」としか出ていなかった（SPEC 8.7）。
+     * **待っているあいだに何が起きたかを、そこに出すほうが素直である。**
+     * ぜんぶ見たいときは上部の「履」ボタンで履歴の幕を開く
+     */
+    msg = msg === '' ? (lastEvent(state, HUMAN) || '相手の番です') : msg
   } else if (state.pendingAttack !== null) {
     /*
      * チェーン（SPEC 11.1.8）。伏せカードを光らせ、2択を出す。

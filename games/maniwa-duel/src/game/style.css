@@ -162,6 +162,120 @@ body {
   color: var(--forest-dark);
 }
 
+/*
+ * 説明の行と履歴ボタン（SPEC 8.7）。
+ * 説明を伸ばし、ボタンは縮めない。タップ領域は 44px を割らない（CLAUDE.md 6章）
+ */
+.msgRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.msgRow > .message {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.histBtn {
+  flex: 0 0 auto;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 8px;
+  border: 2px solid var(--cream);
+  border-radius: 8px;
+  background: var(--forest-dark);
+  color: var(--cream);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/*
+ * 履歴の幕（SPEC 8.7）。**どこを押しても閉じる**（8.6 と同じ）。
+ * 新しいものが下なので、開いたときは一番下を見せる（JS 側で送る）。
+ */
+.history {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.history__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 360px;
+  max-height: 80vh;
+  padding: 12px;
+  border: 2px solid var(--cream);
+  border-radius: 10px;
+  background: var(--forest-dark);
+  color: var(--cream);
+}
+
+.history__title {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+}
+
+.history__list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ターンの区切り。帯にして、どこで変わったかを一目で分かるようにする */
+.history__turn {
+  position: sticky;
+  top: 0;
+  margin-top: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--forest-deep, #1d3d29);
+  font-size: 11px;
+  opacity: 0.95;
+}
+
+.history__row {
+  display: grid;
+  grid-template-columns: 2.6em 5.5em 1fr;
+  gap: 6px;
+  padding: 1px 2px;
+}
+
+/* 自分と相手を色で分ける。森緑の幕でどちらも読める（CLAUDE.md 6章） */
+.history__row--mine .history__who {
+  color: var(--cream);
+}
+
+.history__row--theirs .history__who {
+  color: #e8b98a;
+}
+
+.history__kind {
+  opacity: 0.85;
+}
+
+.history__detail {
+  word-break: break-word;
+}
+
+.history__empty {
+  margin: 0;
+  opacity: 0.8;
+}
+
 /* ---------------------------------------------------------------- 盤面 */
 
 /*
