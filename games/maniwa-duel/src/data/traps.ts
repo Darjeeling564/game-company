@@ -269,4 +269,35 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'revive' },
     ],
   },
+  {
+    id: 'a017', name: '星からの色', ruby: 'ほしからのいろ', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は damage opponentBenchRandom 40 + draw。控えという概念が無いので、
+    // 「畑の隅から順に、生きているものの色が抜けていく」を**相手の場全体から
+    // 力が抜ける**形にした。40×20 = 800 を場全体に散らすので -400 とする。
+    // **atkChange で opponentMonsterAll を指すのは罠で初**（attacker 3 / ownMonsterAll 1 だった）
+    flavor: '隕石とともに落ちてきた、名前のない色。畑の隅から順に、生きているものの色が抜けていく。',
+    origin: 'cthulhu', rarity: 'rare',
+    onActivate: [
+      { type: 'atkChange', target: 'opponentMonsterAll', value: -400 },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'a027', name: '天命', ruby: 'てんめい', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は gainEnergy + draw 2 + discardEnergy。エネルギーの2つが
+    // 意味を失うので、「天が王を選び直す。与えられていた力は静かに離れ、
+    // 別の手のひらへ移っていく」をそのまま**選び直し**として書いた。
+    // 相手の姫神1体が退き、こちらの墓地から1体が立つ。
+    // **destroy で opponentMonsterOne を指すのは罠で初**（attacker 2 /
+    // opponentMonsterAll 1 だった）。revive も罠では1種しかなかった
+    flavor: '天が王を選び直す。与えられていた力は静かに離れ、別の手のひらへ移っていく。',
+    origin: 'china', rarity: 'ultra',
+    onActivate: [
+      { type: 'destroy', target: 'opponentMonsterOne' },
+      { type: 'revive' },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]

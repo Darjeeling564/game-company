@@ -340,4 +340,31 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'lifeDamage', target: 'self', value: 400 },
     ],
   },
+  {
+    id: 'i015', name: '亀甲の卜', ruby: 'きっこうのぼく', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は coinFlip + draw。コイン判定が無いので、「罅で吉凶を読み、
+    // 王はこれに従って兵を出した」のうち**読んで備える**側を採った。
+    // **search の kind に trap を指すのは魔法で初**（monster 2 / spell 1 だった）
+    flavor: '亀の甲を焼き、生じた罅で吉凶を読む。王はこれに従って兵を出した。',
+    origin: 'china', rarity: 'rare',
+    onActivate: [
+      { type: 'search', kind: 'trap' },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'i018', name: '狂気の囁き', ruby: 'きょうきのささやき', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は damagePerHeads value20 count2（期待値20）。コインが無いので
+    // 期待値をそのまま固定ダメージにし、×20 で 400 にした（SPEC 6.1）。
+    // 「聞き取れた回数だけ正気が削れる」の削れるほうは手札落としで表す。
+    // discard は魔法で3種しかない薄い効果である
+    flavor: '深海の底で眠る者が漏らす寝言。意味を成さない音だが、聞き取れた回数だけ正気が削れる。',
+    origin: 'cthulhu', rarity: 'rare',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 400 },
+      { type: 'discard', target: 'opponent', value: 1 },
+    ],
+  },
 ]
