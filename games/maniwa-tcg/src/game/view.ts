@@ -20,7 +20,7 @@ import type {
 import { BENCH_SIZE, WEAKNESS_CHART, opponentOf, weaknessBonus } from '../core/types.ts'
 import { requireCard, requireCreature } from '../data/cards.ts'
 import { artStage, artUrl } from './art.ts'
-import { ORIGIN_STYLE, RARITY_STYLE, TYPE_COLOR, applyCardTheme } from './theme.ts'
+import { ORIGIN_STYLE, RARITY_STYLE, TYPE_COLOR, applyCardTheme, badgeInk } from './theme.ts'
 
 export const HUMAN: PlayerId = 0
 export const CPU: PlayerId = 1
@@ -195,6 +195,8 @@ function weakOf(type: EnergyType): string {
 function typeBadge(type: EnergyType, asCost = false): HTMLElement {
   const badge = el('span', 'badge', asCost ? costLabel(type) : energyLabel(type))
   badge.style.setProperty('--card-type', TYPE_COLOR[type])
+  // 明るい丸では白が読めない（SPEC 9.11）。文字色は丸の明るさから決める
+  badge.style.setProperty('--badge-ink', badgeInk(TYPE_COLOR[type]))
   return badge
 }
 
@@ -246,7 +248,9 @@ function kindBadge(kind: CardDef['kind']): HTMLElement {
     creature: '姫', item: '神', action: '道', ultimate: '絶',
   }
   const badge = el('span', 'badge', mark[kind])
-  badge.style.setProperty('--card-type', kind === 'ultimate' ? '#8e44ad' : '#4a5a66')
+  const kindColor = kind === 'ultimate' ? '#8e44ad' : '#4a5a66'
+  badge.style.setProperty('--card-type', kindColor)
+  badge.style.setProperty('--badge-ink', badgeInk(kindColor))
   return badge
 }
 
