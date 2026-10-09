@@ -175,6 +175,14 @@ let seed = SEED
 const firstWins = { win: 0, games: 0, draw: 0 }
 const deckWins = ACTIVE_DECKS.map(() => ({ win: 0, games: 0 }))
 const cardGames = new Map<string, number>()
+/**
+ * **デッキに入った試合数**（同名2枚でも1と数える）。`cardGames` が「出した試合数」なので、
+ * 2つの比が「デッキに入ったとき、実際に出せた割合」になる。
+ *
+ * 採用率（`cardGames / 試合数`）はプールが増えると薄まるが、**この比は薄まらない**。
+ * 絶技の見張り（SPEC 13.6）がこれを使う。
+ */
+const cardInDeck = new Map<string, number>()
 const cardWins = new Map<string, number>()
 
 /**
@@ -189,6 +197,8 @@ function runRound(decks: readonly Deck[], games: number, trackDecks: boolean): v
     for (let j = 0; j < decks.length; j += 1) rounds.push([i, j])
   }
   const per = Math.max(1, Math.floor(games / (rounds.length * 2)))
+  // デッキごとの重複なしのカードID。1試合ごとに数えるので、ここで1度だけ作る
+  const uniqueCards = decks.map((d) => [...new Set(d.cards)])
   for (const [i, j] of rounds) {
     for (const first of [0, 1] as PlayerId[]) {
       for (let g = 0; g < per; g += 1) {
@@ -205,6 +215,12 @@ function runRound(decks: readonly Deck[], games: number, trackDecks: boolean): v
           deckWins[j]!.games += 1
           if (r.winner === 0) deckWins[i]!.win += 1
           if (r.winner === 1) deckWins[j]!.win += 1
+        }
+
+        for (const side of [i, j]) {
+          for (const id of uniqueCards[side] as readonly string[]) {
+            cardInDeck.set(id, (cardInDeck.get(id) ?? 0) + 1)
+          }
         }
 
         for (const p of [0, 1] as PlayerId[]) {
@@ -345,16 +361,84 @@ if (POOL) {
 const deckCards = POOL
   ? new Set(ALL_CARDS.map((c) => c.id))
   : new Set(ACTIVE_DECKS.flatMap((d) => d.cards))
-const unused = [...deckCards].filter((id) => !cardGames.has(id))
+/**
+ * 絶技かどうか（`kind === 'spell'` かつ `form === 'art'`）。
+ * **プール抽選のときだけ、未使用判定から外す**（SPEC 13.6）。
+ */
+function isArt(id: string): boolean {
+  const c = findCard(id)
+  return c !== undefined && c !== null && c.kind === 'spell' && c.form === 'art'
+}
+
+const unused = [...deckCards]
+  .filter((id) => !cardGames.has(id))
+  .filter((id) => !(POOL && isArt(id)))
 /*
  * **対象は固定デッキに入っているカードだけである**（プール全体ではない）。
  * maniwa-tcg の `--decks=pool` にあたる検査は未実装（SPEC 13.2）。
  * 見出しに範囲を書いておかないと、pool の結果と読み違えられる。
+ *
+ * **プール抽選では絶技を外す。** 絶技は requires の姫神も同じ抽選で引けていないと
+ * 候補にならないため、プールが増えるほど採用率が薄まり、札の良し悪しとは無関係に
+ * 0 に落ちる（SPEC 13.6）。外した代わりに、すぐ下の見張りで1種ずつ見る。
  */
 console.log(POOL
-  ? `\n■ 一度も使われなかったカード（カードプール ${ALL_CARDS.length} 枚が対象）`
+  ? `\n■ 一度も使われなかったカード（カードプール ${ALL_CARDS.length} 枚のうち絶技を除く` +
+    `${ALL_CARDS.filter((c) => !isArt(c.id)).length} 枚が対象。絶技は下の見張りで見る）`
   : `\n■ 一度も使われなかったカード（固定デッキの ${deckCards.size} 枚が対象。プール全体ではない）`)
 if (unused.length === 0) console.log('  なし')
 else for (const id of unused) console.log(`  ★ ${id} ${findCard(id)?.name ?? ''}`)
+
+// --- 絶技の見張り（SPEC 13.6）
+/**
+ * 絶技を未使用判定から外したぶんの代わり。**採用率では見ない。**
+ *
+ * 採用率はプールの枚数で割られるので、カードを足すだけで下がる。
+ * 代わりに「デッキに入った試合のうち、実際に出せた割合」を見る。
+ * これはプールの枚数に依存しないので、**カードを足しても基準が動かない**。
+ */
+/**
+ * **止める条件は「出した回数が 0」だけ。** 絶技を未使用判定から外しても、
+ * 一度も出なかった絶技は依然として止める。数えかたを採用率から
+ * 「デッキに入った試合のうち出した試合」に変えただけで、基準は緩めていない。
+ */
+const ART_MIN_SAMPLES = 100
+/**
+ * 割合の下限は**記録のみ**。ここを割ったら報告するが、マージは止めない。
+ * 「一度も出ない」は札が死んでいる証拠だが、「出にくい」は強さの話であって、
+ * 強さの数値は報告のみと決まっている（CLAUDE.md 5章）。
+ */
+const ART_FLOOR = 5.0
+
+if (POOL) {
+  console.log('\n■ 絶技の見張り（デッキ入り / 出した / 出せた割合。SPEC 13.6）')
+  const arts = ALL_CARDS.filter((c) => isArt(c.id))
+  let dead = 0
+  let low = 0
+  for (const c of arts) {
+    const inDeck = cardInDeck.get(c.id) ?? 0
+    const played = cardGames.get(c.id) ?? 0
+    const rate = inDeck === 0 ? 0 : (played / inDeck) * 100
+    let verdict: string
+    if (inDeck < ART_MIN_SAMPLES) {
+      verdict = `標本不足（デッキ入り ${ART_MIN_SAMPLES} 試合未満。抽選側の問題）`
+      dead += 1
+    } else if (played === 0) {
+      verdict = '★ 一度も出ていない'
+      dead += 1
+    } else if (rate < ART_FLOOR) {
+      verdict = `低率（${ART_FLOOR}%未満。記録のみ）`
+      low += 1
+    } else {
+      verdict = 'OK'
+    }
+    console.log(`  ${c.id} ${pad(c.name, 11)} ${String(inDeck).padStart(6)} / ` +
+      `${String(played).padStart(6)} / ${rate.toFixed(1).padStart(5)}%  ${verdict}`)
+  }
+  console.log(dead === 0
+    ? `  判定: 一度も出ていない絶技は なし（${arts.length} 種）`
+    : `  判定: ${arts.length} 種のうち ${dead} 種が一度も出ていない`)
+  if (low > 0) console.log(`  記録: ${low} 種が ${ART_FLOOR}% 未満（マージは止めない）`)
+}
 
 console.log('')
