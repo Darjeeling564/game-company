@@ -300,4 +300,32 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'a016', name: 'イシュタルの門', ruby: 'イシュタルのもん', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は damage opponentBenchRandom 30。控えという概念が無いので
+    // ライフへ移し、×20 で 600 にした（SPEC 6.1）。
+    // 「くぐるたび、身に着けた物をひとつずつ奪われる」は手札落としで表す
+    flavor: '冥界へ下る七つの門。くぐるたび、身に着けた物をひとつずつ奪われる。',
+    origin: 'mesopotamia', rarity: 'common',
+    onActivate: [
+      { type: 'discard', target: 'opponent', value: 1 },
+      { type: 'lifeDamage', target: 'opponent', value: 600 },
+    ],
+  },
+  {
+    id: 'a028', name: '星辰正しき刻', ruby: 'せいしんただしきとき', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は damage opponentBenchAll 25 + applyStatus + draw。
+    // 控えも状態異常も無いので、「囁きは意味を持ちはじめ、控えていた者まで
+    // 巻き込んでいく」の**控えていた者**を墓地の姫神と読み替えた。
+    // **revive は罠に2種しか無かった**。u006 星辰再臨 と同じ星辰の並びの札である
+    flavor: '星が正しい位置に戻る刻。囁きは意味を持ちはじめ、控えていた者まで巻き込んでいく。',
+    origin: 'cthulhu', rarity: 'ultra',
+    onActivate: [
+      { type: 'revive' },
+      { type: 'lifeDamage', target: 'opponent', value: 400 },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]

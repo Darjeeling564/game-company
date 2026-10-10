@@ -367,4 +367,33 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'discard', target: 'opponent', value: 1 },
     ],
   },
+  {
+    id: 'i005', name: '護符の紐', ruby: 'ごふのひも', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は attachEnergy。エネルギーが無いので、「結び目のひとつひとつが
+    // 力を宿す」の**結び目の数だけ力が乗る**ほうを採り、場の全員に乗せる形にした。
+    // **atkChange で ownMonsterAll を指すのは魔法で初**
+    // （opponentMonsterOne / opponentMonsterAll / ownMonsterOne はあった）。
+    // 祈りの紐なので、自分のライフも少し戻る
+    flavor: '手首に結ぶ祈りの紐。結び目のひとつひとつが力を宿す。',
+    origin: 'india', rarity: 'superRare',
+    onActivate: [
+      { type: 'atkChange', target: 'ownMonsterAll', value: 400 },
+      { type: 'lifeHeal', target: 'self', value: 400 },
+    ],
+  },
+  {
+    id: 'i025', name: '九鼎', ruby: 'きゅうてい', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は gainEnergy + draw + searchCreature。エネルギーが意味を失うので、
+    // 「天下が定まったことの証し」のほうを採った。鼎が据わると場が動かなくなる。
+    // **position は魔法に1種しか無かった**（opponentMonsterOne を守備にするもの）。
+    // ここで場全体に広げる
+    flavor: '禹が九州の金を集めて鋳た九つの鼎。王朝が移るたびに運ばれ、天下が定まったことの証しとされた。',
+    origin: 'china', rarity: 'superRare',
+    onActivate: [
+      { type: 'position', target: 'opponentMonsterAll', position: 'defense' },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]
