@@ -566,6 +566,48 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'draw', value: 3 },
     ],
   },
+  {
+    id: 'a031', name: 'ティタノマキア', kind: 'action',
+    origin: 'greece', rarity: 'ultra',
+    flavor: 'ティタン神族と十年を争った戦。天も地も割れ、勝った側も無傷では済まなかった。',
+    /*
+     * 道標の UR が無い系統は greece と norse の2つだけだった（2026-10-11 実測。
+     * 2026-10-03 に mesopotamia と japan を埋めた残り）。ここで greece を埋める。
+     *
+     * **ダメージを2つ持つ道標は初めてである**（支援カード全体でも i029 軒轅剣 に次いで2種目）。
+     * あわせて `selfDamage` は道標に a011 犠牲の契約 の1種しかない薄い効果で、
+     * `damage + damage + selfDamage` の組は支援カード全体で初になる。
+     * 十年の戦なので、場の全員を巻き込み、こちらも削れる形がそのまま合う。
+     *
+     * 評価値は 40 + 20×1.5 − 15 = 55 → 総合力 198.0。UR の帯の中
+     * （既存の UR 道標は 198.0〜252.0）。
+     */
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 40 },
+      { type: 'damage', target: 'opponentBenchAll', value: 20 },
+      { type: 'selfDamage', value: 15 },
+    ],
+  },
+  {
+    id: 'a032', name: 'ラグナロク', kind: 'action',
+    origin: 'norse', rarity: 'ultra',
+    flavor: '神々と巨人が相討ちに果てる終わりの日。焼けた大地から、新しい芽がふたたび伸びる。',
+    /*
+     * 同じく UR の空いていた norse に置く。**a023 ギャラルホルン（終末を告げる角笛）が
+     * 鳴ったあとに来る出来事**なので、既存カードとの関係でも据わりがよい。
+     *
+     * 「終わり」と「再生」を両方持たせる。`ownBenchAll` は道標で3種しか使っていない
+     * 薄い対象で、`damage opponentBenchAll + heal ownBenchAll + draw` の組は初。
+     *
+     * **回復20はダメージ25より小さい**（SPEC 8.2）。
+     * 評価値は 25×1.5 + 20×0.4 + 2×5 = 55.5 → 総合力 199.8。
+     */
+    effects: [
+      { type: 'damage', target: 'opponentBenchAll', value: 25 },
+      { type: 'heal', target: 'ownBenchAll', value: 20 },
+      { type: 'draw', value: 2 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
