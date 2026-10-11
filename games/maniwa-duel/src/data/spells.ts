@@ -367,4 +367,30 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'discard', target: 'opponent', value: 1 },
     ],
   },
+  {
+    id: 'i008', name: '星辰の羅針', ruby: 'せいしんのらしん', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は draw + gainEnergy。エネルギーが無いので、
+    // 「指す先を見た者は帰らない」のほうを骨格に採った。針が指した姫神は帰らない。
+    // **destroy は魔法に2種しかない薄い効果である。**
+    // 覗いた側も無事では済まないので、自分のライフを 200 払う
+    flavor: '星の位置が正しいときだけ針が動く。指す先を見た者は帰らない。',
+    origin: 'cthulhu', rarity: 'superRare',
+    onActivate: [
+      { type: 'destroy', target: 'opponentMonsterOne' },
+      { type: 'lifeDamage', target: 'self', value: 200 },
+    ],
+  },
+  {
+    id: 'i017', name: '筊杯', ruby: 'きょうはい', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は coinFlip（gainEnergy）+ draw。コイン判定が無いので、
+    // 「神意を問い、吉と出た者にだけ力が下りる」の**問うて引き当てる**側を採った
+    flavor: '神前に投げる三日月形の木片。表と裏の出方で神意を問い、吉と出た者にだけ力が下りる。',
+    origin: 'china', rarity: 'rare',
+    onActivate: [
+      { type: 'search', kind: 'monster' },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]

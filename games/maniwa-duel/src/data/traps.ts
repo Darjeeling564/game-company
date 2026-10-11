@@ -300,4 +300,30 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'a011', name: '犠牲の契約', ruby: 'ぎせいのけいやく', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は selfDamage 20 + draw 3。自傷はライフへそのまま移せるので、
+    // ×20 で 400 にしただけである（SPEC 6.1）。骨格は元のまま
+    flavor: '正気と引き換えに知識を得る契約。署名の墨は、いつも赤い。',
+    origin: 'cthulhu', rarity: 'common',
+    onActivate: [
+      { type: 'lifeDamage', target: 'self', value: 400 },
+      { type: 'draw', value: 3 },
+    ],
+  },
+  {
+    id: 'a021', name: '星辰の囁き', ruby: 'せいしんのささやき', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は draw 2 + applyStatus（どく）。状態異常が無いので、
+    // 「囁きは誰にでも聞こえる。ただし意味は分からない」の**分からない**ほうを
+    // 手札を1枚手放す形にした。
+    // **discard の target に self を指すのは初**（魔法・罠とも opponent しか無かった）
+    flavor: '星が正しい位置に並ぶ夜、囁きは誰にでも聞こえる。ただし意味は分からない。',
+    origin: 'cthulhu', rarity: 'rare',
+    onActivate: [
+      { type: 'draw', value: 2 },
+      { type: 'discard', target: 'self', value: 1 },
+    ],
+  },
 ]
