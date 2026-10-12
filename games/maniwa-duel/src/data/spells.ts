@@ -393,4 +393,57 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'u007', name: '天岩戸開', ruby: 'あまのいわとびらき', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'l001',
+    // maniwa-tcg は damage 100 + draw 2。打点はライフへ移して ×20（SPEC 6.1）。
+    // 「隠れていたものがすべて見える」は **position を 'attack' にする**のがそのまま合う。
+    // effects.ts の position は裏側のモンスターを表にしてから向きを変えるので、
+    // 伏せた札が全部めくれる。**position に 'attack' を指すのは初**（既存はすべて 'defense'）
+    flavor: '閉ざされた岩戸が開き、世界に光が戻る。隠れていたものがすべて見える。',
+    origin: 'japan', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 1800 },
+      { type: 'position', target: 'opponentMonsterAll', position: 'attack' },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'u012', name: '九歩の雷', ruby: 'きゅうほのいかずち', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 't004',
+    // maniwa-tcg は damage 90 + selfDamage 10。どちらもライフへそのまま移せるので
+    // ×20 しただけである。「返り血の毒を浴び、九歩あゆんで倒れる」が自傷にあたる
+    flavor: '大蛇の頭を砕いた槌。返り血の毒を浴び、九歩あゆんで倒れると知りながら振るう。',
+    origin: 'norse', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 1800 },
+      { type: 'lifeDamage', target: 'self', value: 200 },
+    ],
+  },
+  {
+    id: 'u013', name: '五色の石', ruby: 'ごしきのいし', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'e009',
+    // maniwa-tcg は damage 80 + heal self 20。姫神への回復はライフの回復に移る。
+    // 「世界が繕われるあいだ、己の傷もまた閉じていく」がそのまま残る
+    flavor: '崩れた天の裂け目を、練り上げた五色の石で塞ぐ。世界が繕われるあいだ、己の傷もまた閉じていく。',
+    origin: 'china', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 1600 },
+      { type: 'lifeHeal', target: 'self', value: 400 },
+    ],
+  },
+  {
+    id: 'u020', name: '終わりなき夜', ruby: 'おわりなきよる', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'd010',
+    // maniwa-tcg は damage 75 + damagePerHeads 20×3（期待値30）。コイン判定が無いので
+    // 期待値を足した 105 を ×20 して 2100 にした（SPEC 6.1）。
+    // 「斬られても翌日にはまた地平へ戻り、夜ごと同じ戦いが繰り返される」は
+    // **墓地から戻す**のがそのまま合う。revive は魔法に3種しかない薄い効果でもある
+    flavor: '日輪の船を待ち伏せる大蛇。斬られても翌日にはまた地平へ戻り、夜ごと同じ戦いが繰り返される。',
+    origin: 'egypt', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2100 },
+      { type: 'revive' },
+    ],
+  },
 ]
