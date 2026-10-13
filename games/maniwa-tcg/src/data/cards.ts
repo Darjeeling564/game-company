@@ -1060,6 +1060,35 @@ const DARK: readonly CreatureCard[] = [
         ] },
     ],
   },
+  /*
+   * --------------------------------- 2026-10-13 追加（夜間ジョブ A の夜）
+   *
+   * **姫神の UR が1体も居ない系統は egypt と india の2つだけだった**
+   * （2026-10-13 実測。どちらも11体いて UR が0）。ここで egypt を埋める。
+   *
+   * 属性は やみ。UR の属性別は ひかり2 / つち2 / みず2 に対し
+   * やみ・ほのお・もり・いかずち・かぜ は1ずつで、薄いほうに置いた。
+   * 系統の相方は d010 アペプ（同じ egypt のやみ）で、冥界つながりになる。
+   *
+   * **EX を1体足すと、次の絶技の候補も1体増える。** 今夜の実測では
+   * 絶技を付けられる姫神（無属性を除き、最強ワザがコスト3で未割当）が
+   * **s003 の1体しか残っていなかった。** このカードで2体目を作る。
+   */
+  {
+    id: 'd011', name: 'アヌビスEX', kind: 'creature',
+    flavor: '冥界の秤を司る山犬の神。心臓を羽根と釣り合わせ、傾いたぶんだけ喰らう。',
+    origin: 'egypt', rarity: 'ultra',
+    type: 'dark', hp: 160, ex: true, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '秤にかける', ruby: 'はかりにかける', cost: ['dark', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
+      { name: '冥界の審判', ruby: 'めいかいのしんぱん', cost: ['dark', 'dark', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 100 },
+          { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 無
