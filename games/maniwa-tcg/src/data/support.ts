@@ -906,4 +906,26 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'damage', target: 'opponentBenchRandom', value: 30 },
     ],
   },
+  {
+    id: 'u025', name: '千匹の仔', ruby: 'せんびきのこ', kind: 'ultimate',
+    origin: 'cthulhu', rarity: 'ultra', requires: 's003',
+    flavor: '黒山羊の胎から仔が溢れ、森の底を埋め尽くす。踏み分けて進む隙間は、もうどこにも無い。',
+    cost: ['forest', 'forest', 'colorless'],
+    effects: [
+      /*
+       * **絶技を付けられる姫神は、今夜の実測で s003 の1体しか残っていなかった**
+       * （無属性を除き、最強ワザがコスト3で、まだ絶技が割り当てられていない姫神）。
+       * ここを埋めると、残りは0体になる。
+       *
+       * シュブニグラスの最強ワザ「黒き牝山羊」は 70 / コスト3 ＝ 効率 23.33。
+       * ここを 85 / 3 ＝ 28.33 にして比 **1.214** に置く（SPEC 16.5.1 の 1.05〜1.30）。
+       *
+       * 「千匹の仔」なので**的は前も控えも**になる。素の「黒き牝山羊」が
+       * バトル場だけを殴る形だったのに対し、仔が溢れて場を埋める側に広げた。
+       * 70 + 10×1.5 ＝ 85。
+       */
+      { type: 'damage', target: 'opponentActive', value: 70 },
+      { type: 'damage', target: 'opponentBenchAll', value: 10 },
+    ],
+  },
 ]

@@ -446,4 +446,52 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'revive' },
     ],
   },
+  {
+    id: 'u009', name: '光芒一閃', ruby: 'こうぼういっせん', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'l009',
+    // maniwa-tcg は damage 120 + discardEnergy。打点はライフへ移して ×20。
+    // エネルギーが無いので、剥がしは手札落としに置き換える（i018 と同じ扱い）
+    flavor: '影が追いつくより先に、光は直線を抜けきっている。並んだ者はもう見えない。',
+    origin: 'original', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2400 },
+      { type: 'discard', target: 'opponent', value: 1 },
+    ],
+  },
+  {
+    id: 'u015', name: 'アメン＝ラーの顕現', ruby: 'アメン＝ラーのけんげん', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'k009',
+    // maniwa-tcg は damage 100 のみ。×20 してライフへ移すだけで形が変わらない
+    flavor: '隠れていた風が姿を現し、王として立つ。名を知られた瞬間、その息はすべてを薙ぎ払う。',
+    origin: 'egypt', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2000 },
+    ],
+  },
+  {
+    id: 'u021', name: '指南車', ruby: 'しなんしゃ', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'e011',
+    // maniwa-tcg は switchOpponent + damage 100。入れ替えという概念が無いので、
+    // 「隠れた者は引きずり出され、帝の正面に立たされる」を
+    // **1体だけ表の攻撃表示にする**形にした。
+    // **position で opponentMonsterOne に 'attack' を指すのは初**
+    // （既存は opponentMonsterOne/defense・opponentMonsterAll/attack・attacker/defense）
+    flavor: '霧に巻かれても南を指しつづける車。隠れた者は引きずり出され、帝の正面に立たされる。',
+    origin: 'china', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2000 },
+      { type: 'position', target: 'opponentMonsterOne', position: 'attack' },
+    ],
+  },
+  {
+    id: 'u022', name: '原初の海', ruby: 'げんしょのうみ', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'w011',
+    // maniwa-tcg は damage 90 + damage opponentBenchAll 20。控えが無いので、
+    // 控えへのぶんを期待値どおり足して 90 + 20×1.5 = 120 とし、×20 して 2400 にした
+    flavor: '真水と塩水が分かれる前の海。すべてはここから生まれ、呑まれれば元のひとつに戻る。',
+    origin: 'mesopotamia', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2400 },
+    ],
+  },
 ]
