@@ -494,4 +494,60 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'lifeDamage', target: 'opponent', value: 2400 },
     ],
   },
+  {
+    id: 'u003', name: '黄の印', ruby: 'きいろのしるし', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'k006',
+    // maniwa-tcg は damage 120 + discardEnergy 1。エネルギーが無いので剥がしは意味を失う。
+    // 「読めた者から崩れていく」を姫神1体の破壊に移した。u011 焼き払う剣が
+    // 同じ damage + discardEnergy を lifeDamage + destroy に移した先例に合わせ、
+    // 破壊のぶんライフを 2400 → 2000 に落としてある。
+    // **discardEnergy を discard（手札破壊）に移すと u009 光芒一閃 と効果が1バイト違わず重なる**
+    flavor: '風がかたちを変え、見てはならない印を空に描く。読めた者から崩れていく。',
+    origin: 'cthulhu', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2000 },
+      { type: 'destroy', target: 'opponentMonsterOne' },
+    ],
+  },
+  {
+    id: 'u004', name: '地底の眠り', ruby: 'ちていのねむり', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'e008',
+    // maniwa-tcg は damage 100 + damage opponentBenchAll 10。控えが無いので、
+    // 控えへのぶんを「泥に沈んで動きが鈍る」= 相手全体の攻撃力低下に移した。
+    // **単体寄り**（100 / 控え10）の配分をそのまま保つため、ライフは ×20 の 2000 を据え置き、
+    // 全体への弱体は u014 四方の風（全体寄り）より小さい -400 にしてある
+    flavor: '黒い泥が洞窟から溢れ出す。沈んだものは二度と形を取り戻さない。',
+    origin: 'cthulhu', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2000 },
+      { type: 'atkChange', target: 'opponentMonsterAll', value: -400 },
+    ],
+  },
+  {
+    id: 'u008', name: '這い寄る混沌', ruby: 'はいよるこんとん', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 'd001',
+    // maniwa-tcg は damage 100 + applyStatus poisoned。毒が無いので、
+    // 「千の貌のどれが本物か」を**相手全体を守備表示に倒す**形に移した。
+    // 毒を atkChange に移す先例（i013 / a020）もあるが、それだと u004 地底の眠り と
+    // 同じ形になる。貌が入れ替わる札なので position のほうが素直である
+    flavor: '千の貌のどれが本物か、誰も言い当てられない。答えを探した者から壊れる。',
+    origin: 'cthulhu', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 2000 },
+      { type: 'position', target: 'opponentMonsterAll', position: 'defense' },
+    ],
+  },
+  {
+    id: 'u014', name: '四方の風', ruby: 'しほうのかぜ', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 't009',
+    // maniwa-tcg は damage 70 + damage opponentBenchAll 15。**全体寄り**の配分なので、
+    // ライフは ×20 の 1400 に留め、四方の風が全体を縛るぶんを -600 に寄せた。
+    // u004 地底の眠り（単体寄り・2000 / -400）と逆の重みづけで、元の配分を保っている
+    flavor: '四方から呼んだ風で大蛇の腹を膨らませ、動けなくしてから射抜く。裂けた体は天と地に分けられた。',
+    origin: 'mesopotamia', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 1400 },
+      { type: 'atkChange', target: 'opponentMonsterAll', value: -600 },
+    ],
+  },
 ]
