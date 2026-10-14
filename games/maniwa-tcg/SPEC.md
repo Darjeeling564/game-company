@@ -3366,3 +3366,59 @@ CLAUDE.md 6章のコントラスト 4.5:1 は毎晩測っているが、**ずっ
 
 **「親に絵がある」だけで除外しない。** 要素自身の背景が不透明ならそこで止めて測る。
 絵に行き当たるのが先だったときだけ測定不能とする。
+
+#### 9.4.20 動きを減らす設定は、詳細度で負けると効かない
+
+**状態: 確定（2026-10-14 実測）**
+
+`@media (prefers-reduced-motion: reduce)` のブロックに `animation: none` を書いても、
+**その宣言より詳細度の高い規則が別の場所にあると負ける。** メディアクエリは詳細度を
+上げないので、`@media` の中にあることは勝敗に一切関係しない。
+
+このリポジトリで実際に起きていた形はこれである。
+
+```css
+/* 宣言のほう（詳細度 0-2-0） */
+.side--human .card--lunge { animation: lungeUp 0.42s ...; }
+
+/* 打ち消しのほう（詳細度 0-1-0）。@media の中にあっても負ける */
+@media (prefers-reduced-motion: reduce) {
+  .card--lunge { animation: none; }
+}
+```
+
+##### 実測（390×844 / 実機の盤に一時的にクラスを足し、同じ evaluate の中で計算後の値を読んだ）
+
+| クラス | reduce なし | **reduce あり（直す前）** | 直した後 |
+|---|---|---|---|
+| `card--lunge` | lungeUp / lungeDown | **lungeUp / lungeDown** | none |
+| `card--swap-in` | swapInUp / swapInDown | **swapInUp / swapInDown** | none |
+| `card--swap-out` | swapOutDown / swapOutUp | **swapOutDown / swapOutUp** | none |
+| `card--hit` + `card--lunge` | cardHit, lungeUp | **cardHit, lungeUp** | none |
+| `card--drained` + `card--swap-in` | cardDrain, swapInUp | **cardDrain, swapInUp** | none |
+| `card--hit` + `card--swap-out` | cardHit, swapOutDown | **cardHit, swapOutDown** | none |
+| `drift__card`（タイトル） | driftUp **infinite** | **driftUp infinite** | none |
+| `card--hit` 単体 | cardHit | none | none |
+| `card--enter` / `card--draw` | cardPlace / cardDraw | none | none |
+
+**`card--hit` 単体と `card--enter` / `card--draw` は効いていた。**
+前者は打ち消しも宣言も `.card--hit`（0-1-0）で同じ詳細度、後者は 9.4.18 で
+`:not(.card--attachable)` を付けたときに偶然 0-2-0 になっていたためである。
+**効いているものと効いていないものが混ざっていたので、気付きにくかった。**
+
+##### 決まり
+
+**打ち消しは、宣言と同じセレクタの形で書く。** `.side--human` / `.side--cpu` を
+付けて宣言しているものは、打ち消しにも付ける。
+
+**情報は失われない。** 踏み込み（lunge）と入れ替え（swap）が伝えるのは
+「**自分が何をしたか**」であって、「自分に何が起きたか」ではない。
+2026-09-26 に `lunge + faint` で**残すのはきぜつのほう**と決めたのと同じ理由である。
+入れ替えは札の位置そのものが動くので、動かさなくても結果は見える。
+
+##### この種の誤りの見つけ方
+
+**`animation: none` が書いてあることを確かめるだけでは足りない。**
+`prefers-reduced-motion: reduce` を有効にした実機で、**計算後の `animationName` を読む**。
+文字列として CSS を検査すると、より詳細度の高い変種を見落とす
+（2026-10-14 に文字列検査では20件と出たが、実機で効いていなかったのは8件だった）。
