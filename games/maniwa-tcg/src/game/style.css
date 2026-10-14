@@ -3008,3 +3008,52 @@ body {
     outline-offset: 4px;
   }
 }
+
+/*
+ * 動きを減らす設定で**効いていなかった**打ち消しを、詳細度を合わせて書き直す（SPEC 9.4.20）。
+ *
+ * 上の reduce ブロックには `.card--lunge` や `.card--swap-in` が並んでいるが、
+ * 実際の宣言は `.side--human .card--lunge`（詳細度 0-2-0）のほうにあるので、
+ * **0-1-0 の打ち消しは負けていた。** メディアクエリは詳細度を上げないので、
+ * `@media` の中にあることは勝敗に関係しない。
+ *
+ * 2026-10-14 に実機（390×844）で計算後の `animationName` を読んで確かめた。
+ * reduce を有効にしても lungeUp / swapInUp / swapOutDown などがそのまま走っていて、
+ * `.drift__card` にいたっては **infinite** のまま回りつづけていた（タイトルの12枚）。
+ *
+ * **上のブロックは1行も消していない。** 詳細度で勝つ規則をここに足すだけにする。
+ *
+ * 踏み込みと入れ替えを消しても情報は失われない。これらが伝えるのは
+ * 「自分が何をしたか」であって「自分に何が起きたか」ではなく、
+ * 2026-09-26 に `lunge + faint` で**きぜつのほうを残す**と決めたのと同じ理由である。
+ * 入れ替えは札の位置そのものが動くので、動かさなくても結果は見える。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .side--human .card--lunge,
+  .side--cpu .card--lunge,
+  .side--human .card--swap-in,
+  .side--cpu .card--swap-in,
+  .side--human .card--swap-out,
+  .side--cpu .card--swap-out,
+  .side--human .card--hit.card--lunge,
+  .side--cpu .card--hit.card--lunge,
+  .side--human .card--hit.card--swap-in,
+  .side--cpu .card--hit.card--swap-in,
+  .side--human .card--hit.card--swap-out,
+  .side--cpu .card--hit.card--swap-out,
+  .side--human .card--drained.card--swap-in,
+  .side--cpu .card--drained.card--swap-in,
+  .side--human .card--drained.card--swap-out,
+  .side--cpu .card--drained.card--swap-out {
+    animation: none;
+  }
+
+  /*
+   * タイトルの漂う札。**唯一 infinite の演出**なので、動きを減らす設定では
+   * 止まらないまま回りつづけていた。止めても札は同じ位置に出たままで、
+   * タイトルの絵としての役目は変わらない。
+   */
+  .drift__card {
+    animation: none;
+  }
+}
