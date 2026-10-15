@@ -326,4 +326,45 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'discard', target: 'self', value: 1 },
     ],
   },
+  {
+    id: 'a030', name: '大祓', ruby: 'おおはらえ', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は heal ownBenchAll 40 + heal ownActive 40 + draw 3。
+    // ライフは1つしか無いので、前衛と控えへの回復は同じところに向く。
+    // **二重に足さない。** a015 死者の書 が heal ownBenchAll 30 を lifeHeal 600 に
+    // 移した先例にならい、1体あたりの値 40 を ×20 して 800 にした
+    flavor: '半年ぶんの穢れを川に流す神事。負うた傷も、負わせた咎も、水に溶けて海へ下る。',
+    origin: 'japan', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeHeal', target: 'self', value: 800 },
+      { type: 'draw', value: 3 },
+    ],
+  },
+  {
+    id: 'a031', name: 'ティタノマキア', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は damage 40 + damage opponentBenchAll 20 + selfDamage 15。
+    // 控えへのぶんを前衛ぶんに足して 60 とし、×20 して 1200。
+    // 「勝った側も無傷では済まなかった」を自分のライフへの 300 に移した
+    flavor: 'ティタン神族と十年を争った戦。天も地も割れ、勝った側も無傷では済まなかった。',
+    origin: 'greece', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 1200 },
+      { type: 'lifeDamage', target: 'self', value: 300 },
+    ],
+  },
+  {
+    id: 'a032', name: 'ラグナロク', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は damage opponentBenchAll 25 + heal ownBenchAll 20 + draw 2。
+    // 控えが無いのでどちらもライフに向く（25×20 = 500 / 20×20 = 400）。
+    // 「焼けた大地から、新しい芽がふたたび伸びる」の順に効果を並べてある
+    flavor: '神々と巨人が相討ちに果てる終わりの日。焼けた大地から、新しい芽がふたたび伸びる。',
+    origin: 'norse', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 500 },
+      { type: 'lifeHeal', target: 'self', value: 400 },
+      { type: 'draw', value: 2 },
+    ],
+  },
 ]

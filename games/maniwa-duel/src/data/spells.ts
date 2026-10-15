@@ -550,4 +550,17 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'atkChange', target: 'opponentMonsterAll', value: -600 },
     ],
   },
+  {
+    id: 'u025', name: '千匹の仔', ruby: 'せんびきのこ', kind: 'spell',
+    spellType: 'normal', form: 'art', requires: 's003',
+    // maniwa-tcg は damage 70 + damage opponentBenchAll 10。控えが無いので、
+    // 控えへのぶんを期待値どおり足して 70 + 10×1.5 = 85 とし、×20 して 1700 にした
+    // （u022 原初の海 と同じ足し方）。森の底を埋め尽くす札なので、逃げ場をなくす形で
+    // ライフに一度に通す
+    flavor: '黒山羊の胎から仔が溢れ、森の底を埋め尽くす。踏み分けて進む隙間は、もうどこにも無い。',
+    origin: 'cthulhu', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 1700 },
+    ],
+  },
 ]
