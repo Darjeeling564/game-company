@@ -278,6 +278,18 @@ const FOREST: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
     ],
   },
+  {
+    id: 's010', name: '句芒EX', ruby: 'こうぼうEX', kind: 'creature',
+    flavor: '東方をつかさどる木の神。鳥の体に人の面を持ち、春が来るたびに草木の芽を押し上げる。',
+    origin: 'china', rarity: 'ultra',
+    type: 'forest', hp: 170, ex: true, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '芽吹きの杖', ruby: 'めぶきのつえ', cost: ['forest', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 50 }, { type: 'heal', target: 'self', value: 10 }] },
+      { name: '東方の春', ruby: 'とうほうのはる', cost: ['forest', 'forest', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 100 }, { type: 'searchCreature' }] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 風
@@ -665,6 +677,18 @@ const THUNDER: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 30 }, { type: 'discardEnergy', target: 'opponentActive', value: 1 }] },
       { name: '五十の名', ruby: 'ごじゅうのな', cost: ['thunder', 'thunder', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 80 }] },
+    ],
+  },
+  {
+    id: 't010', name: 'アンズーEX', kind: 'creature',
+    flavor: '獅子の頭を持つ嵐の巨鳥。天命の粘土板を攫って山へ去り、空を暗く塗りつぶした。',
+    origin: 'mesopotamia', rarity: 'ultra',
+    type: 'thunder', hp: 170, ex: true, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '嵐の翼', ruby: 'あらしのつばさ', cost: ['thunder', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
+      { name: '天命を攫う', ruby: 'てんめいをさらう', cost: ['thunder', 'thunder', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 90 }, { type: 'switchOpponent' }] },
     ],
   },
 ]
