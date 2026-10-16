@@ -1,0 +1,157 @@
+{
+ "finished": 30,
+ "steps": 5422,
+ "lastState": null,
+ "seen": [
+  [
+   "card--attachable",
+   1211
+  ],
+  [
+   "card--wounded",
+   577
+  ],
+  [
+   "card--enter",
+   347
+  ],
+  [
+   "card--hit",
+   246
+  ],
+  [
+   "card__pop",
+   246
+  ],
+  [
+   "card--draw",
+   239
+  ],
+  [
+   "card--charged",
+   228
+  ],
+  [
+   "card--lunge",
+   188
+  ],
+  [
+   "points__pip--gain",
+   88
+  ],
+  [
+   "card--faint",
+   87
+  ],
+  [
+   "card--drained",
+   22
+  ],
+  [
+   "card--swap-in",
+   9
+  ],
+  [
+   "card--swap-out",
+   9
+  ],
+  [
+   "card--envenom",
+   8
+  ],
+  [
+   "card--weak",
+   4
+  ],
+  [
+   "card--ultimate",
+   3
+  ]
+ ],
+ "pairs": [
+  [
+   "card--attachable + card--wounded",
+   157
+  ],
+  [
+   "card--attachable + card--enter",
+   126
+  ],
+  [
+   "card--attachable + card--hit",
+   111
+  ],
+  [
+   "card--hit + card--wounded",
+   105
+  ],
+  [
+   "card--faint + card--wounded",
+   67
+  ],
+  [
+   "card--lunge + card--wounded",
+   29
+  ],
+  [
+   "card--attachable + card--charged",
+   22
+  ],
+  [
+   "card--charged + card--wounded",
+   15
+  ],
+  [
+   "card--hit + card--lunge",
+   14
+  ],
+  [
+   "card--drained + card--wounded",
+   5
+  ],
+  [
+   "card--swap-out + card--wounded",
+   4
+  ],
+  [
+   "card--envenom + card--hit",
+   4
+  ],
+  [
+   "card--hit + card--weak",
+   4
+  ],
+  [
+   "card--attachable + card--drained",
+   3
+  ],
+  [
+   "card--drained + card--hit",
+   3
+  ],
+  [
+   "card--envenom + card--wounded",
+   3
+  ],
+  [
+   "card--weak + card--wounded",
+   2
+  ],
+  [
+   "card--drained + card--swap-out",
+   1
+  ],
+  [
+   "card--faint + card--lunge",
+   1
+  ],
+  [
+   "card--attachable + card--weak",
+   1
+  ],
+  [
+   "card--hit + card--swap-in",
+   1
+  ]
+ ]
+}
