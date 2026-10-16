@@ -3057,3 +3057,72 @@ body {
     animation: none;
   }
 }
+
+/*
+ * 「押せる場所」の点滅を、他の演出に消させない（SPEC 9.4.21）。
+ *
+ * `.card--attachable` の `attachPulse` は**エネルギーを置ける先**を示す無限の点滅で、
+ * 消えると「どこを押せるか」が分からなくなる。一回だけ出る演出とは役割が違う。
+ *
+ * 30試合・5422手の実測で、同時に乗った21組のうち**取り合っていたのは5組**。
+ * うち4組が attachPulse を失う同じ形で、**合わせて262回**起きていた。
+ *   card--enter 126 / card--hit 111 / card--charged 22 / card--drained 3
+ * （残り1組 card--faint + card--lunge は 9.4.16 の意図どおりなので触らない）
+ *
+ * **既存の規則は1つも書き換えていない。** 詳細度の高い組み合わせ規則を足すだけにする。
+ */
+
+/*
+ * cardPlace（transform + opacity）と cardHit（transform + filter）は
+ * attachPulse（box-shadow + outline-offset）と**重ならない**。カンマで並べれば両方動く。
+ * 重なるプロパティが無いので順序は効かないが、9.4.13 の決まりどおり
+ * **残したいほうを後ろ**に置いてある。
+ */
+.card--attachable.card--enter {
+  animation: cardPlace 300ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both,
+             attachPulse 1.4s ease-in-out infinite;
+}
+
+.card--attachable.card--hit {
+  animation: cardHit 0.42s ease-out,
+             attachPulse 1.4s ease-in-out infinite;
+}
+
+/*
+ * cardCharge と cardDrain は **box-shadow を丸ごと使う**ので、
+ * attachPulse とはカンマでも救えない（9.4.13）。
+ *
+ * attachPulse は box-shadow と outline-offset の**両方**を動かしているので、
+ * **outline-offset だけの版**を併走させる。光の輪は相手に譲り、
+ * ふちの脈打ちだけ残す形である。破線なので実線の金枠とは見分けがつく（9.4.15）。
+ *
+ * **この outline 版は、box-shadow を奪われるこの2組にだけ使う。** 他へ流用しない。
+ */
+@keyframes attachOutlineOnly {
+  0%, 100% { outline-offset: 2px; }
+  50%      { outline-offset: 5px; }
+}
+
+.card--attachable.card--charged {
+  animation: cardCharge 0.5s ease-out,
+             attachOutlineOnly 1.4s ease-in-out infinite;
+}
+
+.card--attachable.card--drained {
+  animation: cardDrain 0.5s ease-out,
+             attachOutlineOnly 1.4s ease-in-out infinite;
+}
+
+/*
+ * 動きを減らす設定では止める（SPEC 9.4.20）。
+ * 上で足した規則は詳細度 0-2-0 なので、既存ブロックの `.card--attachable`（0-1-0）では
+ * **負けてしまう。** 同じ形で書き直す必要がある。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .card--attachable.card--enter,
+  .card--attachable.card--hit,
+  .card--attachable.card--charged,
+  .card--attachable.card--drained {
+    animation: none;
+  }
+}
