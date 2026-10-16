@@ -563,4 +563,37 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'lifeDamage', target: 'opponent', value: 1700 },
     ],
   },
+  {
+    id: 'i029', name: '軒轅剣', ruby: 'けんえんけん', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は damage 35 + damage opponentBenchRandom 20 + discardEnergy 1。
+    // 3つの効果をそれぞれ1対1で移した。
+    //   前衛へのダメージ 35 → ライフへ ×20
+    //   控えへのダメージ → **「構えた力を削ぎ落とす」**ので相手全体の攻撃力低下
+    //     （a017 星からの色 が benchRandom を atkChange opponentMonsterAll に移した先例）
+    //   エネルギー剥がし → 手札破壊（既存の多数派）
+    flavor: '黄帝が蚩尤を討ったときの剣。抜けば刃の光が後ろに控える者まで届き、構えた力を削ぎ落とす。',
+    origin: 'china', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 700 },
+      { type: 'atkChange', target: 'opponentMonsterAll', value: -400 },
+      { type: 'discard', target: 'opponent', value: 1 },
+    ],
+  },
+  {
+    id: 'i030', name: '運命の粘土板', ruby: 'うんめいのねんどばん', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は switchOpponent + discardEnergy 2 + draw 3。こちらも1対1で移した。
+    //   入れ替え → 「立つ場所が入れ替わる」ので表示形式を倒す
+    //   エネルギー剥がし2 → 手札破壊2
+    //   draw 3 はそのまま
+    // **神具の position はこれで2種目**（それまで i010 双面の鏡 の1種だけだった）
+    flavor: '天の定めが刻まれた板。書き換えられた者は、立つ場所も蓄えた力も、気づかぬうちに入れ替わっている。',
+    origin: 'mesopotamia', rarity: 'ultra',
+    onActivate: [
+      { type: 'position', target: 'opponentMonsterOne', position: 'defense' },
+      { type: 'discard', target: 'opponent', value: 2 },
+      { type: 'draw', value: 3 },
+    ],
+  },
 ]

@@ -367,4 +367,17 @@ export const TRAPS: readonly TrapDef[] = [
       { type: 'draw', value: 2 },
     ],
   },
+  {
+    id: 'a029', name: '天命の粘土板', ruby: 'てんめいのねんばん', kind: 'trap',
+    trapType: 'normal',
+    // maniwa-tcg は damage opponentBenchAll 30 + draw 2。控えが無いのでライフへ ×20。
+    // **効果を増やしていない。** 元が2つなのでこちらも2つにした
+    // （「聞いた者は等しく従わされる」を position で足したくなるが、それは移植ではなく創作になる）
+    flavor: '神々の序列を定める板。掲げた者が天の命を読み上げ、聞いた者は等しく従わされる。',
+    origin: 'mesopotamia', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 600 },
+      { type: 'draw', value: 2 },
+    ],
+  },
 ]
