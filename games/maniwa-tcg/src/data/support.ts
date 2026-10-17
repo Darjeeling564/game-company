@@ -255,6 +255,30 @@ export const ITEMS: readonly ItemCard[] = [
       { type: 'draw', value: 3 },
     ],
   },
+  {
+    id: 'i031', name: 'アイギス', kind: 'item', origin: 'greece', rarity: 'ultra',
+    flavor: '女神の胸甲。縁に据えたゴルゴンの首が、覗き込んだ者の足を縫い止める。',
+    // 神具の UR が無い系統は greece と india の2つだけだったので、両方を埋める。
+    // 効果は実測でいちばん薄い damagePerHeads（神具では i018 狂気の囁き の1種だけ）を使う。
+    // 「覗き込んだ者だけが縫い止められる」ので、当たるかどうかを投げる形が据わる。
+    effects: [
+      { type: 'damagePerHeads', target: 'opponentActive', value: 30, count: 3 },
+      { type: 'heal', target: 'ownActive', value: 30 },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'i032', name: 'スダルシャナ', kind: 'item', origin: 'india', rarity: 'ultra',
+    flavor: '円盤は投げた者の手に必ず戻る。飛び去るあいだに、狙った首も、隠れていた首も落ちている。',
+    // india の UR 枠。w010 ヴィシュヌ が持つ円盤なので、既存カードとの関係で据わりがよい。
+    // opponentBenchRandom は神具で2種しか無かった薄い対象（i022 パンドラの匣 / i026 黄金の林檎）。
+    // 「隠れていた首も落ちている」を控えへの一撃に充てている。
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 40 },
+      { type: 'damage', target: 'opponentBenchRandom', value: 30 },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
