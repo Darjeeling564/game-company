@@ -625,4 +625,38 @@ export const SPELLS: readonly SpellDef[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'i031', name: 'アイギス', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は damagePerHeads 30×3 + heal ownActive 30 + draw 1。
+    // コインが無いので**期待値を足して ×20 する**（u020 終わりなき夜 と同じ足し方）。
+    //   damagePerHeads 30×3 の期待値は 45 → ライフへ 900
+    //   前衛への回復 30 → 自分のライフへ 600
+    //   draw 1 はそのまま
+    // 3つの効果を1対1で移してあり、数を増やしていない
+    flavor: '女神の胸甲。縁に据えたゴルゴンの首が、覗き込んだ者の足を縫い止める。',
+    origin: 'greece', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 900 },
+      { type: 'lifeHeal', target: 'self', value: 600 },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'i032', name: 'スダルシャナ', kind: 'spell',
+    spellType: 'normal', form: 'artifact',
+    // maniwa-tcg は damage 40 + damage opponentBenchRandom 30 + draw 1。
+    //   前衛へのダメージ 40 → ライフへ ×20 で 800
+    //   控えへの一撃 → **「隠れていた首も落ちている」**ので姫神1体の破壊に移した。
+    //     i029 軒轅剣 では同じ控えへの一撃を atkChange に移したが、あちらの惹句は
+    //     「構えた力を削ぎ落とす」で、こちらは首が落ちる札なので破壊のほうが素直
+    //   draw 1 はそのまま
+    flavor: '円盤は投げた者の手に必ず戻る。飛び去るあいだに、狙った首も、隠れていた首も落ちている。',
+    origin: 'india', rarity: 'ultra',
+    onActivate: [
+      { type: 'lifeDamage', target: 'opponent', value: 800 },
+      { type: 'destroy', target: 'opponentMonsterOne' },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]
