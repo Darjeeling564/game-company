@@ -632,6 +632,34 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'draw', value: 2 },
     ],
   },
+  {
+    id: 'a033', name: '開口の儀', ruby: 'かいこうのぎ', kind: 'action', origin: 'egypt', rarity: 'superRare',
+    flavor: '亡骸の口を開き、息と言葉を返す儀。声が戻れば、死者はふたたび自分の名を呼べる。',
+    // 道標の SR が無い系統は egypt と mesopotamia の2つだけだったので、両方を埋める。
+    // 効果は実測でいちばん薄い coinFlip（道標では a012 神罰 の1種だけ）を使う。
+    // 「声が戻るかどうか」を投げる形にし、戻ったときだけ墓から1体を探す。
+    effects: [
+      { type: 'coinFlip', count: 2, min: 1, then: [{ type: 'searchCreature' }, { type: 'heal', target: 'ownActive', value: 60 }, { type: 'heal', target: 'ownBenchAll', value: 20 }] },
+      { type: 'draw', value: 2 },
+    ],
+  },
+  {
+    id: 'a034', name: 'アヌンナキの裁定', kind: 'action', origin: 'mesopotamia', rarity: 'superRare',
+    flavor: '七柱の裁き手が並び、ひとりずつ是非を述べる。うなずいた数だけ罰が降る。',
+    // mesopotamia の SR 枠。効果は damagePerHeads（道標では a013 運命の三女神 の1種だけ）。
+    // 「うなずいた数だけ罰が降る」がそのまま投げる回数になる。
+    // a029 天命の粘土板 と同じ系統で、板に刻まれた天命を読み上げる側の札である。
+    //
+    // 最初は 30×3（評価値50）で書いたが、card-value の実測が +10.4pt で、
+    // **既存の SR 道標6種の最大（a013 運命の三女神 +6.7pt）を上回った**。
+    // 帯の判定（総合力180.0）は SR のままなので rarity --diff は通っていた。
+    // 回数を7・1回分を10に割り直して評価値40（総合力144.0）に落としている。
+    // 7回は道標・姫神を通じて最多（これまでの最多は3回）。「七柱」がそのまま回数になる。
+    effects: [
+      { type: 'damagePerHeads', target: 'opponentActive', value: 10, count: 7 },
+      { type: 'draw', value: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
