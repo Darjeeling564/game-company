@@ -980,4 +980,73 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'damage', target: 'opponentBenchAll', value: 10 },
     ],
   },
+
+  // --------------------------------- 2026-10-21 追加（絶技の番）
+  {
+    id: 'u026', name: '万木斉発', ruby: 'ばんぼくせいはつ', kind: 'ultimate',
+    origin: 'china', rarity: 'ultra', requires: 's010',
+    flavor: '東方の神が杖を振ると、枯れ木という枯れ木がいっせいに芽を吹く。芽は味方の足もとからも伸びる。',
+    cost: ['forest', 'forest', 'colorless'],
+    effects: [
+      /*
+       * 絶技を付けられる姫神は今夜の実測で3体だけだった（無属性を除き、
+       * 最強ワザがコスト3で、まだ絶技が割り当てられていない姫神）。
+       * s010 句芒EX / t010 アンズーEX / d011 アヌビスEX。そのうち2体をここで埋める。
+       *
+       * **薄いところを選んだ。** 絶技23種の系統は china 2 / 属性は forest 2 で、
+       * どちらも最少の並びだった（系統の最少は original 1 だが、該当する姫神がいない）。
+       *
+       * 句芒EX の最強ワザ「東方の春」は評価値 108 / コスト3 ＝ 効率 36.00。
+       * 許容域は 113.4〜140.4（SPEC 16.5.1 の 1.05〜1.30）。
+       * 80 + 30×0.4 + 30 ＝ 122 → 効率 40.67、比 **1.130**。
+       *
+       * **`gainEnergy` は絶技では初めて使う。** 絶技23種が使っていた効果タイプは
+       * 10種で、`coinFlip` と `gainEnergy` の2つだけ一度も出ていなかった（実測）。
+       * 「芽を押し上げる」がそのままエネルギーの前借りになる。
+       *
+       * 回復を控え全体にしたのは**的の偏りを埋めるため**。絶技の的は
+       * opponentActive に大きく偏っていて、ownBenchAll は一度も出ていなかった。
+       * 春は前に立つ者だけでなく、控えている者の足もとにも届く。
+       *
+       * SPEC 8.2（回復量 < ダメージ量）: 30 < 80。
+       */
+      { type: 'damage', target: 'opponentActive', value: 80 },
+      { type: 'heal', target: 'ownBenchAll', value: 30 },
+      { type: 'gainEnergy' },
+    ],
+  },
+  {
+    id: 'u027', name: '天命簒奪', ruby: 'てんめいさんだつ', kind: 'ultimate',
+    origin: 'mesopotamia', rarity: 'ultra', requires: 't010',
+    flavor: '嵐の巨鳥が粘土板を掴んで舞い上がる。板に刻まれた誰かの天命が、めくれるたびに書き換わる。',
+    cost: ['thunder', 'thunder', 'colorless'],
+    effects: [
+      /*
+       * アンズーEX は**既にある札と直につながっている**。姫神の説明文が
+       * 「天命の粘土板を攫って山へ去り」で、その粘土板が `a029 天命の粘土板`
+       * （mesopotamia / UR の道標）として既に場にある。攫う側をここで出す。
+       *
+       * 系統 mesopotamia も絶技では2種しかなく、最少の並びだった。
+       *
+       * アンズーEX の最強ワザ「天命を攫う」は評価値 100 / コスト3 ＝ 効率 33.33。
+       * 許容域は 105.0〜130.0。80 + (60 + 15)/2 ＝ 117.5 → 効率 39.17、比 **1.175**。
+       *
+       * **`coinFlip` も絶技では初めて使う**（`gainEnergy` と並んで未使用だった）。
+       * 天命を決める板なので、めくって決まるのがそのまま札の形になる。
+       *
+       * **`count` は 1 にしてある。** `expectedDamage` は `coinFlip` を
+       * 回数に関わらず `then` の半分として数えるので、2回・1回以上にすると
+       * 実際は 3/4 で当たるのに 1/2 として採点され、**評価値が実態より低く出る**。
+       * 検査を通すために実態と採点をずらすことになるので、そろえた。
+       */
+      { type: 'damage', target: 'opponentActive', value: 80 },
+      {
+        type: 'coinFlip', count: 1, min: 1,
+        then: [
+          { type: 'damage', target: 'opponentActive', value: 60 },
+          { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+        ],
+      },
+    ],
+  },
 ]
