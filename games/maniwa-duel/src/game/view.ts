@@ -14,6 +14,7 @@ import type {
   LogEntry,
   MonsterOnField,
   PlayerId,
+  Position,
   SpellOnField,
 } from '../core/types.ts'
 import { opponentOf } from '../core/types.ts'
@@ -130,6 +131,18 @@ export function cardNode(cardId: CardId, opts: {
   return node
 }
 
+/*
+ * 表示形式が変わった瞬間を出すための控え（SPEC 9.4.2）。
+ *
+ * **この画面は毎回ぜんぶ作り直すので、CSS の transition は出ない**（SPEC 9.4.1）。
+ * `animation` なら新しい要素でも再生されるが、`.card--defense` のような
+ * 「状態から直に決まるクラス」に付けると守備でいるあいだじゅう再生される。
+ * だから**前回の position を持ち回り、変わったときだけ一度きりのクラスを足す**。
+ */
+const prevPosition = new Map<number, Position>()
+/** この描き直しで見かけた instanceId。終わりに控えを掃除するのに使う */
+let seenThisRender = new Set<number>()
+
 /** 場の姫神1体 */
 function monsterNode(vm: ViewModel, owner: PlayerId, m: MonsterOnField, h: ViewHandlers): HTMLElement {
   const slot = el('div', 'slot slot--monster')
@@ -143,6 +156,17 @@ function monsterNode(vm: ViewModel, owner: PlayerId, m: MonsterOnField, h: ViewH
     def: effectiveDef(vm.state, m.instanceId),
   })
   if (m.position === 'defense') node.classList.add('card--defense')
+  /*
+   * 向きが変わった瞬間だけ回す（SPEC 9.4.3）。
+   * **初めて見る姫神には付けない。** 召喚した瞬間に回ると、出したことと
+   * 向きが変わったことの区別がつかなくなる。
+   */
+  const before = prevPosition.get(m.instanceId)
+  if (before !== undefined && before !== m.position) {
+    node.classList.add(m.position === 'defense' ? 'card--flip-to-defense' : 'card--flip-to-attack')
+  }
+  prevPosition.set(m.instanceId, m.position)
+  seenThisRender.add(m.instanceId)
   if (m.faceDown) node.classList.add('card--facedown')
   if (m.hasAttacked) node.classList.add('card--spent')
   if (vm.selectedMonster === m.instanceId) node.classList.add('card--selected')
@@ -343,6 +367,7 @@ export function openHistory(state: GameState, human: PlayerId): void {
 
 export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): void {
   root.textContent = ''
+  seenThisRender = new Set<number>()
   const foe = opponentOf(vm.human)
   const me = vm.state.players[vm.human]
   const them = vm.state.players[foe]
@@ -414,6 +439,15 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     buttons.appendChild(btn)
   }
   root.appendChild(buttons)
+
+  /*
+   * 盤から消えた姫神を控えから落とす（SPEC 9.4.2）。
+   * 残したままだと、同じ instanceId が使い回されたときに
+   * 身に覚えのない回転が出る。
+   */
+  for (const id of [...prevPosition.keys()]) {
+    if (!seenThisRender.has(id)) prevPosition.delete(id)
+  }
 }
 
 /**
