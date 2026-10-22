@@ -565,6 +565,48 @@ body {
   transform: rotate(90deg) scale(0.7);
 }
 
+/*
+ * 表示形式が変わった瞬間に回す（SPEC 9.4.3）。
+ *
+ * **この画面では transition が出ない**（毎回ぜんぶ作り直すので、新しい要素に
+ * 変化の前の値が無い。SPEC 9.4.1 に実測を書いた）。だから animation で出す。
+ * 付けるのは「変わった描き直し」の1回だけで、view.ts が前回の position を
+ * 持ち回って判断している。状態から直に決まる .card--defense に付けると、
+ * 守備でいるあいだじゅう再生されてしまう。
+ *
+ * **.card--defense の静止値は書き換えない。** 動きが終われば、
+ * CSS に書いてある向き（rotate(90deg) scale(0.7)）にそのまま戻る。
+ */
+@keyframes cardFlipToDefense {
+  from { transform: rotate(0deg) scale(1); }
+  to   { transform: rotate(90deg) scale(0.7); }
+}
+
+@keyframes cardFlipToAttack {
+  from { transform: rotate(90deg) scale(0.7); }
+  to   { transform: rotate(0deg) scale(1); }
+}
+
+.card--flip-to-defense {
+  animation: cardFlipToDefense 0.22s ease-out;
+}
+
+.card--flip-to-attack {
+  animation: cardFlipToAttack 0.22s ease-out;
+}
+
+/*
+ * 動きを減らす設定では止める。**代わりは要らない**（SPEC 9.4.4）。
+ * この動きが伝えているのは「向きが変わった」ことで、
+ * **向きそのものは .card--defense の静止した回転で見えたまま**だからである。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .card--flip-to-defense,
+  .card--flip-to-attack {
+    animation: none;
+  }
+}
+
 .card--spent {
   filter: brightness(0.7) saturate(0.7);
 }
