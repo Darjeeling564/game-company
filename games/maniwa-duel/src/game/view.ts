@@ -242,6 +242,14 @@ function zoneRow(vm: ViewModel, owner: PlayerId, kind: 'monster' | 'spell',
  * 立ち絵は**デッキの主の姫神**で、**ライフで絵が切り替わる**（SPEC 9.3 と同じ規則）。
  * 盤にカードが1枚も無いときでも劣勢が伝わる。
  */
+/*
+ * ライフが動いた瞬間を出すための控え（SPEC 9.5.2）。
+ * 9.4.2 と同じ形で、前回の値と比べて変わったときだけ一度きりのクラスを足す。
+ */
+const prevLp: [number | null, number | null] = [null, null]
+/** 対戦をやり直したら控えを捨てる目印（SPEC 9.5.3）。新しい対戦は必ずターン1から */
+let prevTurn = 0
+
 function lifeBanner(vm: ViewModel, owner: PlayerId, side: 'top' | 'bottom'): HTMLElement {
   const player = vm.state.players[owner]
   const wrap = el('div', `banner banner--${side}`)
@@ -260,6 +268,15 @@ function lifeBanner(vm: ViewModel, owner: PlayerId, side: 'top' | 'bottom'): HTM
   const ratio = Math.max(0, Math.min(1, player.lp / 4000))
   lp.style.setProperty('--lp-ratio', String(ratio))
   if (ratio <= 0.4) lp.classList.add('banner__lp--low')
+  /*
+   * 動いた瞬間だけ出す（SPEC 9.5.2）。**色は触らない。**
+   * そこは「残り何割か」を出す既存の合図なので、奪うと減り具合が読めなくなる。
+   */
+  const before = prevLp[owner]
+  if (before !== null && before !== player.lp) {
+    lp.classList.add(player.lp < before ? 'banner__lp--down' : 'banner__lp--up')
+  }
+  prevLp[owner] = player.lp
   box.appendChild(lp)
   wrap.appendChild(box)
   return wrap
@@ -368,6 +385,18 @@ export function openHistory(state: GameState, human: PlayerId): void {
 export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): void {
   root.textContent = ''
   seenThisRender = new Set<number>()
+  /*
+   * 対戦をやり直したら控えを捨てる（SPEC 9.5.3）。
+   * 新しい対戦は必ずターン1から始まるので、ターンが戻ったことで見分ける。
+   * 捨てないと、前の対戦の終わり（たとえば 600）から 4000 への戻りが
+   * 「回復」として出てしまう。
+   */
+  if (vm.state.turn < prevTurn) {
+    prevLp[0] = null
+    prevLp[1] = null
+    prevPosition.clear()
+  }
+  prevTurn = vm.state.turn
   const foe = opponentOf(vm.human)
   const me = vm.state.players[vm.human]
   const them = vm.state.players[foe]
