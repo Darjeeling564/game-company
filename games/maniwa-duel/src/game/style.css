@@ -466,6 +466,52 @@ body {
   font-weight: bold;
 }
 
+/*
+ * ライフが動いた瞬間（SPEC 9.5）。
+ *
+ * **それまで「今いくらか」しか出ていなかった。** 数字も色も立ち絵も現在値で、
+ * 「いま減った」を指すものが1つも無かった（9.5.1 に実測を書いた）。
+ *
+ * **`color` は使わない。** そこは `--lp-ratio` から残り割合を出す既存の合図で、
+ * 奪うと減り具合が読めなくなる。動かすのは `transform` と `text-shadow` だけ。
+ *
+ * この画面では transition が出ない（9.4.1）ので animation で出し、
+ * view.ts が前回の値を持ち回って**変わった描き直しだけ**クラスを足す。
+ */
+@keyframes lpDown {
+  0%   { transform: none;             text-shadow: none; }
+  25%  { transform: translateX(-3px); text-shadow: 0 0 10px var(--danger); }
+  55%  { transform: translateX(3px);  text-shadow: 0 0 10px var(--danger); }
+  100% { transform: none;             text-shadow: none; }
+}
+
+@keyframes lpUp {
+  0%   { transform: none;             text-shadow: none; }
+  40%  { transform: translateY(-4px); text-shadow: 0 0 10px var(--cream); }
+  100% { transform: none;             text-shadow: none; }
+}
+
+.banner__lp--down {
+  display: inline-block;   /* transform を効かせるため。span のままでは動かない */
+  animation: lpDown 0.4s ease-out;
+}
+
+.banner__lp--up {
+  display: inline-block;
+  animation: lpUp 0.4s ease-out;
+}
+
+/*
+ * 動きを減らす設定では止める。**代わりは要らない**（SPEC 9.5.4）。
+ * 伝えているのは「動いた」ことで、動いた先の値は数字と色として残っている。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .banner__lp--down,
+  .banner__lp--up {
+    animation: none;
+  }
+}
+
 /* ---------------------------------------------------------------- カード */
 
 .card {
