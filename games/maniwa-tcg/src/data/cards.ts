@@ -952,6 +952,70 @@ const LIGHT: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 120 }] },
     ],
   },
+
+  // ------------------------------------- 2026-10-23 追加（姫神の番）
+  /*
+   * **光がいちばん薄かった。** 今夜その場で数えた結果:
+   *   属性  light 9 / forest・wind・thunder 10 / 残り 11（original を含む）
+   *   系統×レアリティ  SR が1体しかないのは china / mesopotamia / cthulhu の3系統
+   * 光の SR を china と mesopotamia に置くと、**属性と系統×レアリティの両方が同時に埋まる**。
+   * 光は 9 → 11 になり最多と並び、china と mesopotamia の SR は 1 → 2 になる。
+   * （系統の最少は original の1体だが、SPEC 8.1 の取り決めに触れるので触らない）
+   */
+  {
+    id: 'l010', name: 'アヤ', kind: 'creature',
+    flavor: '暁をつかさどる女神。太陽の神の花嫁で、夜のあいだに傷ついた者へ、新しい一日ぶんの力を渡す。',
+    origin: 'mesopotamia', rarity: 'superRare',
+    type: 'light', hp: 120, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '暁の衣', ruby: 'あかつきのころも', cost: ['light'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      /*
+       * **`gainEnergy` を姫神のワザで使うのは初めて。** 今夜の実測では、
+       * 姫神のワザ232回が使っている効果タイプは12種中9種で、
+       * `coinFlip` / `gainEnergy` / `attachEnergy` の3つが一度も出ていなかった。
+       * 「新しい一日ぶんの力を渡す」がそのままエネルギーの前借りになる。
+       *
+       * 既にある l006 シャマシュ（mesopotamia / light / R）の花嫁なので、
+       * 同じ系統・同じ属性の上位として据わる。
+       *
+       * 評価値 50 + 30 = 80 / コスト2 → 効率40。
+       * 総合力 = 120 + 40×3 + 80×0.6 = 288.0（SR の帯は 255〜300）
+       */
+      { name: '明けの約束', ruby: 'あけのやくそく', cost: ['light', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 50 },
+          { type: 'gainEnergy' },
+        ] },
+    ],
+  },
+  {
+    id: 'l011', name: '燭陰', ruby: 'しょくいん', kind: 'creature',
+    flavor: '鍾山に住まう人面の龍。目を開ければ昼になり、閉じれば夜になる。',
+    origin: 'china', rarity: 'superRare',
+    type: 'light', hp: 120, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '燭の息', ruby: 'しょくのいき', cost: ['light'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      /*
+       * **`coinFlip` を姫神のワザで使うのも初めて**（上と同じ理由）。
+       * 目を開けるか閉じるかで昼と夜が決まる札なので、めくって決まる形がそのまま合う。
+       *
+       * **投げるのは1回にしてある。** `expectedDamage` は `coinFlip` を回数と下限を
+       * 見ずに `then` の半分として数えるので、2回・1回以上にすると実際は 3/4 で
+       * 当たるのに 1/2 として採点され、総合力が実態より低く出る（2026-10-21 に
+       * 絶技 u027 で踏んだのと同じ）。採点と実態をそろえた。
+       *
+       * 評価値 50 + 50/2 = 75 / コスト2 → 効率37.5。
+       * 総合力 = 120 + 37.5×3 + 75×0.6 = 277.5（l002 ラー と同じ）
+       */
+      { name: '開けば昼', ruby: 'ひらけばひる', cost: ['light', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 50 },
+          { type: 'coinFlip', count: 1, min: 1, then: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 闇
