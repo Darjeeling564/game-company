@@ -399,6 +399,33 @@ body {
   opacity: 0.8;
 }
 
+/*
+ * 墓地が増えた瞬間（SPEC 9.6）。
+ *
+ * 9.5 でライフを出したので、残っていた「数字が黙って書き換わる場所」がここだった。
+ * **増えたときだけ出す。** 山が減るのはドローで引いた札が手札に現れ、
+ * 墓が減るのは蘇生で戻った姫神が盤に現れるので、どちらも別の手がかりがある。
+ *
+ * 9.5 と同じく transform と text-shadow だけを動かす。
+ */
+@keyframes pileUp {
+  0%   { transform: none;             text-shadow: none; }
+  40%  { transform: translateY(-3px); text-shadow: 0 0 8px var(--cream); }
+  100% { transform: none;             text-shadow: none; }
+}
+
+.pile__count--up {
+  display: inline-block;   /* transform を効かせるため */
+  animation: pileUp 0.4s ease-out;
+}
+
+/* 動きを減らす設定では止める。増えた先の数は数字として残る（SPEC 9.6.3） */
+@media (prefers-reduced-motion: reduce) {
+  .pile__count--up {
+    animation: none;
+  }
+}
+
 .pile__count {
   font-size: 15px;
 }

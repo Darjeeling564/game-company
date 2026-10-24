@@ -283,10 +283,28 @@ function lifeBanner(vm: ViewModel, owner: PlayerId, side: 'top' | 'bottom'): HTM
 }
 
 /** 盤の上に置く札束。数を札の上に載せる（SPEC 8.1） */
-function pile(kind: 'deck' | 'grave', count: number): HTMLElement {
+/*
+ * 札束の数の控え（SPEC 9.6.2）。持ち主と種類ごとに持つ。
+ * キーは `${owner}-${kind}`。
+ */
+const prevPile = new Map<string, number>()
+
+function pile(kind: 'deck' | 'grave', count: number, owner: PlayerId): HTMLElement {
   const node = el('div', `pile pile--${kind}`)
   node.appendChild(el('span', 'pile__label', kind === 'deck' ? '山' : '墓'))
-  node.appendChild(el('span', 'pile__count', String(count)))
+  const num = el('span', 'pile__count', String(count))
+  /*
+   * **墓が増えたときだけ出す**（SPEC 9.6.1）。
+   * 山が減るのはドローで、引いた札が手札に現れるので別の手がかりがある。
+   * 墓が減るのは蘇生だけで、戻った姫神が盤に現れるのでこれも別の手がかりがある。
+   */
+  const key = `${owner}-${kind}`
+  const before = prevPile.get(key)
+  if (kind === 'grave' && before !== undefined && count > before) {
+    num.classList.add('pile__count--up')
+  }
+  prevPile.set(key, count)
+  node.appendChild(num)
   if (count === 0) node.classList.add('pile--empty')
   return node
 }
@@ -395,6 +413,7 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     prevLp[0] = null
     prevLp[1] = null
     prevPosition.clear()
+    prevPile.clear()
   }
   prevTurn = vm.state.turn
   const foe = opponentOf(vm.human)
@@ -425,8 +444,8 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
   const table = el('div', 'board__table')
 
   const far = el('div', 'field')
-  far.appendChild(zoneRow(vm, foe, 'spell', h, pile('deck', them.deck.length), null))
-  far.appendChild(zoneRow(vm, foe, 'monster', h, pile('grave', them.graveyard.length), null))
+  far.appendChild(zoneRow(vm, foe, 'spell', h, pile('deck', them.deck.length, foe), null))
+  far.appendChild(zoneRow(vm, foe, 'monster', h, pile('grave', them.graveyard.length, foe), null))
   table.appendChild(far)
 
   table.appendChild(el('div', 'board__line'))
@@ -434,7 +453,7 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
   const near = el('div', 'field')
   near.appendChild(zoneRow(vm, vm.human, 'monster', h, null, null))
   near.appendChild(zoneRow(vm, vm.human, 'spell', h,
-    pile('grave', me.graveyard.length), pile('deck', me.deck.length)))
+    pile('grave', me.graveyard.length, vm.human), pile('deck', me.deck.length, vm.human)))
   table.appendChild(near)
 
   board.appendChild(table)
