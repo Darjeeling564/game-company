@@ -755,6 +755,46 @@ body {
   transition: transform 0.12s ease-out;
 }
 
+/*
+ * 引いた札（SPEC 9.7）。手札に1枚増えることに手がかりが無かった。
+ *
+ * 引いた札は末尾に積まれるので、view.ts が枚数の増えを見て末尾に付ける。
+ * この画面では transition が出ない（9.4.1）ので animation で出す。
+ */
+@keyframes cardDrawn {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: none;             opacity: 1; }
+}
+
+.card--drawn {
+  animation: cardDrawn 0.26s ease-out;
+}
+
+/*
+ * ★ ここは 9.4.4 / 9.5.4 / 9.6.3 と違い、**動かさない端末にも代わりを置く**。
+ * 増えたことを示すものが数字でも位置でも残らない（手札の枚数は画面に出ていない）ため、
+ * 動きを消すと手がかりが完全に無くなる。姫神演義が 9.4.18 で同じ結論を出している。
+ *
+ * .card--selected（実線3px・offset 1px）とは太さと間隔で見分ける。
+ * 選ばれている札には足さない。
+ */
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * **止めるのは :not() を付けずに書く。** `:not(.card--selected)` だけにすると、
+   * 引いた札がそのまま選ばれている描き直しで**動きが止まらなかった**
+   * （2026-10-25 実測。選択中は anim が cardDrawn のまま残っていた）。
+   */
+  .card--drawn {
+    animation: none;
+  }
+
+  /* 縁は、選ばれている札の縁を奪わないように :not() を付ける */
+  .card--drawn:not(.card--selected) {
+    outline: 2px solid var(--cream);
+    outline-offset: 3px;
+  }
+}
+
 /* 選んだ札だけ前に出す。重なっていても、どれを選んだか分かるように */
 .hand__slot .card--selected {
   transform: translateY(-8px);

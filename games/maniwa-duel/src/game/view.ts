@@ -309,12 +309,22 @@ function pile(kind: 'deck' | 'grave', count: number, owner: PlayerId): HTMLEleme
   return node
 }
 
+/*
+ * 手札の枚数の控え（SPEC 9.7.2）。手札に出るのは自分の札だけなので1つでよい。
+ * **引いた札は末尾に積まれる**（reduce.ts の `hand: [...side.hand, top]`）ので、
+ * 増えていたら末尾に一度きりのクラスを足す。
+ */
+let prevHandLen: number | null = null
+
 function handRow(vm: ViewModel, h: ViewHandlers): HTMLElement {
   const row = el('div', 'hand')
   const side = vm.state.players[vm.human]
+  const grew = prevHandLen !== null && side.hand.length > prevHandLen
+  prevHandLen = side.hand.length
   side.hand.forEach((id, i) => {
     const wrap = el('div', 'hand__slot')
     const node = cardNode(id, { small: true })
+    if (grew && i === side.hand.length - 1) node.classList.add('card--drawn')
     if (vm.selectedHand === i) node.classList.add('card--selected')
     node.addEventListener('click', () => h.onHandCard(i))
     attachLongPress(node, () => id)
@@ -414,6 +424,7 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     prevLp[1] = null
     prevPosition.clear()
     prevPile.clear()
+    prevHandLen = null
   }
   prevTurn = vm.state.turn
   const foe = opponentOf(vm.human)
