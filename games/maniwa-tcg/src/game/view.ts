@@ -887,11 +887,26 @@ function creatureCard(
  * 山札とトラッシュの積み。裏面はCSSだけで描く（画像を足さない）。
  * 卓の左右に置いて、盤面が「カードゲームの卓」に見えるようにする（SPEC 9.7.2）
  */
-function pileView(kind: 'deck' | 'discard', count: number): HTMLElement {
+/**
+ * 札束の枚数の控え（SPEC 9.4.23）。鍵は `<持ち主>.<種類>`。
+ * **トラッシュが増えた瞬間**（両側）と、**相手の山札が減った瞬間**だけを出す。
+ * 自分の山札が減るのは引いた札が手札に現れる（9.4.18）ので、ここでは出さない。
+ */
+const prevPile = new Map<string, number>()
+
+function pileView(kind: 'deck' | 'discard', count: number, owner: PlayerId): HTMLElement {
   const pile = el('div', `pile pile--${kind}`)
   // 3枚まで重ねて厚みを出す。0枚なら枠だけ残して「置き場所」を示す
   for (let i = 0; i < Math.min(3, count); i += 1) pile.append(el('span', 'pile__card'))
-  pile.append(el('span', 'pile__count', String(count)))
+  const badge = el('span', 'pile__count', String(count))
+  const key = `${owner}.${kind}`
+  const before = prevPile.get(key)
+  prevPile.set(key, count)
+  if (before !== undefined) {
+    if (kind === 'discard' && count > before) badge.classList.add('pile__count--up')
+    if (kind === 'deck' && count < before && owner === CPU) badge.classList.add('pile__count--down')
+  }
+  pile.append(badge)
   return pile
 }
 
@@ -980,8 +995,8 @@ function sideView(
     )
   }
 
-  side.append(pileView('deck', player.deck.length))
-  side.append(pileView('discard', player.discard.length))
+  side.append(pileView('deck', player.deck.length, id))
+  side.append(pileView('discard', player.discard.length, id))
 
   // 相手側はベンチを上、バトル場を下に置いて向かい合わせる
   if (id === CPU) {
@@ -1087,6 +1102,11 @@ function statusBanner(state: GameState): HTMLElement {
 }
 
 export function renderBattle(root: HTMLElement, state: GameState, handlers: Handlers): void {
+  /*
+   * 対戦をやり直したときに誤爆させない（SPEC 9.4.23）。ログが短くなったら新しい試合である。
+   * `freshLog()` が同じ見分け方をしている。控えを捨てて、最初の描画では何も出さない
+   */
+  if (state.log.length < prevLogLen) prevPile.clear()
   const legal = legalActions(state)
   // legalActions は start を返さないが、型の上では含まれるので除いておく
   const mine = legal.filter((a) => a.type !== 'start' && a.player === HUMAN)

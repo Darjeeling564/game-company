@@ -3197,3 +3197,56 @@ body {
     animation: none;
   }
 }
+
+/*
+ * 札束の枚数が動いた瞬間（SPEC 9.4.23）。
+ *
+ * トラッシュが増えた瞬間（両側）と、相手の山札が減った瞬間だけに付く。
+ * 自分の山札が減るのは引いた札が手札に現れる（9.4.18）ので、付けない。
+ *
+ * ★ `.pile__count` は `transform: translateX(-50%)` で中央に寄せているので、
+ * **全段に translateX(-50%) を書く**。書き落とすと札が左へずれる。
+ * この数字の札に乗る演出はほかに無いので、取り合い（9.4.13）は起きない。
+ */
+@keyframes pileCountUp {
+  0%   { transform: translateX(-50%); text-shadow: none; }
+  35%  { transform: translateX(-50%) translateY(-5px) scale(1.35); text-shadow: 0 0 8px var(--cream); }
+  100% { transform: translateX(-50%); text-shadow: none; }
+}
+
+@keyframes pileCountDown {
+  0%   { transform: translateX(-50%); text-shadow: none; }
+  35%  { transform: translateX(-50%) translateY(4px) scale(1.25); text-shadow: 0 0 8px var(--cream); }
+  100% { transform: translateX(-50%); text-shadow: none; }
+}
+
+.pile__count--up {
+  animation: pileCountUp 0.4s ease-out;
+}
+
+.pile__count--down {
+  animation: pileCountDown 0.4s ease-out;
+}
+
+/*
+ * 動きを減らす設定（SPEC 9.4.23）。**止めるだけにはしない。**
+ * 数字は変わったあとの値で残るが、変わった瞬間を見逃すと取り返せない
+ * （相手の番は早送りで進む）。9.4.18 / 9.4.22 と同じ outline を置き、
+ * 線の形（実線＝増えた／点線＝減った）で見分ける。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .pile__count--up,
+  .pile__count--down {
+    animation: none;
+  }
+
+  .pile__count--up {
+    outline: 2px solid var(--cream);
+    outline-offset: 2px;
+  }
+
+  .pile__count--down {
+    outline: 2px dotted var(--cream);
+    outline-offset: 2px;
+  }
+}
