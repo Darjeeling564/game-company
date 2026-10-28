@@ -3250,3 +3250,44 @@ body {
     outline-offset: 2px;
   }
 }
+
+/*
+ * 手番が相手から自分に戻った瞬間（SPEC 9.4.24）。
+ *
+ * 相手の番は 450ms ごとに早送りで進むので、**自分が何もしていないのに**
+ * 順番が返ってくる。30試合の実測で 171 回あり、`.banner` には
+ * `animation` も `transition` も1つも当たっていなかった。
+ *
+ * ★ 動かすのは background-color と box-shadow だけにする。
+ * `.banner` は `position: sticky` で貼り付いているので、**filter は使わない**
+ * （包含ブロックが変わり、貼り付きに影響しうる）。
+ * この帯に乗る演出はほかに無いので、取り合い（9.4.13）は起きない。
+ */
+@keyframes bannerMine {
+  /*
+   * ★ 30% の地色は `--forest-light`（#3f7452）**ではない**値にする。
+   * 最初 `#3f7452` と書いたが、それは `--forest-light` そのものだったので
+   * 地色がまったく動かず、輪だけが出ていた（2026-10-28 実測で気付いた）。
+   * 同じ値を2か所に別々に書かない、の裏返しの事故である。
+   */
+  0%   { background-color: var(--forest-light); box-shadow: 0 0 0 0 rgba(255, 214, 120, 0.55); }
+  30%  { background-color: #58946d;             box-shadow: 0 0 0 7px rgba(255, 214, 120, 0); }
+  100% { background-color: var(--forest-light); box-shadow: 0 0 0 0 rgba(255, 214, 120, 0); }
+}
+
+.banner--mine {
+  animation: bannerMine 0.7s ease-out;
+}
+
+/*
+ * 動きを減らす設定（SPEC 9.4.24.3）。**止めるだけにはしない。**
+ * 帯の文は「自分のターン」のまま残るが、変わった瞬間は早送りの中で流れる。
+ * 一度きりのクラスなので、自分が最初の1手を打つと次の描画で消える。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .banner--mine {
+    animation: none;
+    outline: 2px solid var(--cream);
+    outline-offset: 2px;
+  }
+}
