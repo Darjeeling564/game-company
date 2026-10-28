@@ -143,6 +143,17 @@ const prevPosition = new Map<number, Position>()
 /** この描き直しで見かけた instanceId。終わりに控えを掃除するのに使う */
 let seenThisRender = new Set<number>()
 
+/**
+ * 前回の描き直しで「もう攻撃した」になっていた姫神（SPEC 9.9.3）。
+ *
+ * ★ **踏み込みを `pendingAttack` で出してはいけない。** `advanceChain` は
+ * どちらも割り込めないとき**同じ reduce の中で**戦闘まで解決してしまうので、
+ * `pendingAttack` が描き直しに現れるのは**チェーンの窓が開いたときだけ**である
+ * （2026-10-28 実測。チェーンの無い攻撃では踏み込みが一度も出なかった）。
+ * `hasAttacked` が false → true に変わった瞬間を見れば、**どの攻撃でも出る**。
+ */
+const prevAttacked = new Set<number>()
+
 /** 場の姫神1体 */
 function monsterNode(vm: ViewModel, owner: PlayerId, m: MonsterOnField, h: ViewHandlers): HTMLElement {
   const slot = el('div', 'slot slot--monster')
@@ -169,6 +180,21 @@ function monsterNode(vm: ViewModel, owner: PlayerId, m: MonsterOnField, h: ViewH
   seenThisRender.add(m.instanceId)
   if (m.faceDown) node.classList.add('card--facedown')
   if (m.hasAttacked) node.classList.add('card--spent')
+  /*
+   * 攻撃している姫神と狙われている姫神（SPEC 9.9）。
+   * **持続する印は静止させる。** `pendingAttack` があるあいだ毎回付くので、
+   * ここに animation を当てると描き直しのたびに再生される（9.4.2 の裏返し）。
+   * 踏み込みだけは「宣言された描き直し1回」に絞る（`strikeNow`）。
+   */
+  const pend = vm.state.pendingAttack
+  if (pend !== null && pend.attacker === m.instanceId) node.classList.add('card--striking')
+  if (pend !== null && pend.target === m.instanceId) node.classList.add('card--struck')
+  // 踏み込みは「もう攻撃した」に変わった瞬間に出す。チェーンの有無に関わらず出る
+  if (m.hasAttacked && !prevAttacked.has(m.instanceId)) {
+    node.classList.add(owner === vm.human ? 'card--strike-up' : 'card--strike-down')
+  }
+  if (m.hasAttacked) prevAttacked.add(m.instanceId)
+  else prevAttacked.delete(m.instanceId)
   if (vm.selectedMonster === m.instanceId) node.classList.add('card--selected')
   node.addEventListener('click', () => h.onMonster(owner, m.instanceId))
   // 長押しで詳細（SPEC 8.6）。相手の伏せカードは中身を見せない
@@ -425,6 +451,7 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     prevPosition.clear()
     prevPile.clear()
     prevHandLen = null
+    prevAttacked.clear()
   }
   prevTurn = vm.state.turn
   const foe = opponentOf(vm.human)
@@ -506,6 +533,10 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
    */
   for (const id of [...prevPosition.keys()]) {
     if (!seenThisRender.has(id)) prevPosition.delete(id)
+  }
+  // 攻撃済みの控えも同じように掃除する（SPEC 9.9.3）
+  for (const id of [...prevAttacked]) {
+    if (!seenThisRender.has(id)) prevAttacked.delete(id)
   }
 }
 
