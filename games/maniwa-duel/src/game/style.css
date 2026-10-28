@@ -1378,3 +1378,58 @@ body {
   padding: 2px 8px;
   display: inline-block;
 }
+
+/*
+ * 攻撃している姫神と、狙われている姫神（SPEC 9.9）。
+ *
+ * この画面には戦闘の演出が1つも無かった（9.9.1 の実測）。とくに割り込みの2択が
+ * 出ているあいだ、**どの姫神がどの姫神を攻撃しているのかが画面に出ていない**。
+ *
+ * ★ 持続する印は **box-shadow だけ**で作り、outline には触らない。
+ * `.card--selected`（outline 3px solid cream）と取り合わないようにするためである。
+ * 二層にして「クリームの芯＋色の外周」にする（暗い絵の上でも読める）。
+ * 攻める側と狙われる側で**層の順を入れ替える**ので、色を見分けなくても区別できる。
+ */
+.card--striking {
+  box-shadow: 0 0 0 2px var(--cream), 0 0 0 7px rgba(180, 71, 46, 0.95);
+}
+
+.card--struck {
+  box-shadow: 0 0 0 2px rgba(180, 71, 46, 0.95), 0 0 0 7px rgba(245, 240, 225, 0.75);
+}
+
+/*
+ * 宣言された瞬間だけ踏み込む（SPEC 9.9.3 / 9.9.4）。
+ * 自分の姫神は上へ、相手の姫神は下へ。`.field` の並びがそのまま向きになる。
+ *
+ * 攻撃できるのは攻撃表示の姫神だけなので、`.card--defense`（rotate 90deg）とは
+ * 同時に付かない。`.card--flip-to-attack` は向きを変えた描き直しに付くもので、
+ * 攻撃宣言は別の手＝別の描き直しなので、こちらとも重ならない。
+ */
+@keyframes strikeUp {
+  0%   { transform: none; }
+  45%  { transform: translateY(-10px); }
+  100% { transform: none; }
+}
+
+@keyframes strikeDown {
+  0%   { transform: none; }
+  45%  { transform: translateY(10px); }
+  100% { transform: none; }
+}
+
+.card--strike-up   { animation: strikeUp 0.34s cubic-bezier(0.3, 0, 0.3, 1); }
+.card--strike-down { animation: strikeDown 0.34s cubic-bezier(0.3, 0, 0.3, 1); }
+
+/*
+ * 動きを減らす設定（SPEC 9.9.5）。**止めるだけでよい。**
+ * `card--striking` / `card--struck` の静止した縁が残るので、
+ * 動きを消しても「誰が誰を攻撃しているか」は画面から消えない。
+ * 9.7.3 のように代わりを置く必要はない。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .card--strike-up,
+  .card--strike-down {
+    animation: none;
+  }
+}

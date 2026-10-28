@@ -483,6 +483,14 @@ let prevEnergy: ReadonlyMap<number, number> = new Map()
 let prevPoisoned: ReadonlySet<number> = new Set()
 /** 前回の描画のポイント。**増えた丸だけ**を光らせるために持つ（SPEC 9.4.8） */
 let prevPoints: readonly [number, number] = [0, 0]
+/**
+ * 前回の描画で手番を持っていた側（SPEC 9.4.24）。
+ * `null` は「まだ一度も描いていない」で、最初の描画では何も出さない。
+ */
+let prevCurrent: PlayerId | null = null
+/** この描画で手番が相手から自分に戻ったか。`renderBattle` が決め、帯が読む */
+let turnCameBack = false
+
 /** 前回のバトル場。消えていたら気絶の演出を出す（SPEC 9.4.3） */
 let prevActive: readonly [Creature | null, Creature | null] = [null, null]
 
@@ -1098,7 +1106,15 @@ function statusBanner(state: GameState): HTMLElement {
     return el('div', 'banner', `${who}のバトル場が空。ベンチから出す。`)
   }
   const who = state.current === HUMAN ? '自分のターン' : '相手のターン'
-  return el('div', 'banner', `ターン${state.turn} / ${who}`)
+  const node = el('div', 'banner', `ターン${state.turn} / ${who}`)
+  /*
+   * 手番が**相手から自分に戻った瞬間**だけ出す（SPEC 9.4.24）。
+   * 渡したほうは「ターン終了」を押した自分が知っているので出さない。
+   * 判定は `renderBattle` が1描画につき1回だけ行う。ここで前回と比べると、
+   * 同じ描画の中でこの関数が2回呼ばれたときに2回目が必ず「変わっていない」になる
+   */
+  if (turnCameBack) node.classList.add('banner--mine')
+  return node
 }
 
 export function renderBattle(root: HTMLElement, state: GameState, handlers: Handlers): void {
@@ -1106,7 +1122,16 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
    * 対戦をやり直したときに誤爆させない（SPEC 9.4.23）。ログが短くなったら新しい試合である。
    * `freshLog()` が同じ見分け方をしている。控えを捨てて、最初の描画では何も出さない
    */
-  if (state.log.length < prevLogLen) prevPile.clear()
+  if (state.log.length < prevLogLen) {
+    prevPile.clear()
+    prevCurrent = null
+  }
+  /*
+   * 手番が相手から自分に戻ったか（SPEC 9.4.24）。**帯を作る前に決める。**
+   * 配置中や入れ替え待ちでは帯の文言が別物になるので、そのときは出さない
+   */
+  turnCameBack = prevCurrent !== null && prevCurrent !== state.current && state.current === HUMAN
+  prevCurrent = state.current
   const legal = legalActions(state)
   // legalActions は start を返さないが、型の上では含まれるので除いておく
   const mine = legal.filter((a) => a.type !== 'start' && a.player === HUMAN)
