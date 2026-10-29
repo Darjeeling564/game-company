@@ -1433,3 +1433,35 @@ body {
     animation: none;
   }
 }
+
+/*
+ * 相手の山が減った瞬間（SPEC 9.10）。
+ *
+ * 9.6.1 で「山が減るのはドローで引いた札が手札に現れる」と書いたが、
+ * **それは自分の側だけだった。** 相手の手札は画面に出ていないので、
+ * 相手がドローしても山の数字が1つ減るほか何も起きない（12試合で89回）。
+ *
+ * `pileUp` と**逆向きに沈める**ので、上下で増減を見分けられる。
+ * 動かすのは transform と text-shadow だけ（9.5 / 9.6 と同じ）。
+ */
+@keyframes pileDown {
+  0%   { transform: none;            text-shadow: none; }
+  40%  { transform: translateY(3px); text-shadow: 0 0 8px var(--cream); }
+  100% { transform: none;            text-shadow: none; }
+}
+
+.pile__count--down {
+  display: inline-block;   /* transform を効かせるため */
+  animation: pileDown 0.4s ease-out;
+}
+
+/*
+ * 動きを減らす設定では止める（SPEC 9.10.4）。減った先の数は数字として残る。
+ * 札束は「山」の文字と数字が常に並んでいて数そのものが読めるので、
+ * 姫神演義 9.4.23 のような静止した縁は置かない。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .pile__count--down {
+    animation: none;
+  }
+}

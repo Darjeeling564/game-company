@@ -1156,4 +1156,29 @@ export const ULTIMATES: readonly UltimateCard[] = [
       },
     ],
   },
+  {
+    /*
+     * d011 アヌビスEX の絶技。
+     *
+     * ★ **その場で数えたら、絶技を付けられる姫神は d011 の1体しか残っていなかった**
+     * （無属性を除き、最強ワザがコスト3で、まだ絶技が割り当てられていない姫神）。
+     * 既存の絶技は25種・対応済みも25体である。だから今夜の2枚目は姫神に回した（w012）。
+     *
+     * 効率の比（SPEC 16.5.1）。d011 の最強ワザ「冥界の審判」は
+     * `damage 100` ＋ `discardEnergy 1` で評価値 115、コスト3なので効率 38.33。
+     * 許される帯は 1.05〜1.30 倍 ＝ 効率 40.25〜49.83、コスト3なら評価値 120.75〜149.5。
+     * こちらは `damage 110` ＋ `discardEnergy 2` で評価値 140、効率 46.67、**比 1.217**。
+     *
+     * 心臓を羽根と釣り合わせ、傾いたぶんだけ喰らう札なので、
+     * **相手から奪う**形（discardEnergy）を姫神より1段強くした。
+     */
+    id: 'u028', name: 'アメミットの顎', ruby: 'アメミットのあぎと', kind: 'ultimate',
+    origin: 'egypt', rarity: 'ultra', requires: 'd011',
+    flavor: '秤が傾いた者の心臓は、獅子と河馬と鰐の顎へ落ちる。二度と戻らない。',
+    cost: ['dark', 'dark', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 110 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 2 },
+    ],
+  },
 ]
