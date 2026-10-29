@@ -835,6 +835,35 @@ const WATER: readonly CreatureCard[] = [
         ] },
     ],
   },
+  {
+    /*
+     * w001 ポセイドン（greece / SR）の EX。
+     *
+     * 今夜の2枚目。**絶技の番だが、対応できる姫神が d011 の1体しか残っていなかった**
+     * ので、1枚は絶技（u028）、もう1枚はここで姫神にした。
+     * UR を足すと絶技の候補も増えるので、次の絶技の夜の種にもなる。
+     *
+     * 系統の選び方: UR を系統ごとに数えると cthulhu 4 に対し
+     * **greece / india / norse は1体ずつ**しかない。greece は姫神の総数も
+     * 11体で最少の組である（japan / norse / cthulhu と並ぶ）。
+     * 属性は、既に居る w001 と同じ水にして EX の対にした。
+     *
+     * 最強ワザはコスト3にしてある（EX の決まり）。
+     */
+    id: 'w012', name: 'ポセイドンEX', kind: 'creature',
+    flavor: '三叉の矛で海底を突き、大陸ごと揺らす。怒らせた船乗りは二度と陸を見ない。',
+    origin: 'greece', rarity: 'ultra',
+    type: 'water', hp: 170, ex: true, retreatCost: 3, stage: 0,
+    attacks: [
+      { name: '潮を呼ぶ', ruby: 'しおをよぶ', cost: ['water', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
+      { name: '地揺るがし', ruby: 'じゆるがし', cost: ['water', 'water', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 100 },
+          { type: 'switchOpponent' },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 光
