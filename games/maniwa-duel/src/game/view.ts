@@ -315,6 +315,13 @@ function lifeBanner(vm: ViewModel, owner: PlayerId, side: 'top' | 'bottom'): HTM
  */
 const prevPile = new Map<string, number>()
 
+/**
+ * この描き直しで「自分」の側はどちらか（SPEC 9.10）。
+ * `pile()` は持ち主しか受け取らないので、`renderDuel` が先に入れておく。
+ * 同じ描き直しのあいだ変わらないので、この形でよい（`prevTurn` と同じ持ち方）。
+ */
+let humanSide: PlayerId = 0
+
 function pile(kind: 'deck' | 'grave', count: number, owner: PlayerId): HTMLElement {
   const node = el('div', `pile pile--${kind}`)
   node.appendChild(el('span', 'pile__label', kind === 'deck' ? '山' : '墓'))
@@ -323,11 +330,18 @@ function pile(kind: 'deck' | 'grave', count: number, owner: PlayerId): HTMLEleme
    * **墓が増えたときだけ出す**（SPEC 9.6.1）。
    * 山が減るのはドローで、引いた札が手札に現れるので別の手がかりがある。
    * 墓が減るのは蘇生だけで、戻った姫神が盤に現れるのでこれも別の手がかりがある。
+   *
+   * ★ **ただし「引いた札が手札に現れる」のは自分の側だけだった**（SPEC 9.10）。
+   * 相手の手札は画面に出ていないので、相手がドローしても山の数字が1つ減るほか
+   * 何も起きない。12試合で89回あった。**相手の山が減ったときだけ**足す。
    */
   const key = `${owner}-${kind}`
   const before = prevPile.get(key)
   if (kind === 'grave' && before !== undefined && count > before) {
     num.classList.add('pile__count--up')
+  }
+  if (kind === 'deck' && before !== undefined && count < before && owner !== humanSide) {
+    num.classList.add('pile__count--down')
   }
   prevPile.set(key, count)
   node.appendChild(num)
@@ -454,6 +468,7 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     prevAttacked.clear()
   }
   prevTurn = vm.state.turn
+  humanSide = vm.human
   const foe = opponentOf(vm.human)
   const me = vm.state.players[vm.human]
   const them = vm.state.players[foe]
