@@ -1465,3 +1465,14 @@ body {
     animation: none;
   }
 }
+
+/*
+ * 相手の手札の枚数（SPEC 9.11）。上の帯のライフのあとに小さく置く。
+ * 「相手」の文字（`.banner__who`）と同じ大きさにして、ライフの数字を主役のまま残す。
+ * **ボタンは足さない**（SPEC 8.7。2026-10-08 に帯が2行に折れた実測がある）。
+ */
+.banner__hand {
+  font-size: 11px;
+  opacity: 0.75;
+  white-space: nowrap;
+}
