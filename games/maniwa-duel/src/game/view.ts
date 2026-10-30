@@ -304,6 +304,18 @@ function lifeBanner(vm: ViewModel, owner: PlayerId, side: 'top' | 'bottom'): HTM
   }
   prevLp[owner] = player.lp
   box.appendChild(lp)
+  /*
+   * 相手の手札の枚数（SPEC 9.11）。**自分の側には出さない。**
+   * 自分の札は画面の下端に並んでいて数えられるが、相手の手札は
+   * どこにも出ていなかった。割り込み（SPEC 11）があるので、
+   * 相手が何枚持っているかは攻めるかどうかの判断に直に効く。
+   *
+   * 動きは付けない。枚数そのものが情報で、変わった瞬間は
+   * 9.10（相手の山が減った）がすでに出している。
+   */
+  if (owner !== vm.human) {
+    box.appendChild(el('span', 'banner__hand', `手札${player.hand.length}`))
+  }
   wrap.appendChild(box)
   return wrap
 }

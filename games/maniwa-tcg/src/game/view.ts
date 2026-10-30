@@ -158,6 +158,20 @@ function formatLogEntry(kind: string, detail: string): string | null {
       return `エネルギーをつけた（${energyLabel(detail.split(' ')[0] ?? null)}）`
     case 'retreat':
       return '逃げた'
+    /*
+     * 支援カードは**使ったことがどこにも出ていなかった**（SPEC 9.4.25）。
+     * `core` は `detail` にカードの名前をそのまま入れているので、ここで拾うだけでよい。
+     * 相手が使った札は手札も現物も見えず、残るのはトラッシュの数字だけだった。
+     *
+     * `playCreature` は足さない。`detail` が空で名前が入っていないうえ、
+     * 出した姫神は盤に現れる（`card--enter`）ので手がかりがある。
+     */
+    case 'item':
+      return `神具「${detail}」`
+    case 'action':
+      return `道標「${detail}」`
+    case 'ultimate':
+      return `絶技「${detail}」`
     default:
       return null
   }
