@@ -166,6 +166,34 @@ const FIRE: readonly CreatureCard[] = [
         ] },
     ],
   },
+  {
+    /*
+     * cthulhu の SR 枠。
+     *
+     * 系統 × レアリティで数えると、**cthulhu の SR は w009 ダゴン の1体だけ**で
+     * 全系統のなかで最も薄い（UR は逆に4体で最多）。cthulhu は姫神の総数も
+     * 11体で最少の組なので、ここを埋めると両方が動く。
+     * 属性は、**火の SR が f010 ローギ の1体しか無かった**ので火にした。
+     *
+     * f009 クトゥグア の説明文に出てくる「炎の精」がこの札である。
+     * ワザの形も クトゥグア の「聖なる炎」（ダメージ＋エネルギー落とし）を継いだ。
+     *
+     * 総合力 130 + 30.0×3 + 90×0.6 = 274.0（SR は 255〜299）。
+     */
+    id: 'f012', name: 'フサッグア', kind: 'creature',
+    flavor: 'クトゥグアに従う炎の精の群れ。一匹に触れられた者は、仲間ごと燃え移られる。',
+    origin: 'cthulhu', rarity: 'superRare',
+    type: 'fire', hp: 130, ex: false, retreatCost: 1, stage: 0,
+    attacks: [
+      { name: '火の群れ', ruby: 'ひのむれ', cost: ['fire', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 40 }] },
+      { name: '燃え移る', ruby: 'もえうつる', cost: ['fire', 'fire', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 75 },
+          { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 森
@@ -689,6 +717,34 @@ const THUNDER: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
       { name: '天命を攫う', ruby: 'てんめいをさらう', cost: ['thunder', 'thunder', 'colorless'],
         effects: [{ type: 'damage', target: 'opponentActive', value: 90 }, { type: 'switchOpponent' }] },
+    ],
+  },
+  {
+    /*
+     * t004 トール（norse / R）の EX。
+     *
+     * 系統の選び方: UR を系統ごとに数えると cthulhu 4 に対し
+     * **norse と india は1体ずつ**しかない。norse は姫神の総数も11体で
+     * 最少の組（japan / cthulhu と並ぶ）なので、両方を一度に埋められる。
+     * 属性は、norse の UR が forest（s001 ユグドラシルEX）だけなので雷にした。
+     *
+     * **絶技の種にもなる**（判断15番）。EX は最強ワザがコスト3なので、
+     * 次の絶技の夜に使える姫神が1体から2体に増える。
+     *
+     * 総合力 170 + 35.0×3 + 105×0.6 = 338.0（UR は 300 以上）。
+     */
+    id: 't011', name: 'トールEX', kind: 'creature',
+    flavor: '投げた槌は必ず手元へ戻る。戻るたびに巨人がひとつ減り、雷鳴だけが残る。',
+    origin: 'norse', rarity: 'ultra',
+    type: 'thunder', hp: 170, ex: true, retreatCost: 3, stage: 0,
+    attacks: [
+      { name: '雷轟', ruby: 'らいごう', cost: ['thunder', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+      { name: '巨人殺し', ruby: 'きょじんごろし', cost: ['thunder', 'thunder', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 90 },
+          { type: 'damage', target: 'opponentBenchAll', value: 10 },
+        ] },
     ],
   },
 ]
