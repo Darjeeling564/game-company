@@ -421,12 +421,36 @@ export function historyOf(state: GameState): readonly LogEntry[] {
   return state.log.filter((l) => l.kind !== 'rejected')
 }
 
-/** 直前の1件。説明の行に出す（SPEC 8.7） */
+/**
+ * **説明の行に出来事を出した時点**でのログの件数（SPEC 9.12.3）。
+ *
+ * ★ 最初は `renderDuel` の終わりで毎回更新していたが、**それだと数え落とす**。
+ * 説明の行が催促の文になる描き直し（「手札が7枚。6枚まで捨ててください」など）では
+ * `lastEvent()` が呼ばれないので、その描き直しで増えたぶんが**誰にも伝わらないまま
+ * 控えだけ進んでしまう**。実測でも、隠れた23件のうち伝わったのは14件だった。
+ * 更新は `lastEvent()` の中で行う。そうすれば
+ * 「**この行に最後に出してから何件増えたか**」になる。
+ */
+let prevHistoryLen = 0
+
+/**
+ * 直前の1件。説明の行に出す（SPEC 8.7）。
+ *
+ * ★ **末尾1件だけだと4割強が流れていた**（SPEC 9.12。1試合27件のうち12件が
+ * 一度も出ないまま終わった）。1手で複数の出来事が起きると、割り込みが挟まらない
+ * かぎり**同じ `reduce` の中で**全部片付くためである。
+ * 行は増やせない（SPEC 8.1）ので、**あと何件あるか**を末尾に付ける。
+ * 履歴のボタンは隣にあるので、気づけば1タップで全部読める。
+ */
 export function lastEvent(state: GameState, human: PlayerId): string {
-  const l = historyOf(state).at(-1)
+  const rows = historyOf(state)
+  const l = rows.at(-1)
   if (l === undefined) return ''
   const who = l.player === human ? '自分' : '相手'
-  return `${who}: ${logLabel(l.kind)} — ${l.detail}`
+  const text = `${who}: ${logLabel(l.kind)} — ${l.detail}`
+  const more = rows.length - prevHistoryLen - 1
+  prevHistoryLen = rows.length
+  return more > 0 ? `${text}　＋${more}件` : text
 }
 
 /**
@@ -478,6 +502,7 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     prevPile.clear()
     prevHandLen = null
     prevAttacked.clear()
+    prevHistoryLen = 0
   }
   prevTurn = vm.state.turn
   humanSide = vm.human
@@ -565,6 +590,7 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
   for (const id of [...prevAttacked]) {
     if (!seenThisRender.has(id)) prevAttacked.delete(id)
   }
+
 }
 
 /**
