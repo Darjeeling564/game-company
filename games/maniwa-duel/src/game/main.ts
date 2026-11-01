@@ -141,6 +141,97 @@ function targetName(instanceId: number): string {
   return '?'
 }
 
+/*
+ * ---------------------------------------------------------------- 断りの理由（SPEC 9.13）
+ *
+ * 札を選んでも手が1つも無いとき、これまでは「〈名前〉 をどうしますか」と訊いたまま
+ * 「やめる」しか出していなかった。**答えの無い問いである。**
+ *
+ * 理由は core が持っている。`reduce` は不正な Action を log に `rejected` として
+ * 積むだけで例外を投げないので（SPEC 4章）、**出さない手を1つ試して断りの文を読む**。
+ * 画面側にルールを書き写さずに済み、規則が変わっても文が勝手に追いつく。
+ *
+ * ★ 試した結果の状態は捨てる。core は純粋関数なので副作用は無い（CLAUDE.md 3章）。
+ */
+
+/** 試すだけ。通れば null、断られたらその文 */
+function rejectReason(action: Action): string | null {
+  const after = reduce(state, action)
+  const last = after.log.at(-1)
+  return last !== undefined && last.kind === 'rejected' ? last.detail : null
+}
+
+/**
+ * 内部の言い方を画面の言葉に直す。
+ *
+ * **表に無いものはそのまま出す**（`LOG_LABEL` と同じ考え。黙って消すと、
+ * 新しい断り方を足したときに画面から抜けたことに気付けない）。
+ * ただし識別子がそのまま残る文だけは、出さずに差し替える。
+ */
+const REASON_REWRITE: readonly (readonly [RegExp, string])[] = [
+  [/^ゾーン\d+は埋まっている$/, '姫神の枠が空いていない'],
+  [/^魔法罠ゾーン\d+は埋まっている$/, '神具・道標の枠が空いていない'],
+  [/^#\d+ は攻撃できない$/, 'いまは攻撃できない'],
+]
+/** まだ内部の識別子が混じっている文を見分ける（`#12` `手札3` `a019`） */
+const INTERNAL = /#\d|^手札\d|^[a-z]\d{3}\b/
+
+function playerFacing(detail: string): string | null {
+  for (const [re, text] of REASON_REWRITE) if (re.test(detail)) return text
+  return INTERNAL.test(detail) ? null : detail
+}
+
+/** 最初に当たった、画面に出せる断りの文 */
+function firstReason(actions: readonly Action[]): string | null {
+  for (const a of actions) {
+    const detail = rejectReason(a)
+    if (detail === null) continue
+    const text = playerFacing(detail)
+    if (text !== null) return text
+  }
+  return null
+}
+
+/** 手札の札を選んでも手が無いときの理由 */
+function reasonForHand(index: number): string {
+  const id = state.players[HUMAN].hand[index]
+  const def = id === undefined ? null : findCard(id)
+  const side = state.players[HUMAN]
+  const mz = side.monsters.findIndex((m) => m === null)
+  const sz = side.spells.findIndex((c) => c === null)
+  const cands: Action[] =
+    def?.kind === 'monster'
+      ? [{ type: 'normalSummon', handIndex: index, zone: mz < 0 ? 0 : mz, position: 'attack', tributes: [] },
+         { type: 'setMonster', handIndex: index, zone: mz < 0 ? 0 : mz, tributes: [] }]
+      : def?.kind === 'trap'
+        ? [{ type: 'setSpell', handIndex: index, zone: sz < 0 ? 0 : sz }]
+        : [{ type: 'activateSpell', handIndex: index, target: null },
+           { type: 'setSpell', handIndex: index, zone: sz < 0 ? 0 : sz }]
+  return firstReason(cands) ?? 'いまは出せません'
+}
+
+/** 自分の姫神を選んでも手が無いときの理由。フェイズで試す順を変える */
+function reasonForMonster(instanceId: number): string {
+  const attack: Action = { type: 'declareAttack', attacker: instanceId, target: null }
+  const flip: Action = { type: 'changePosition', instanceId }
+  const order = state.phase === 'battle' ? [attack, flip] : [flip, attack]
+  return firstReason(order) ?? 'いまは動かせません'
+}
+
+/**
+ * 名前を頭に付ける。**理由がすでに名前で始まっているなら付けない。**
+ * core の断りには `天叢焼 は カグツチEX が…` のように札名から始まるものがあり、
+ * そのまま繋ぐと「天叢焼 — 天叢焼 は …」と二重になる（2026-11-01 の実機で確認）。
+ */
+function withName(name: string, reason: string): string {
+  return reason.startsWith(name) ? reason : `${name} — ${reason}`
+}
+
+/** 選んだ姫神で攻撃できる相手がいるか。いれば「相手を選ぶ」が手になっている */
+function hasAttackTarget(instanceId: number): boolean {
+  return legalActions(state).some((a) => a.type === 'declareAttack' && a.attacker === instanceId)
+}
+
 function monsterButtons(instanceId: number): Button[] {
   const out: Button[] = []
   for (const a of legalActions(state)) {
@@ -194,12 +285,20 @@ function buildViewModel(): ViewModel {
     msg = `手札が ${state.players[HUMAN].hand.length} 枚。${HAND_LIMIT} 枚まで捨ててください`
   } else if (selectedHand !== null) {
     const id = state.players[HUMAN].hand[selectedHand]
-    msg = `${findCard(id ?? '')?.name ?? ''} をどうしますか`
-    buttons.push(...handButtons(selectedHand))
+    const name = findCard(id ?? '')?.name ?? ''
+    const acts = handButtons(selectedHand)
+    // 手が1つも無いなら、問いではなく理由を出す（SPEC 9.13）
+    msg = acts.length > 0 ? `${name} をどうしますか` : withName(name, reasonForHand(selectedHand))
+    buttons.push(...acts)
     buttons.push({ label: 'やめる', onTap: () => { selectedHand = null; render() } })
   } else if (selectedMonster !== null) {
-    msg = `${targetName(selectedMonster)} — 相手を選ぶか、下から選んでください`
-    buttons.push(...monsterButtons(selectedMonster))
+    const acts = monsterButtons(selectedMonster)
+    // 相手を選べるなら手はある。ボタンが無いことと手が無いことは別（SPEC 9.13）
+    const mname = targetName(selectedMonster)
+    msg = acts.length > 0 || hasAttackTarget(selectedMonster)
+      ? `${mname} — 相手を選ぶか、下から選んでください`
+      : withName(mname, reasonForMonster(selectedMonster))
+    buttons.push(...acts)
     buttons.push({ label: 'やめる', onTap: () => { selectedMonster = null; render() } })
   } else {
     if (msg === '') msg = state.phase === 'battle' ? '攻撃する姫神を選んでください' : 'カードを選んでください'
