@@ -3220,6 +3220,61 @@ body {
   100% { transform: translateX(-50%); text-shadow: none; }
 }
 
+/*
+ * 相手の手札の枚数が変わった瞬間（SPEC 9.4.27）。
+ *
+ * 9.4.23 の札束と同じ形にそろえる。**`.hand-count` は `.pile__count` と違って
+ * `transform: translateX(-50%)` を持たない**ので、全段に書き写す必要は無い。
+ * この数字に乗る演出はほかに無いので、取り合い（9.4.13）は起きない。
+ */
+@keyframes handCountUp {
+  0%   { transform: none; text-shadow: none; }
+  35%  { transform: translateY(-4px) scale(1.3); text-shadow: 0 0 8px var(--cream); }
+  100% { transform: none; text-shadow: none; }
+}
+
+@keyframes handCountDown {
+  0%   { transform: none; text-shadow: none; }
+  35%  { transform: translateY(3px) scale(1.2); text-shadow: 0 0 8px var(--cream); }
+  100% { transform: none; text-shadow: none; }
+}
+
+.hand-count {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+
+.hand-count--up {
+  animation: handCountUp 0.4s ease-out;
+}
+
+.hand-count--down {
+  animation: handCountDown 0.4s ease-out;
+}
+
+/*
+ * 動きを減らす設定（SPEC 9.4.27）。**止めるだけにはしない。**
+ * 数字は変わったあとの値で残るが、変わった瞬間は見逃すと取り返せない
+ * （相手の番は早送りで進む）。9.4.23 と同じ outline を置き、
+ * 線の形（実線＝増えた／点線＝減った）で見分ける。
+ */
+@media (prefers-reduced-motion: reduce) {
+  .hand-count--up,
+  .hand-count--down {
+    animation: none;
+  }
+
+  .hand-count--up {
+    outline: 2px solid var(--cream);
+    outline-offset: 2px;
+  }
+
+  .hand-count--down {
+    outline: 2px dotted var(--cream);
+    outline-offset: 2px;
+  }
+}
+
 .pile__count--up {
   animation: pileCountUp 0.4s ease-out;
 }
