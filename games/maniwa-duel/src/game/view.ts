@@ -405,9 +405,20 @@ const LOG_LABEL: Readonly<Record<string, string>> = {
   discard: '手札を捨てる', search: 'サーチ', revive: '蘇生',
   respond: '応答', pass: 'スルー', negate: '無効',
   flip: '反転', position: '表示形式', over: '決着',
+  // SPEC 9.14。200試合で201件出ていたのに表に無く、`atk` と出ていた
+  atk: '攻撃力',
 }
 
-function logLabel(kind: string): string {
+/**
+ * ★ `end` だけは `detail` を見て呼び名を変える（SPEC 9.14.1）。
+ *
+ * `core` の `end` は**2つの別々の出来事**に使われている。
+ * 決着（`プレイヤー1の勝ち（lifePoints）`）と、
+ * エンドフェイズの手札上限（`手札8枚。6枚まで捨てる`）である。
+ * 1つの語で両方を受けると、どちらかが嘘になる。
+ */
+function logLabel(kind: string, detail = ''): string {
+  if (kind === 'end') return /勝ち|引き分け/.test(detail) ? '決着' : 'エンド'
   return LOG_LABEL[kind] ?? kind
 }
 
@@ -447,7 +458,7 @@ export function lastEvent(state: GameState, human: PlayerId): string {
   const l = rows.at(-1)
   if (l === undefined) return ''
   const who = l.player === human ? '自分' : '相手'
-  const text = `${who}: ${logLabel(l.kind)} — ${l.detail}`
+  const text = `${who}: ${logLabel(l.kind, l.detail)} — ${l.detail}`
   const more = rows.length - prevHistoryLen - 1
   prevHistoryLen = rows.length
   return more > 0 ? `${text}　＋${more}件` : text
@@ -474,7 +485,7 @@ export function openHistory(state: GameState, human: PlayerId): void {
     }
     const row = el('div', `history__row history__row--${l.player === human ? 'mine' : 'theirs'}`)
     row.appendChild(el('span', 'history__who', l.player === human ? '自分' : '相手'))
-    row.appendChild(el('span', 'history__kind', logLabel(l.kind)))
+    row.appendChild(el('span', 'history__kind', logLabel(l.kind, l.detail)))
     row.appendChild(el('span', 'history__detail', l.detail))
     list.appendChild(row)
   }

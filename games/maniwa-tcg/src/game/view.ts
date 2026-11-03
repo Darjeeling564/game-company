@@ -18,7 +18,7 @@ import type {
   Rarity,
 } from '../core/types.ts'
 import { BENCH_SIZE, WEAKNESS_CHART, opponentOf, weaknessBonus } from '../core/types.ts'
-import { requireCard, requireCreature } from '../data/cards.ts'
+import { findCard, requireCard, requireCreature } from '../data/cards.ts'
 import { artStage, artUrl } from './art.ts'
 import { ORIGIN_STYLE, RARITY_STYLE, TYPE_COLOR, applyCardTheme, badgeInk } from './theme.ts'
 
@@ -166,6 +166,16 @@ function formatLogEntry(kind: string, detail: string): string | null {
      * `playCreature` は足さない。`detail` が空で名前が入っていないうえ、
      * 出した姫神は盤に現れる（`card--enter`）ので手がかりがある。
      */
+    /*
+     * 山札から姫神を探して手札に加えた（SPEC 9.4.26）。
+     * **`detail` はカードの ID** なので、そのままは出さずに名前へ直す。
+     * 相手が使ったぶんは「山札が減って手札が増えた」だけが残り、
+     * ドローとまったく同じ見え方になるので、ここだけは行が要る。
+     */
+    case 'searchCreature': {
+      const found = findCard(detail)
+      return found === undefined ? null : `山札から「${found.name}」を手札に加えた`
+    }
     case 'item':
       return `神具「${detail}」`
     case 'action':
@@ -916,6 +926,13 @@ function creatureCard(
  */
 const prevPile = new Map<string, number>()
 
+/**
+ * 手札の枚数の控え（SPEC 9.4.27）。**相手の側だけ**出す。
+ * 自分の手札は現物が下端に並び、増えた札には `card--draw` が付く（9.4.18）ので、
+ * 数字にも印を足すと二重になる。相手は枚数しか出ていないので、ここだけが手がかり。
+ */
+const prevHandCount = new Map<PlayerId, number>()
+
 function pileView(kind: 'deck' | 'discard', count: number, owner: PlayerId): HTMLElement {
   const pile = el('div', `pile pile--${kind}`)
   // 3枚まで重ねて厚みを出す。0枚なら枠だけ残して「置き場所」を示す
@@ -967,7 +984,18 @@ function sideView(
     )
   }
   head.append(points)
-  head.append(el('span', 'muted', `手札${player.hand.length}`))
+  /*
+   * 手札の枚数（SPEC 9.4.27）。**変わった描き直し1回だけ**印を付ける。
+   * 状態から直に決めると、枚数が変わっていない描き直しでも毎回再生される（9.4.2）。
+   */
+  const handCount = el('span', 'muted hand-count', `手札${player.hand.length}`)
+  const beforeHand = prevHandCount.get(id)
+  prevHandCount.set(id, player.hand.length)
+  if (beforeHand !== undefined && id === CPU) {
+    if (player.hand.length > beforeHand) handCount.classList.add('hand-count--up')
+    else if (player.hand.length < beforeHand) handCount.classList.add('hand-count--down')
+  }
+  head.append(handCount)
   side.append(head)
 
   const bench = el('div', 'slots')
@@ -1138,6 +1166,7 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
    */
   if (state.log.length < prevLogLen) {
     prevPile.clear()
+    prevHandCount.clear()
     prevCurrent = null
   }
   /*
