@@ -8,7 +8,7 @@ import type { Rng } from '../core/rng.ts'
 import { createRng } from '../core/rng.ts'
 import type { Deck, EnergyType, GameState, PlayerId } from '../core/types.ts'
 import { DECK_SIZE, MAX_SAME_NAME } from '../core/types.ts'
-import { CARDS, requireCard, requireCreature } from '../data/cards.ts'
+import { CARDS, CARD_INDEX, requireCard, requireCreature } from '../data/cards.ts'
 import { DECKS } from '../data/decks.ts'
 // 方策はシミュレータと共有する。CPU の打ち筋とバランス測定を一致させるため
 import { greedyPolicy } from '../../tools/ai.ts'
@@ -988,6 +988,64 @@ function placementChoices(handIndex: number): readonly { label: string; sub?: st
     })
 }
 
+/*
+ * ---------------------------------------------------------------- 断りの理由（SPEC 9.4.28）
+ *
+ * 手札を押しても出せる手が1つも無いとき、これまでは札の詳細だけ出して
+ * 理由を何も出していなかった（盤の空き枠から入ると黙って戻っていた）。
+ * 200試合の実測で、押せた場面 20536 件のうち **14240 件（69.3%）** が
+ * 出せる手0件だった。
+ *
+ * 理由は core が持っている。`reduce` は不正な Action を例外にせず log に
+ * `rejected` として積むだけなので、**出さない手を1つ試して断りの文を読む**。
+ * core は純粋関数なので試した状態は捨ててよい（CLAUDE.md 3章）。
+ * 姫神戦記 SPEC 9.13.4 と同じやり方である。
+ */
+
+/** 試すだけ。通れば null、断られたら理由（`describeAction` の前置きは外す） */
+function rejectReason(action: Action): string | null {
+  const after = reduce(state, action)
+  const last = after.log.at(-1)
+  if (last === undefined || last.kind !== 'rejected') return null
+  const sep = last.detail.indexOf(': ')
+  return sep < 0 ? last.detail : last.detail.slice(sep + 2)
+}
+
+/**
+ * 内部の言い方を画面の言葉に直す。
+ *
+ * `core` の断り18通りのうち17通りはそのまま出せる日本語で、
+ * **`rules.ts` の「`<カードID>` がバトル場にいない」だけがIDを晒す**（SPEC 9.4.28.2）。
+ * `core` は触らず、ここで姫神の名前に直す。
+ */
+function playerFacingReason(detail: string): string {
+  return detail.replace(/^([a-z]\d{3}) /, (whole, id: string) => {
+    const card = CARD_INDEX.get(id)
+    return card === undefined ? whole : `${card.name} `
+  })
+}
+
+/** 手札の札を押しても出せる手が無いときの理由。無ければ null */
+function reasonForHand(handIndex: number): string | null {
+  const cardId = state.players[HUMAN].hand[handIndex]
+  if (cardId === undefined) return null
+  const def = requireCard(cardId)
+  const cands: Action[] =
+    def.kind === 'creature'
+      ? [{ type: 'setupPlace', player: HUMAN, handIndex },
+         { type: 'playCreature', player: HUMAN, handIndex, release: null }]
+      : def.kind === 'item'
+        ? [{ type: 'playItem', player: HUMAN, handIndex }]
+        : def.kind === 'action'
+          ? [{ type: 'playAction', player: HUMAN, handIndex }]
+          : [{ type: 'useUltimate', player: HUMAN, handIndex }]
+  for (const a of cands) {
+    const detail = rejectReason(a)
+    if (detail !== null) return playerFacingReason(detail)
+  }
+  return null
+}
+
 /**
  * リリース先を選ぶ。
  *
@@ -996,13 +1054,19 @@ function placementChoices(handIndex: number): readonly { label: string; sub?: st
  */
 function showPlacementMenu(handIndex: number): void {
   const choices = placementChoices(handIndex)
-  if (choices.length === 0) {
+  const cardId = state.players[HUMAN].hand[handIndex]
+  if (cardId === undefined) {
     overlay = null
     return
   }
-  const cardId = state.players[HUMAN].hand[handIndex]
-  const name = cardId === undefined ? '姫神' : requireCard(cardId).name
-  renderChoices(root, `${name} を出す`, choices, apply, closeOverlay)
+  const card = requireCard(cardId)
+  // 出せないときも黙って戻らない。札と理由を出す（SPEC 9.4.28）
+  if (choices.length === 0) {
+    renderChoices(root, `${card.name} を出す`, choices, apply, closeOverlay,
+      cardDetailPanel(card, null), reasonForHand(handIndex))
+    return
+  }
+  renderChoices(root, `${card.name} を出す`, choices, apply, closeOverlay)
 }
 
 /** どこに出るか。リリース元の場所をそのまま引き継ぐ（SPEC 3.3.1） */
@@ -1023,7 +1087,10 @@ function showHandDetail(handIndex: number): void {
   }
 
   const detail = cardDetailPanel(requireCard(cardId), null)
-  renderChoices(root, '手札', placementChoices(handIndex), apply, closeOverlay, detail)
+  const choices = placementChoices(handIndex)
+  // 出せる手が無いときは理由を添える（SPEC 9.4.28）
+  renderChoices(root, '手札', choices, apply, closeOverlay, detail,
+    choices.length === 0 ? reasonForHand(handIndex) : null)
 }
 
 function showPromoteMenu(): void {
