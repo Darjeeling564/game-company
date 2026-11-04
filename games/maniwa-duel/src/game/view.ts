@@ -410,6 +410,38 @@ const LOG_LABEL: Readonly<Record<string, string>> = {
 }
 
 /**
+ * 決着の理由を画面の言葉にする（SPEC 9.15.3）。
+ * `EndReason` は core/types.ts の3つだけ。**表に無いものはそのまま残す。**
+ */
+const END_REASON: Readonly<Record<string, string>> = {
+  lifePoints: 'ライフが0になった',
+  deckOut: '山札が尽きた',
+  turnLimit: 'ターン上限',
+}
+
+/** 決着の行かどうか。`end` は手札上限にも使われているので文面で見分ける（9.14.1） */
+function isFinishRow(kind: string, detail: string): boolean {
+  return kind === 'end' && /勝ち|引き分け/.test(detail)
+}
+
+/**
+ * 内部の言い方を画面の言葉に直す（SPEC 9.15）。
+ *
+ * 直すのは**決着の行だけ**。`プレイヤーN` を 自分 / 相手 に、
+ * `EndReason` の識別子を日本語に置き換える。
+ * 200試合で200件、つまり毎試合かならず出ていた。
+ */
+function logDetail(kind: string, detail: string, human: PlayerId): string {
+  if (!isFinishRow(kind, detail)) return detail
+  return detail
+    .replace(/プレイヤー(\d)/, (_, n: string) => (Number(n) === human ? '自分' : '相手'))
+    .replace(/（([A-Za-z]+)）/, (whole, reason: string) => {
+      const text = END_REASON[reason]
+      return text === undefined ? whole : `（${text}）`
+    })
+}
+
+/**
  * ★ `end` だけは `detail` を見て呼び名を変える（SPEC 9.14.1）。
  *
  * `core` の `end` は**2つの別々の出来事**に使われている。
@@ -457,8 +489,14 @@ export function lastEvent(state: GameState, human: PlayerId): string {
   const rows = historyOf(state)
   const l = rows.at(-1)
   if (l === undefined) return ''
+  /*
+   * 決着の行だけ頭の語を出さない（SPEC 9.15.2）。
+   * `finish()` は `turnPlayer` を `player` に入れているので、ここの「自分 / 相手」は
+   * **手番を持っていた側**であって勝った側ではない。detail を日本語に直すと食い違って読める
+   */
   const who = l.player === human ? '自分' : '相手'
-  const text = `${who}: ${logLabel(l.kind, l.detail)} — ${l.detail}`
+  const body = `${logLabel(l.kind, l.detail)} — ${logDetail(l.kind, l.detail, human)}`
+  const text = isFinishRow(l.kind, l.detail) ? body : `${who}: ${body}`
   const more = rows.length - prevHistoryLen - 1
   prevHistoryLen = rows.length
   return more > 0 ? `${text}　＋${more}件` : text
@@ -483,10 +521,12 @@ export function openHistory(state: GameState, human: PlayerId): void {
       turn = l.turn
       list.appendChild(el('div', 'history__turn', `ターン${turn}`))
     }
+    const finish = isFinishRow(l.kind, l.detail)
     const row = el('div', `history__row history__row--${l.player === human ? 'mine' : 'theirs'}`)
-    row.appendChild(el('span', 'history__who', l.player === human ? '自分' : '相手'))
+    // 決着の行の「自分 / 相手」は手番を持っていた側で、勝った側ではない（SPEC 9.15.2）
+    row.appendChild(el('span', 'history__who', finish ? '' : l.player === human ? '自分' : '相手'))
     row.appendChild(el('span', 'history__kind', logLabel(l.kind, l.detail)))
-    row.appendChild(el('span', 'history__detail', l.detail))
+    row.appendChild(el('span', 'history__detail', logDetail(l.kind, l.detail, human)))
     list.appendChild(row)
   }
   panel.appendChild(list)
