@@ -1393,11 +1393,18 @@ export function renderChoices(
   onPick: (action: Action) => void,
   onCancel: (() => void) | null,
   detail: HTMLElement | null = null,
+  /**
+   * 手が1つも無いときだけ出す一文（SPEC 9.4.28）。
+   * これが無いと、札の詳細だけ出て「なぜ出せないのか」がどこにも残らない。
+   * **ボタンは増やさない。** 文字として幕に残れば、見逃しても取り返せる
+   */
+  note: string | null = null,
 ): void {
   const modal = el('div', 'modal')
   const panel = el('div', 'modal__panel')
   panel.append(el('div', 'title', title))
   if (detail !== null) panel.append(detail)
+  if (choices.length === 0 && note !== null) panel.append(el('div', 'choices__note', note))
   for (const choice of choices) {
     const btn = el('button', choice.sub === undefined ? 'btn' : 'btn btn--stack')
     btn.type = 'button'

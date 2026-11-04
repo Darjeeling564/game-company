@@ -3346,3 +3346,20 @@ body {
     outline-offset: 2px;
   }
 }
+
+/*
+ * 出せる手が1つも無いときに幕へ出す一文（SPEC 9.4.28）。
+ * **ボタンではない。** 押すものと見分けが付くよう、枠は付けず地を薄く敷く。
+ * 文は `core` の断りをそのまま使うので、長さは「配置フェーズに置けるのは
+ * コモンの姫神だけ」（22文字）が最長。折り返して2行まで伸びる前提で組む。
+ */
+.choices__note {
+  margin: 2px 0 2px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(14, 30, 19, 0.5);
+  border-left: 3px solid var(--cream);
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1.5;
+}
