@@ -1476,3 +1476,57 @@ body {
   opacity: 0.75;
   white-space: nowrap;
 }
+
+/*
+ * 攻撃力が書き換わった瞬間（SPEC 9.16）。
+ *
+ * **動かすのは `.card__foot` の最初の `.card__stat`（攻撃力の字）だけ。**
+ * カード本体には card--striking / card--struck（box-shadow）と
+ * card--strike-up / -down・card--flip-*（transform）が乗っているので、
+ * 本体に animation を当てると取り合いになる。子孫の字なら起きない。
+ *
+ * **★ transform で動かさない。** `.card__foot` は `overflow: hidden` で閉じてあり
+ * （攻守とレベルが枠を押し広げないため）、9px の字を 1.25 倍にして 3px ずらすと
+ * **はみ出したぶんが切れる**。場所を取らない `text-shadow` と `color` だけで出す。
+ */
+@keyframes atkUp {
+  0%   { text-shadow: none; color: inherit; }
+  30%  { text-shadow: 0 0 6px var(--cream), 0 0 2px var(--cream); color: #fff; }
+  100% { text-shadow: none; color: inherit; }
+}
+
+@keyframes atkDown {
+  0%   { text-shadow: none; opacity: 1; }
+  30%  { text-shadow: 0 0 6px rgba(180, 71, 46, 0.95); opacity: 0.45; }
+  100% { text-shadow: none; opacity: 1; }
+}
+
+.card--atk-up .card__foot .card__stat:first-child {
+  animation: atkUp 0.42s ease-out;
+}
+
+.card--atk-down .card__foot .card__stat:first-child {
+  animation: atkDown 0.42s ease-out;
+}
+
+/*
+ * 動きを減らす設定（SPEC 9.16.3）。**止めるだけにはしない。**
+ * 数字は変わったあとの値で残るが、変わった瞬間は早送りで流れてしまう。
+ * 線の形（実線＝上がった／点線＝下がった）で見分ける。
+ * `outline` は要素の外に描かれるので `overflow: hidden` に切られる。
+ * **`box-shadow` の inset で内側に引く。**
+ */
+@media (prefers-reduced-motion: reduce) {
+  .card--atk-up .card__foot .card__stat:first-child,
+  .card--atk-down .card__foot .card__stat:first-child {
+    animation: none;
+  }
+
+  .card--atk-up .card__foot .card__stat:first-child {
+    box-shadow: inset 0 0 0 2px var(--cream);
+  }
+
+  .card--atk-down .card__foot .card__stat:first-child {
+    box-shadow: inset 0 0 0 2px rgba(180, 71, 46, 0.95);
+  }
+}

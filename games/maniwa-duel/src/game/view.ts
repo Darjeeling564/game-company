@@ -154,6 +154,14 @@ let seenThisRender = new Set<number>()
  */
 const prevAttacked = new Set<number>()
 
+/**
+ * 攻撃力の控え（SPEC 9.16）。鍵は `instanceId`。
+ * **両側に出す。** 相手の攻撃力が上がったことは、殴るかどうかの判断に直に効く。
+ * ターンの終わりに `atkDelta` が 0 に戻るので、**上がった数字は次のターンの頭で
+ * また変わる**。そこも印の対象である（理由なく2回変わって見えるのを防ぐ）。
+ */
+const prevAtk = new Map<number, number>()
+
 /** 場の姫神1体 */
 function monsterNode(vm: ViewModel, owner: PlayerId, m: MonsterOnField, h: ViewHandlers): HTMLElement {
   const slot = el('div', 'slot slot--monster')
@@ -180,6 +188,17 @@ function monsterNode(vm: ViewModel, owner: PlayerId, m: MonsterOnField, h: ViewH
   seenThisRender.add(m.instanceId)
   if (m.faceDown) node.classList.add('card--facedown')
   if (m.hasAttacked) node.classList.add('card--spent')
+  /*
+   * 攻撃力が書き換わった瞬間（SPEC 9.16）。**動かすのは字だけ**で、
+   * カード本体には既に box-shadow と transform の演出が乗っている（9.4.13）。
+   * 裏側の姫神は数字そのものを出していないので対象外。
+   */
+  const atkNow = effectiveAtk(vm.state, m.instanceId)
+  const atkBefore = prevAtk.get(m.instanceId)
+  prevAtk.set(m.instanceId, atkNow)
+  if (!hidden && atkBefore !== undefined && atkNow !== atkBefore) {
+    node.classList.add(atkNow > atkBefore ? 'card--atk-up' : 'card--atk-down')
+  }
   /*
    * 攻撃している姫神と狙われている姫神（SPEC 9.9）。
    * **持続する印は静止させる。** `pendingAttack` があるあいだ毎回付くので、
@@ -553,6 +572,7 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     prevPile.clear()
     prevHandLen = null
     prevAttacked.clear()
+    prevAtk.clear()
     prevHistoryLen = 0
   }
   prevTurn = vm.state.turn
@@ -640,6 +660,10 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
   // 攻撃済みの控えも同じように掃除する（SPEC 9.9.3）
   for (const id of [...prevAttacked]) {
     if (!seenThisRender.has(id)) prevAttacked.delete(id)
+  }
+  // 攻撃力の控えも同じ（SPEC 9.16）。残すと同じ instanceId の使い回しで誤爆する
+  for (const id of [...prevAtk.keys()]) {
+    if (!seenThisRender.has(id)) prevAtk.delete(id)
   }
 
 }
