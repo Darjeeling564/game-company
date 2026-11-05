@@ -829,6 +829,58 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'draw', value: 1 },
     ],
   },
+  {
+    id: 'a037', name: 'オーズレリル', kind: 'action',
+    origin: 'norse', rarity: 'common',
+    /*
+     * **道標の C が無い系統は norse と egypt の2つだけだった**（その場で数えた。
+     * ほかの6系統は1枚以上ある）。a037 と a038 でその行が埋まる。
+     *
+     * オーズレリルは詩の蜜酒を湛えた釜。一口で言葉が溢れる。
+     * 「言葉が溢れる」をドロー2枚に、「痛みが遠のく」を小さな回復に当てた。
+     *
+     * **`draw` と `heal:ownActive` を組んだ札は、支援98種で0種だった。**
+     * （i033 八咫鏡 が searchCreature 付きの3効果で持っているが、2つだけの組は無い。）
+     *
+     * 評価値 2×5 + 10×0.6 = 16 → 総合力 57.6。C 帯（16.67 未満）の上端。
+     *
+     * **★ 最初は『エイトルの滴り』として毒を置くだけの札で書き、測って捨てた。**
+     * 原初の毒エイトルを `applyStatus` 単独に当てた札で、**この形も支援98種で0種**
+     * だったが、6万戦プールの寄与が **−2.0pt**。C 道標7種の帯（−0.8〜+6.2pt /
+     * 平均 +1.5pt）の下に落ちる。**毒は単独では効かない**——既存の毒札5種は
+     * すべて何かと組んでいる（i013 damage / i034 benchAll / a006 damage /
+     * a020 discardEnergy / a021 draw）。
+     * 次に `searchCreature` + 回復10 を試したが **−1.5pt** でまだ帯の下だった。
+     * C 帯で効いているのはドローの札である（a011 +6.2 / a001 +4.3 / a005 +2.1）。
+     */
+    flavor: '詩の蜜酒を湛えた釜。一口含めば言葉が溢れ、傷の痛みも遠のくという。',
+    effects: [
+      { type: 'draw', value: 2 },
+      { type: 'heal', target: 'ownActive', value: 10 },
+    ],
+  },
+  {
+    id: 'a038', name: '熱砂の渦', ruby: 'ねっさのうず', kind: 'action',
+    origin: 'egypt', rarity: 'common',
+    /*
+     * egypt の道標も C が0だった。5種すべてが R 以上で、
+     * **いちばん安い札でも R**（a004 / a015 / a020）という偏りがあった。
+     *
+     * 砂嵐は前に立つ者を退かせ、運が悪ければ削る。
+     * 「退かせる」を `switchOpponent`、「運が悪ければ」を `damagePerHeads` に当てた。
+     *
+     * **`switchOpponent` と `damagePerHeads` を組んだ札は、支援98種で0種。**
+     * egypt の道標で `switchOpponent` を使っているのは a026 ヘカの言葉（UR）だけで、
+     * そちらは入れ替えたうえで殴って剥がす3効果の札。**こちらは2効果に留める。**
+     *
+     * 評価値 10 + 10×1÷2 = 15 → 総合力 54.0。
+     */
+    flavor: '地平から立ちのぼる砂の柱。前に出た者から順に退かされ、肌を灼かれる。',
+    effects: [
+      { type: 'switchOpponent' },
+      { type: 'damagePerHeads', target: 'opponentActive', value: 10, count: 1 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
