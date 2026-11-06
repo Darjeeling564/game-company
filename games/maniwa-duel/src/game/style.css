@@ -144,6 +144,49 @@ body {
   color: #f0c9a8;
 }
 
+/*
+ * 手番が移った瞬間の印（SPEC 9.17）。
+ *
+ * 動かすのは `opacity` と `text-shadow` だけにする。`.head` は flex の行で、
+ * 中の `.turn` は `flex: 1 1 auto` なので、**大きさを動かすと左のライフ帯と
+ * 右の早送りが横に動く**。9.16 と同じ理由で transform は使わない。
+ *
+ * `.turn__no` は普段 `opacity: 0.75` なので、いったん落としてから上げる。
+ * 動きが終われば CSS の値に戻る（`forwards` を付けない）
+ */
+@keyframes turnNew {
+  0% {
+    opacity: 0.35;
+    text-shadow: none;
+  }
+
+  30% {
+    opacity: 1;
+    text-shadow: 0 0 10px var(--cream);
+  }
+
+  100% {
+    opacity: 1;
+    text-shadow: none;
+  }
+}
+
+.turn--new .turn__no,
+.turn--new .turn__phase {
+  animation: turnNew 0.55s ease-out;
+}
+
+/*
+ * 動きを減らす設定では止めるだけでよい。9.7.3 と違って代わりは置かない。
+ * **ターン番号と「自分／相手」という手がかりが文字として残る**ため
+ */
+@media (prefers-reduced-motion: reduce) {
+  .turn--new .turn__no,
+  .turn--new .turn__phase {
+    animation: none;
+  }
+}
+
 .ff {
   flex: 0 0 auto;
   width: var(--tap);
