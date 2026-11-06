@@ -218,11 +218,35 @@ function tabBar(current: Tab): HTMLElement {
   return bar
 }
 
+/*
+ * 一覧を下げた位置の控え（SPEC 9.4.29）。
+ *
+ * 画面は `root.replaceChildren()` で丸ごと作り直すので、縦にスクロールする
+ * `.page__body` は描き直すたびに先頭へ戻る。図鑑は 10808px、デッキ編集の
+ * 「カードを追加」は 11211px あるため、1枚入れるたびに先頭まで巻き戻っていた。
+ *
+ * 鍵は「同じ一覧かどうか」を表す文字列にする。**鍵が変わる操作では先頭から
+ * 始める**（絞り込みを変えた・段を切り替えた＝並びが別物になったとき）。
+ * 対戦画面の `.field` が同じことを `keptScroll` でやっている（9.3.2）。
+ */
+const pageScroll = new Map<string, number>()
+let shownScrollKey: string | null = null
+
+/**
+ * 今出ている一覧の位置を控える。`root` を作り直す前に必ず呼ぶ。
+ * `.page__body` が無い画面（題名・対戦・結果・図鑑の詳細）では何もしない
+ */
+function keepPageScroll(): void {
+  const live = root.querySelector('.page__body')
+  if (live instanceof HTMLElement && shownScrollKey !== null) pageScroll.set(shownScrollKey, live.scrollTop)
+}
+
 /** タブのある画面の外枠。中身と下部タブを縦に積む */
-function shell(current: Tab, title: string, body: HTMLElement): void {
+function shell(current: Tab, title: string, body: HTMLElement, scrollKey: string): void {
   clearTimer()
   // 対戦の外はすべて calm（SPEC 9.6.3）。同じ曲なら playBgm 側で何もしない
   playBgm('calm')
+  keepPageScroll()
   root.replaceChildren()
   const page = el('div', 'page')
   page.append(el('div', 'page__head', title))
@@ -231,6 +255,9 @@ function shell(current: Tab, title: string, body: HTMLElement): void {
   page.append(scroll)
   page.append(tabBar(current))
   root.append(page)
+  // append したあとでないとスクロールできない（高さが決まっていない）
+  scroll.scrollTop = pageScroll.get(scrollKey) ?? 0
+  shownScrollKey = scrollKey
 }
 
 // ---------------------------------------------------------------- ホーム
@@ -263,7 +290,7 @@ function showHome(): void {
   body.append(how)
 
   body.append(soundToggle(showHome))
-  shell('home', '姫神演義', body)
+  shell('home', '姫神演義', body, 'home')
 }
 
 // ---------------------------------------------------------------- カード図鑑
@@ -310,12 +337,14 @@ function showGallery(): void {
   }
   body.append(grid)
   body.append(el('div', 'muted', `${shown.length}種を表示中（絵は ${shown.filter((c) => artUrl(c.id) !== null).length}種ぶん）`))
-  shell('gallery', 'カード図鑑', body)
+  shell('gallery', 'カード図鑑', body, `gallery:${galleryFilter}`)
 }
 
 /** 図鑑からカード1枚を開く。対戦中の詳細と同じ体裁を使い回す */
 function showGalleryDetail(cardId: string): void {
   const card = requireCard(cardId)
+  // 図鑑へ戻ったときに同じ位置へ送り直せるよう、出る前に控える（SPEC 9.4.29）
+  keepPageScroll()
   root.replaceChildren()
   const back = el('div', 'modal')
   const panel = el('div', 'modal__panel')
@@ -401,7 +430,7 @@ function showHowTo(): void {
   back.type = 'button'
   back.addEventListener('click', showHome)
   body.append(back)
-  shell('home', '遊びかた', body)
+  shell('home', '遊びかた', body, 'how-to')
 }
 
 // ---------------------------------------------------------------- デッキ編集
@@ -475,7 +504,7 @@ function showDeckList(): void {
   }
 
   body.append(el('div', 'muted', `※ 基準デッキ8種（${DECKS.map((d) => d.name).join(' / ')}）は編集できません。対戦画面ではそちらも選べます。`))
-  shell('decks', 'デッキ', body)
+  shell('decks', 'デッキ', body, 'deck-list')
 }
 
 /** 編集画面のどちら側を出しているか。画面を出ると忘れる */
@@ -558,7 +587,7 @@ function showDeckEdit(id: string): void {
   back.addEventListener('click', showDeckList)
   body.append(back)
 
-  shell('decks', 'デッキを編集', body)
+  shell('decks', 'デッキを編集', body, `deck-edit:${id}:${deckEditPane}`)
 
   function update(target: string, fn: (d: CustomDeck) => CustomDeck): void {
     saveDecks(load().decks.map((d) => (d.id === target ? fn(d) : d)))
@@ -654,7 +683,7 @@ function showBattleSelect(): void {
   body.append(how)
 
   body.append(el('div', 'muted', '対人戦は未実装です。今は CPU との対戦だけ遊べます。'))
-  shell('battle', '対戦', body)
+  shell('battle', '対戦', body, 'battle-select')
 }
 
 function showDeckSelect(): void {
@@ -700,7 +729,7 @@ function showDeckSelect(): void {
   back.type = 'button'
   back.addEventListener('click', showBattleSelect)
   body.append(back)
-  shell('battle', 'デッキを選ぶ', body)
+  shell('battle', 'デッキを選ぶ', body, 'deck-select')
 }
 
 /*
