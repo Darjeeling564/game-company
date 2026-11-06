@@ -295,6 +295,14 @@ const prevLp: [number | null, number | null] = [null, null]
 /** 対戦をやり直したら控えを捨てる目印（SPEC 9.5.3）。新しい対戦は必ずターン1から */
 let prevTurn = 0
 
+/*
+ * 手番が移った瞬間の印の控え（SPEC 9.17）。
+ *
+ * `prevTurn` を使い回せない。あちらは対戦のやり直しを見分けるためのもので、
+ * **頭（head）を組む前にもう書き換わっている**。印には別の控えを持つ
+ */
+let prevTurnShown: number | null = null
+
 function lifeBanner(vm: ViewModel, owner: PlayerId, side: 'top' | 'bottom'): HTMLElement {
   const player = vm.state.players[owner]
   const wrap = el('div', `banner banner--${side}`)
@@ -574,6 +582,7 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     prevAttacked.clear()
     prevAtk.clear()
     prevHistoryLen = 0
+    prevTurnShown = null
   }
   prevTurn = vm.state.turn
   humanSide = vm.human
@@ -586,6 +595,13 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
   head.appendChild(lifeBanner(vm, foe, 'top'))
 
   const turn = el('div', 'turn')
+  /*
+   * ターンが移った瞬間だけ印を出す（SPEC 9.17）。
+   * 印は番号と「自分／相手」の**両方**に掛ける。番号は 12px で薄いので、
+   * それだけだと見えない
+   */
+  if (prevTurnShown !== null && vm.state.turn !== prevTurnShown) turn.classList.add('turn--new')
+  prevTurnShown = vm.state.turn
   turn.appendChild(el('span', 'turn__no', `ターン${vm.state.turn}`))
   const who = vm.state.turnPlayer === vm.human ? '自分' : '相手'
   const phase = PHASE_LABEL[vm.state.phase] ?? vm.state.phase
