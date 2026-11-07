@@ -1295,4 +1295,55 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'discardEnergy', target: 'opponentActive', value: 2 },
     ],
   },
+  {
+    /*
+     * w012 ポセイドンEX の絶技。
+     *
+     * ★ **絶技を付けられる姫神をその場で数え直した。** u028 を足した夜は
+     * 「d011 の1体しか残っていない」と書いたが、**いまは3体いる**
+     * （f012 フサッグア / t011 トールEX / w012 ポセイドンEX）。
+     * そのあとの姫神の夜に EX が増えたためである。**前夜の記述ではなく、その場で数える。**
+     *
+     * 系統で見ると絶技はギリシアとインドが2種で一番薄い。候補のうち
+     * ギリシアは w012 だけなので、ここを埋める。
+     *
+     * 効率の比（SPEC 16.5.1）。w012 の最強ワザ「地揺るがし」は
+     * `damage 100` ＋ `switchOpponent` で評価値 110、コスト3なので効率 36.67。
+     * 許される帯は 1.05〜1.30 倍 ＝ 効率 38.50〜47.67、コスト3なら評価値 115.5〜143.0。
+     * こちらは `damage 120` ＋ ベンチ全体 `10` で評価値 135（ベンチ全体は 1.5 倍で数える）、
+     * 効率 45.00、**比 1.227**。
+     *
+     * 津波は前の1体だけを選ばないので、**ベンチまで届く形**にした。
+     */
+    id: 'u029', name: '大海嘯', ruby: 'だいかいしょう', kind: 'ultimate',
+    origin: 'greece', rarity: 'ultra', requires: 'w012',
+    flavor: '三叉の矛が海底を貫き、立ち上がった水の壁が岸ごと攫う。前にも後ろにも逃げ場は無い。',
+    cost: ['water', 'water', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 120 },
+      { type: 'damage', target: 'opponentBenchAll', value: 10 },
+    ],
+  },
+  {
+    /*
+     * t011 トールEX の絶技。北欧は3種で、ギリシアに次いで薄い。
+     *
+     * 効率の比（SPEC 16.5.1）。t011 の最強ワザ「巨人殺し」は
+     * `damage 90` ＋ ベンチ全体 `10` で評価値 105、コスト3なので効率 35.00。
+     * 許される帯は 1.05〜1.30 倍 ＝ 効率 36.75〜45.50、コスト3なら評価値 110.25〜136.5。
+     * こちらは `damage 90` ＋ ベンチ全体 `20` で評価値 120、効率 40.00、**比 1.143**。
+     *
+     * **前の1体への打点は「巨人殺し」と同じ 90 のままにしてある。**
+     * 投げた槌が巨人の列を薙ぐ札なので、増えるぶんは**奥へ**向かう。
+     * 上の u029 が前を 120 まで伸ばす形なので、同じ夜の2枚で役割を分けた。
+     */
+    id: 'u030', name: '万雷の槌', ruby: 'ばんらいのつち', kind: 'ultimate',
+    origin: 'norse', rarity: 'ultra', requires: 't011',
+    flavor: '投げられた槌が巨人の列を薙ぎ、手元へ戻るまでに雷鳴が幾度も重なる。',
+    cost: ['thunder', 'thunder', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 90 },
+      { type: 'damage', target: 'opponentBenchAll', value: 20 },
+    ],
+  },
 ]
