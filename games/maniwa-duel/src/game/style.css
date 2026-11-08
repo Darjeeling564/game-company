@@ -1196,6 +1196,19 @@ body {
   background: rgba(0, 0, 0, 0.18);
   color: var(--cream);
   font-family: inherit;
+  /*
+   * 画面の外にあるあいだは中身を描かない（SPEC 9.19）。
+   *
+   * 絵は `.card__art` の `background-image` なので `loading="lazy"` が効かない。
+   * **カード一覧を開いた瞬間に152枚・25.47MB を取りに行っていた**
+   * （2026-11-08 実測。そのとき見えているセルは174のうち9）。
+   *
+   * 大きさは**高さだけ**実測値を書く。174枚すべて 113 × 153px で、
+   * 内側（content box）は 141px（`padding: 4px` ＋ `border: 2px`）。
+   * 横は親の grid が決めるので `none` にする（姫神演義 SPEC 9.13.3 とそろえる）。
+   */
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 141px;
   cursor: pointer;
 }
 
