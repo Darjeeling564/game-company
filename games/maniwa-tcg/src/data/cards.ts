@@ -318,6 +318,34 @@ const FOREST: readonly CreatureCard[] = [
         effects: [{ type: 'damage', target: 'opponentActive', value: 100 }, { type: 'searchCreature' }] },
     ],
   },
+  {
+    /*
+     * インドは UR が `f011 シヴァEX` の1体しか無く、9系統で唯一だった（2026-11-09 実測。
+     * オリジナルは1枚しか無い別枠）。もりは10体で属性のなかで最も薄い。その両方を埋める。
+     *
+     * 総合力は 333.2 で、UR 18体の中央（332）にほぼ重なる
+     * （既存は 308.0〜387.0。`tools/rarity.ts` の式で算出）。
+     *
+     * **ベンチ全体を回復するワザは、これが姫神で初めてになる**（2026-11-09 実測で0件）。
+     * 耕さずに獣を養う女神なので、前に出ている自分ではなく**後ろを養う**形にした。
+     */
+    id: 's011', name: 'アランヤニEX', ruby: 'アランヤニEX', kind: 'creature',
+    flavor: '姿を見た者はいない、森そのものの女神。鈴の音を追っても、見つかるのは獣たちの寝床ばかりである。',
+    origin: 'india', rarity: 'ultra',
+    type: 'forest', hp: 170, ex: true, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '森の恵み', ruby: 'もりのめぐみ', cost: ['forest', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 50 },
+          { type: 'heal', target: 'ownBenchAll', value: 20 },
+        ] },
+      { name: '見えざる主', ruby: 'みえざるあるじ', cost: ['forest', 'forest', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 90 },
+          { type: 'heal', target: 'self', value: 20 },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 風
@@ -450,6 +478,34 @@ const WIND: readonly CreatureCard[] = [
         effects: [
           { type: 'damage', target: 'opponentActive', value: 90 },
           { type: 'damage', target: 'opponentBenchRandom', value: 20 },
+        ] },
+    ],
+  },
+  {
+    /*
+     * 日本は11体で、オリジナルを除くと最も少ない系統だった（2026-11-09 実測）。
+     * かぜも10体でもりと並んで最も薄い。その両方を埋める。
+     *
+     * かぜは9体のうちエジプトが3体（`k005` / `k009` / `k010`）と偏っているので、
+     * **系統のほうを散らす**ためにも日本を選んだ。
+     *
+     * 既存の `k002 シナツヒコ` と対にした（SPEC 16 の「既存カードとの関係で選ぶ」）。
+     * `switchOpponent` を持つ姫神は3体しかいない薄い効果で、
+     * **ひと息で吹き払う**という図と噛み合う。
+     *
+     * 総合力は 267.0。かぜの SR 2体（`k003` 267.5 / `k005` 257.0）とほぼ同じ高さになる。
+     */
+    id: 'k011', name: 'シナトベ', kind: 'creature',
+    flavor: 'シナツヒコと対をなす風の女神。ひと息で、立ちこめた霧も禍も残らず吹き払う。',
+    origin: 'japan', rarity: 'superRare',
+    type: 'wind', hp: 120, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '息吹', ruby: 'いぶき', cost: ['wind'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: '霧を払う', ruby: 'きりをはらう', cost: ['wind', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 60 },
+          { type: 'switchOpponent' },
         ] },
     ],
   },

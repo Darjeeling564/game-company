@@ -71,6 +71,8 @@ function soundFor(action: Action): void {
     case 'activateSpell': playSfx('spell'); break
     case 'activateTrap': playSfx('trap'); break
     case 'setSpell': playSfx('set'); break
+    // 盤を動かすのに音が無かった唯一の操作（SPEC 9.20）。一回転の演出と対にする
+    case 'changePosition': playSfx('flip'); break
     case 'draw': playSfx('draw'); break
     default: break
   }

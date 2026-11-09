@@ -7,7 +7,7 @@
  * 音が出せない環境（自動再生の制限・WebAudio 非対応）でも
  * **例外を投げずに黙る**。遊べる状態は壊さない。
  */
-type Sfx = 'start' | 'draw' | 'summon' | 'attack' | 'spell' | 'trap' | 'set' | 'win' | 'lose' | 'draw_game'
+type Sfx = 'start' | 'draw' | 'summon' | 'attack' | 'spell' | 'trap' | 'set' | 'flip' | 'win' | 'lose' | 'draw_game'
 
 let ctx: AudioContext | null = null
 let muted = false
@@ -83,6 +83,19 @@ export function play(name: Sfx): void {
       break
     case 'set':
       tone(0, D4, 0.06, 0.10, 'sine')
+      break
+    /*
+     * 表示形式を変える（SPEC 9.20）。
+     *
+     * **盤を動かすのに音を持たない操作は、これだけだった**（2026-11-09 実測）。
+     * 目には一回転の演出（9.4・0.72秒）まで出しているのに、耳には何も出ていなかった。
+     *
+     * `summon`（G4 → C5 と上がる）と**逆向きに下げる**。
+     * 置いたのか裏返したのかを、耳だけで見分けられるようにするため。
+     */
+    case 'flip':
+      tone(0, G4, 0.07, 0.14, 'triangle')
+      tone(0.06, ES4, 0.14, 0.12, 'triangle')
       break
     case 'win':
       tone(0, D4, 0.14, 0.18, 'triangle')
