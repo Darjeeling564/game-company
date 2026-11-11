@@ -971,7 +971,11 @@ body {
 .home__sub {
   margin: 0;
   font-size: 12px;
-  opacity: 0.7;
+  /*
+   * 0.7 だと比が 4.35 で 4.5 に届かない（SPEC 9.22）。
+   * 境界の 0.72（4.50）は丸めで割り込むので取らず、0.78（4.98）にする
+   */
+  opacity: 0.78;
   letter-spacing: 0.3em;
 }
 
@@ -1079,7 +1083,8 @@ body {
 .muted {
   margin: 0;
   font-size: 13px;
-  opacity: 0.6;
+  /* 0.6 だと比が 3.65（SPEC 9.22）。0.78 で 4.98 になる */
+  opacity: 0.78;
 }
 
 /*
