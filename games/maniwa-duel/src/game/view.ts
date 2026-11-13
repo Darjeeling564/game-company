@@ -566,6 +566,12 @@ export function openHistory(state: GameState, human: PlayerId): void {
 
 export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): void {
   root.textContent = ''
+  /*
+   * 早送り中だけ付く目印（SPEC 9.24）。CSS がこれを見て、動きの代わりに
+   * 静止した印を出す。**描き直しのたびに付け直す**（root は作り直さないので
+   * toggle で良い）。状態から直に決まるので `prevXxx` は要らない。
+   */
+  root.classList.toggle('is-fast', vm.fast)
   seenThisRender = new Set<number>()
   /*
    * 対戦をやり直したら控えを捨てる（SPEC 9.5.3）。
