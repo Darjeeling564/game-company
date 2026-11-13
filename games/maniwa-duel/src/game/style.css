@@ -6,6 +6,18 @@
   --cream: #f5f0e1;
   --danger: #b4472e;
   --tap: 44px;
+
+  /*
+   * 動きの代わりに置く「静止した印」の値（SPEC 9.24）。
+   *
+   * **ここ1か所にだけ書く。** 動きを減らす設定（`prefers-reduced-motion`）と
+   * 早送り中（`.is-fast`）の2か所が同じ印を使うので、値を2つ書くと必ずずれる
+   * （CLAUDE.md の B の夜の決まり「同じ値を2か所に別々に書かない」）。
+   */
+  --mark-drawn: 2px solid var(--cream);
+  --mark-atk-up: inset 0 0 0 2px var(--cream);
+  --mark-atk-down: inset 0 0 0 2px rgba(180, 71, 46, 0.95);
+  --mark-openable: 0 0 0 3px rgba(245, 240, 225, 0.85);
 }
 
 * {
@@ -833,7 +845,7 @@ body {
 
   /* 縁は、選ばれている札の縁を奪わないように :not() を付ける */
   .card--drawn:not(.card--selected) {
-    outline: 2px solid var(--cream);
+    outline: var(--mark-drawn);
     outline-offset: 3px;
   }
 }
@@ -945,7 +957,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .card--openable {
     animation: none;
-    box-shadow: 0 0 0 3px rgba(245, 240, 225, 0.85);
+    box-shadow: var(--mark-openable);
   }
 }
 
@@ -1586,10 +1598,52 @@ body {
   }
 
   .card--atk-up .card__foot .card__stat:first-child {
-    box-shadow: inset 0 0 0 2px var(--cream);
+    box-shadow: var(--mark-atk-up);
   }
 
   .card--atk-down .card__foot .card__stat:first-child {
-    box-shadow: inset 0 0 0 2px rgba(180, 71, 46, 0.95);
+    box-shadow: var(--mark-atk-down);
   }
+}
+
+/*
+ * 早送り中は、動きの代わりに静止した印を出す（SPEC 9.24・2026-11-13 実測）。
+ *
+ * **測ってから足している。** 一過性のクラスが画面に居た時間を1フレームごとに
+ * 数えたところ、早送り中は **49〜117ms** しか居ない（CPU の1手が 550ms から
+ * 60ms になるため。`main.ts`）。どの動きも山は 30〜45% に置いてあるので、
+ * **山に届く前に消える**（`atkUp` の山は 126ms、実測の滞在は 50ms）。
+ *
+ * **対象は、動きを減らす設定で「代わりを置く」と決めた3つだけ。**
+ * ライフ・山墓の数・ターン番号・攻撃の縁は、9.5.4 / 9.6.3 / 9.9.5 / 9.17.4 で
+ * 「数字や縁が残るので代わりは要らない」と決めてある。早送りでも同じく残るので、
+ * ここでも足さない。**決めたことを早送りだけで覆さない。**
+ *
+ * 値は `:root` の `--mark-*` を参照する。動きを減らす設定と同じ印である。
+ */
+.is-fast .card--drawn {
+  animation: none;
+}
+
+.is-fast .card--drawn:not(.card--selected) {
+  outline: var(--mark-drawn);
+  outline-offset: 3px;
+}
+
+.is-fast .card--openable {
+  animation: none;
+  box-shadow: var(--mark-openable);
+}
+
+.is-fast .card--atk-up .card__foot .card__stat:first-child,
+.is-fast .card--atk-down .card__foot .card__stat:first-child {
+  animation: none;
+}
+
+.is-fast .card--atk-up .card__foot .card__stat:first-child {
+  box-shadow: var(--mark-atk-up);
+}
+
+.is-fast .card--atk-down .card__foot .card__stat:first-child {
+  box-shadow: var(--mark-atk-down);
 }
