@@ -921,6 +921,65 @@ export const ACTIONS: readonly ActionCard[] = [
       { type: 'damagePerHeads', target: 'opponentActive', value: 10, count: 1 },
     ],
   },
+  {
+    id: 'a039', name: 'プロメテウスの火', ruby: 'プロメテウスのひ', kind: 'action',
+    origin: 'greece', rarity: 'superRare',
+    /*
+     * 2026-11-13 実測。道標は38種あって、**系統ごとの数がいちばん少ないのは
+     * china / india / greece の4種**（他は5〜6種）。系統×レアリティの表は
+     * 72通りすべてが1種以上で埋まっているので、空白ではなく**薄いところ**を見る。
+     * レアリティの行は UR 8 < C 9 = SR 9 < R 12 で、**SR と UR がいちばん薄い。**
+     * この札で greece を5種にし、SR の行を10にする。
+     *
+     * 効果タイプも道標では薄いものから選ぶ（attachEnergy 2 / gainEnergy 2 /
+     * selfDamage 2 / coinFlip 2 が同率で最少）。**前の3つを1枚に組む。**
+     * `attachEnergy + gainEnergy + selfDamage` の組は**支援102種で初**である
+     * （i027 ネクロノミコンは4効果の中に3つとも含むが、同じ組だけの札は無い）。
+     *
+     * **a002 招雷の儀（india/UR・attachEnergy ownActive 2）の下位互換にしない。**
+     * 配る先を控え全体（ownBenchAll）にし、「もう一度つけられる」を足して、
+     * 代わりに自分が裂かれる形にした。火を人に渡した者の話なので、
+     * 受け取るのは前に立つ1体ではなく控えの全員のほうが据わりがよい。
+     *
+     * 評価値 35 + 30 − 20 = 45 → 総合力 162.0。SR の帯（115〜190）の中。
+     * **既存 SR 道標の上端と同じ値**なので、追加後に card-value で実測して
+     * 同レアリティ・同種別の平均と突き合わせる（a034 アヌンナキの裁定の先例）。
+     */
+    flavor: '天から盗んだ火を、鎖に繋がれてなお人へ配り続けた。渡した者の肝は、毎朝ついばまれる。',
+    effects: [
+      { type: 'attachEnergy', target: 'ownBenchAll', value: 1 },
+      { type: 'gainEnergy' },
+      { type: 'selfDamage', value: 20 },
+    ],
+  },
+  {
+    id: 'a040', name: '羿の射日', ruby: 'げいのしゃじつ', kind: 'action',
+    origin: 'china', rarity: 'ultra',
+    /*
+     * もう1枚は china を5種にし、UR の行を9にする（上の a039 と同じ実測から）。
+     *
+     * **`damagePerHeads` と `damage: opponentBenchAll` を組んだ札は支援102種で初。**
+     * 十の日が昇ったので九つを射落とした、という話がそのまま2つの効果になる。
+     * 射るほうは当たり外れがあるので `damagePerHeads`、
+     * 落ちた日が地を焼くので控え全体へ `damage` が乗る。
+     *
+     * **count は9。** これまでの最多は a034 アヌンナキの裁定の7で、
+     * 姫神のワザは最多3である。「九つ射落とす」がそのまま回数になる。
+     * `damagePerHeads` の評価値は value×count÷2 で、**期待値と一致する**
+     * （9回の表の期待値は 4.5 回）。盛っても削ってもいない。
+     *
+     * **亀卜・筊杯の形（coinFlip）は china では取らない。** i015 亀甲の卜 と
+     * i017 筊杯 がすでに同じ占いの札で、3枚目になってしまう（2026-11-13 実測）。
+     *
+     * 評価値 10×9÷2 + 10×1.5 = 60 → 総合力 216.0。
+     * UR 道標の帯（既存は 198.0〜252.0）の中ほど。
+     */
+    flavor: '十の日が同時に昇り、地は焼けた。弓の名手が九つを射落とし、ひとつだけを残した。',
+    effects: [
+      { type: 'damagePerHeads', target: 'opponentActive', value: 10, count: 9 },
+      { type: 'damage', target: 'opponentBenchAll', value: 10 },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 絶技（バトル場の対応キャラ専用）
