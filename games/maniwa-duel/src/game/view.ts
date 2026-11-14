@@ -162,6 +162,22 @@ const prevAttacked = new Set<number>()
  */
 const prevAtk = new Map<number, number>()
 
+/*
+ * 攻撃力の印を、描き直しをまたいで持ち回る（SPEC 9.25）。
+ *
+ * **`prevAtk` は1文字も変えない。** あちらは「前回の攻撃力」、こちらは
+ * 「いつ印を出したか」で、役割が違うので同居できる。
+ * 2026-11-13 の実測では、早送りを切っていても `card--atk-up` は 83ms
+ * （動きの20%）しか画面に居なかった。次の手の描き直しで消えるためである。
+ */
+const ATK_MS = 420
+const atkHold = new Map<number, { readonly up: boolean; readonly born: number }>()
+
+/** 時刻。`src/game/` なので使ってよい（CLAUDE.md 3章は core の制約） */
+function nowMs(): number {
+  return performance.now()
+}
+
 /** 場の姫神1体 */
 function monsterNode(vm: ViewModel, owner: PlayerId, m: MonsterOnField, h: ViewHandlers): HTMLElement {
   const slot = el('div', 'slot slot--monster')
@@ -197,7 +213,20 @@ function monsterNode(vm: ViewModel, owner: PlayerId, m: MonsterOnField, h: ViewH
   const atkBefore = prevAtk.get(m.instanceId)
   prevAtk.set(m.instanceId, atkNow)
   if (!hidden && atkBefore !== undefined && atkNow !== atkBefore) {
-    node.classList.add(atkNow > atkBefore ? 'card--atk-up' : 'card--atk-down')
+    atkHold.set(m.instanceId, { up: atkNow > atkBefore, born: nowMs() })
+  }
+  /*
+   * 出し切るまで持ち回る（SPEC 9.25.2）。**作り直した札では続きから再生する。**
+   * 0 から始めると、描き直しのたびに字が跳ね直す。
+   */
+  const heldAtk = hidden ? undefined : atkHold.get(m.instanceId)
+  if (heldAtk !== undefined) {
+    const age = nowMs() - heldAtk.born
+    if (age < ATK_MS) {
+      node.classList.add(heldAtk.up ? 'card--atk-up' : 'card--atk-down')
+      const stat = node.querySelector('.card__foot .card__stat')
+      if (stat instanceof HTMLElement) stat.style.animationDelay = `-${Math.round(age)}ms`
+    } else atkHold.delete(m.instanceId)
   }
   /*
    * 攻撃している姫神と狙われている姫神（SPEC 9.9）。
@@ -587,6 +616,8 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
     prevHandLen = null
     prevAttacked.clear()
     prevAtk.clear()
+    // 印の控えも同じ場所で捨てる（SPEC 9.25.2）
+    atkHold.clear()
     prevHistoryLen = 0
     prevTurnShown = null
   }
