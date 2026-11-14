@@ -609,6 +609,27 @@ function lastUltimate(fresh: readonly LogEntry[]): PlayerId | null {
  */
 let prevLogLen = 0
 
+/*
+ * 打点の数字と着弾を、描き直しをまたいで持ち回る（SPEC 9.17）。
+ *
+ * **一過性の印は次の描き直しで消える。** 攻撃は ダメージ → 気絶 → 登板 と
+ * 描き直しが続くので、2026-11-14 の実測では `card__pop` が 900ms のうち
+ * 平均 534ms（最短 117ms）、`burst` が 520ms のうち 151ms しか画面に居なかった。
+ * `popRise` は 25%（225ms）でようやく不透明になるので、**読める前に消えていた。**
+ *
+ * **作り直した札には経過時間ぶんの負の `animation-delay` を入れて、続きから再生する。**
+ * クラスを足し直すだけだと、描き直しのたびに最初から再生して跳ね続ける。
+ */
+const POP_MS = 900
+const BURST_MS = 520
+const popHold = new Map<number, { readonly text: string; readonly born: number }>()
+const burstHold = new Map<number, { readonly style: BurstStyle; readonly born: number }>()
+
+/** 時刻。`src/game/` なので使ってよい（CLAUDE.md 3章は core の制約） */
+function nowMs(): number {
+  return performance.now()
+}
+
 function freshLog(state: GameState): readonly LogEntry[] {
   return state.log.length >= prevLogLen ? state.log.slice(prevLogLen) : state.log
 }
@@ -891,10 +912,35 @@ function creatureCard(
     body.append(attacks)
   }
 
-  // 受けたダメージを一瞬だけ浮かせる。ログを読まなくても何が起きたか分かるように
-  if (damage !== undefined) body.append(el('span', 'card__pop', `-${damage}`))
+  /*
+   * 受けたダメージを浮かせる。ログを読まなくても何が起きたか分かるように。
+   * **次の描き直しで消さず、出し切るまで持ち回る**（SPEC 9.17.4）。
+   */
+  if (damage !== undefined) popHold.set(creature.instanceId, { text: `-${damage}`, born: nowMs() })
+  const heldPop = popHold.get(creature.instanceId)
+  if (heldPop !== undefined) {
+    const age = nowMs() - heldPop.born
+    if (age < POP_MS) {
+      const pop = el('span', 'card__pop', heldPop.text)
+      // 作り直した札では続きから再生する。0 から始めると跳ね直す
+      pop.style.animationDelay = `-${Math.round(age)}ms`
+      body.append(pop)
+    } else popHold.delete(creature.instanceId)
+  }
   // 着弾のエフェクトは被弾した側に出す。色は攻撃した側から取る（SPEC 9.4.4）
-  if (damage !== undefined && fx.burst !== null) body.append(burstNode(fx.burst))
+  if (damage !== undefined && fx.burst !== null) {
+    burstHold.set(creature.instanceId, { style: fx.burst, born: nowMs() })
+  }
+  const heldBurst = burstHold.get(creature.instanceId)
+  if (heldBurst !== undefined) {
+    const age = nowMs() - heldBurst.born
+    if (age < BURST_MS) {
+      const burst = burstNode(heldBurst.style)
+      // 擬似要素には inline の animation-delay が効かないので変数で渡す
+      burst.style.setProperty('--burst-age', `-${Math.round(age)}ms`)
+      body.append(burst)
+    } else burstHold.delete(creature.instanceId)
+  }
   node.append(body)
 
   /*
@@ -1030,6 +1076,13 @@ function sideView(
         { ...fx, hit: new Map(), charged: new Set(), drained: new Set(), placed: new Set(), envenom: new Set(), burst: null,
           swapIn: new Set(), swapOut: new Set() }, id)
       ghost.classList.add('card--faint')
+      /*
+       * 幽霊には打点と着弾を重ねない（SPEC 9.17.4）。9.4.3 で「1描画ぶん置き直す」と
+       * 決めてあるものなので、そこに数字が乗ると何の描き直しか読めなくなる。
+       * 控えは消さない（登板した別の個体の番号とは別なので混ざらない）
+       */
+      ghost.querySelector('.card__pop')?.remove()
+      ghost.querySelector('.burst')?.remove()
       if (ghost instanceof HTMLButtonElement) ghost.disabled = true
       active.append(ghost)
     } else active.append(emptySlot('バトル場', true))
@@ -1168,6 +1221,9 @@ export function renderBattle(root: HTMLElement, state: GameState, handlers: Hand
     prevPile.clear()
     prevHandCount.clear()
     prevCurrent = null
+    // 打点と着弾の控えも捨てる（SPEC 9.17.4）。前の対戦の数字が次の対戦に出る
+    popHold.clear()
+    burstHold.clear()
   }
   /*
    * 手番が相手から自分に戻ったか（SPEC 9.4.24）。**帯を作る前に決める。**
