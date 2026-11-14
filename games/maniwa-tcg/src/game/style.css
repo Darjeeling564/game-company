@@ -1876,6 +1876,12 @@ body {
   );
   mask: radial-gradient(closest-side, transparent 12%, #000 26%, #000 64%, transparent 100%);
   animation: burstShards 0.52s cubic-bezier(0.15, 0.7, 0.3, 1) both;
+  /*
+   * 描き直しで作り直されたとき、続きから再生するための負の遅れ（SPEC 9.17.4）。
+   * **擬似要素には inline の animation-delay が効かない**ので変数で渡す。
+   * 置かなければ `0s` なので、これまでと同じ動きになる。
+   */
+  animation-delay: var(--burst-age, 0s);
 }
 
 .burst::before,
@@ -1889,11 +1895,13 @@ body {
 .burst::before {
   border: var(--burst-ring) solid var(--burst-ring-color);
   animation: burstRing 0.5s cubic-bezier(0.1, 0.75, 0.25, 1) both;
+  animation-delay: var(--burst-age, 0s);
 }
 
 .burst::after {
   background: radial-gradient(closest-side, var(--burst-origin), transparent 70%);
   animation: burstFlash 0.3s ease-out both;
+  animation-delay: var(--burst-age, 0s);
 }
 
 /* UR だけ虹を一掃きする。枠色がグラデーションで border に入らないぶんをここで出す */
@@ -1907,6 +1915,8 @@ body {
     conic-gradient(#ff6b6b, #ffd166, #8ce99a, #74c0fc, #b197fc, #ff8fd0, #ff6b6b);
   animation: burstShards 0.52s cubic-bezier(0.15, 0.7, 0.3, 1) both,
     burstSweep 0.52s linear both;
+  /* 2本あるので遅れも2つ書く。1つだけだと片方にしか当たらない（B の夜の決まり） */
+  animation-delay: var(--burst-age, 0s), var(--burst-age, 0s);
 }
 
 @keyframes burstShards {
