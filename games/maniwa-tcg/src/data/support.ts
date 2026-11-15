@@ -1394,4 +1394,59 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'discardEnergy', target: 'opponentActive', value: 2 },
     ],
   },
+  {
+    /*
+     * 2026-11-15 実測。**その場で数えたら、絶技を付けられる姫神は4体残っていた**
+     * （無属性を除き、最強ワザがコスト3で、まだ絶技が割り当てられていない姫神）。
+     * `f012 フサッグア` / `s011 アランヤニEX` / `t011 トールEX` / `w012 ポセイドンEX`。
+     *
+     * **`t011` と `w012` は取らない。** `nightly/2026-11-07`（PR #95）が
+     * その2体に `u029` / `u030` を当てたまま関門7で止まっており、
+     * **同じ姫神に二重に当てると、あちらがマージされた瞬間に重複する。**
+     * 残る2体（`f012` / `s011`）を今夜ぶんにする。
+     *
+     * 効率の比（SPEC 16.5.1）。`f012` の最強ワザ「燃え移る」は
+     * `damage 75` ＋ `discardEnergy 1` で評価値 90、コスト3なので効率 30.00。
+     * 許される帯は 1.05〜1.30 倍 ＝ 効率 31.5〜39.0。
+     * こちらは評価値 100・効率 33.33 で **比 1.111**。
+     *
+     * **`damage` ＋ `damage: opponentBenchAll` ＋ `discardEnergy` の組は支援104種で初。**
+     * 絶技で効果を3つ持つのは既存2種しかない（1個が1種・2個が23種）。
+     * 一匹に触れられると群れごと燃え移る札なので、**前に立つ者だけでなく
+     * 控え全体に渡り、触れた先から力を奪う**形がそのまま効果になる。
+     */
+    id: 'u031', name: '焔渡り', ruby: 'ほむらわたり', kind: 'ultimate',
+    origin: 'cthulhu', rarity: 'ultra', requires: 'f012',
+    flavor: '一匹が触れれば、群れはそこへ移る。燃えているのは獲物ではなく、渡ってきた炎のほうである。',
+    cost: ['fire', 'fire', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 55 },
+      { type: 'damage', target: 'opponentBenchAll', value: 20 },
+      { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+    ],
+  },
+  {
+    /*
+     * `s011 アランヤニEX` の絶技。
+     *
+     * 効率の比（SPEC 16.5.1）。最強ワザ「見えざる主」は
+     * `damage 90` ＋ `heal self 20` で評価値 102、コスト3なので効率 34.00。
+     * 許される帯は 1.05〜1.30 倍 ＝ 効率 35.7〜44.2。
+     * こちらは評価値 112・効率 37.33 で **比 1.098**。
+     *
+     * **絶技で `heal: ownBenchAll` を使うのは初**（26種を数えて0件）。
+     * `s011` は「ベンチ全体を回復するワザを持つ初めての姫神」として置いた札なので、
+     * **その形を絶技にも引き継ぐ**。姿を見せず、獣たちの寝床だけを守る女神である。
+     *
+     * SPEC 8.2 のとおり回復量(30)はダメージ量(100)より小さい。
+     */
+    id: 'u032', name: 'アランヤの帳', ruby: 'アランヤのとばり', kind: 'ultimate',
+    origin: 'india', rarity: 'ultra', requires: 's011',
+    flavor: '森そのものが閉じる。踏み入った者は方角を失い、獣たちだけが行き先を知っている。',
+    cost: ['forest', 'forest', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 100 },
+      { type: 'heal', target: 'ownBenchAll', value: 30 },
+    ],
+  },
 ]
