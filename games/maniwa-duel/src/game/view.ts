@@ -677,7 +677,16 @@ export function renderDuel(root: HTMLElement, vm: ViewModel, h: ViewHandlers): v
   root.appendChild(lifeBanner(vm, vm.human, 'bottom'))
   root.appendChild(handRow(vm, h))
   const chainStrip = chainRow(vm)
-  if (chainStrip !== null) root.appendChild(chainStrip)
+  if (chainStrip !== null) {
+    root.appendChild(chainStrip)
+    /*
+     * **右端に寄せて出す**（SPEC 9.26.3）。解決は LIFO なので右端が次に消える札だが、
+     * スクロールの初期位置は左端で、2026-11-15 の実測では5段のとき 90px ぶん、
+     * **いちばん見たい端が画面の外に出ていた**。
+     * はみ出していなければ `scrollLeft` は 0 のままなので、4段までは見え方が変わらない。
+     */
+    chainStrip.scrollLeft = chainStrip.scrollWidth
+  }
 
   /*
    * 説明の行と履歴ボタン（SPEC 8.7）。
