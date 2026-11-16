@@ -2549,6 +2549,26 @@ body {
   animation: pipOn 0.45s ease-out;
 }
 
+/*
+ * 「あと1点」（SPEC 9.18）。**残っている空の丸**だけをゆっくり脈打たせる。
+ *
+ * 2000戦の実測で、あと1点の盤面は**全体の 20.0%**、**85.0% の試合**で通る。
+ * そこに専用の手がかりが1つも無く、「2つ点いている」と「あと1つで負ける」が
+ * 同じ絵になっていた。
+ *
+ * **点いた丸には出さない。** `points__pip--gain`（9.4.8）と `animation` を
+ * 取り合うためで、空の丸には `--gain` が付かないので構造的に衝突しない（9.4.13）。
+ * 位相は view.ts が負の `animation-delay` で持ち回る（9.18.3）。
+ */
+.points--reach .points__pip:not(.points__pip--on) {
+  animation: pipReach 1.6s ease-in-out infinite;
+}
+
+@keyframes pipReach {
+  0%, 100% { border-color: rgba(245, 240, 225, 0.6); box-shadow: 0 0 0 0 rgba(255, 214, 120, 0); }
+  50%      { border-color: #ffd678;                  box-shadow: 0 0 6px 2px rgba(255, 214, 120, 0.45); }
+}
+
 @keyframes pipOn {
   0%   { transform: scale(0.4); box-shadow: 0 0 0 0 rgba(255, 214, 120, 0.9); }
   55%  { transform: scale(1.4); box-shadow: 0 0 12px 5px rgba(255, 214, 120, 0.6); }
@@ -2745,6 +2765,16 @@ body {
   .points__pip--gain {
     outline: 2px solid var(--cream, #f5f0e1);
     outline-offset: 2px;
+  }
+  /*
+   * 「あと1点」も**止めるだけにしない**（SPEC 9.18.4）。脈の代わりに、
+   * 残った丸の縁を点灯の金にして太くする。
+   * **上の `--gain` は `outline`、こちらは `border`** なので同時に出ても取り合わない。
+   */
+  .points--reach .points__pip:not(.points__pip--on) {
+    animation: none;
+    border-width: 2px;
+    border-color: #ffd678;
   }
 }
 

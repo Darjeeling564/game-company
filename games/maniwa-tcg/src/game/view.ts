@@ -17,7 +17,7 @@ import type {
   PlayerState,
   Rarity,
 } from '../core/types.ts'
-import { BENCH_SIZE, WEAKNESS_CHART, opponentOf, weaknessBonus } from '../core/types.ts'
+import { BENCH_SIZE, POINTS_TO_WIN, WEAKNESS_CHART, opponentOf, weaknessBonus } from '../core/types.ts'
 import { findCard, requireCard, requireCreature } from '../data/cards.ts'
 import { artStage, artUrl } from './art.ts'
 import { ORIGIN_STYLE, RARITY_STYLE, TYPE_COLOR, applyCardTheme, badgeInk } from './theme.ts'
@@ -620,6 +620,16 @@ let prevLogLen = 0
  * **作り直した札には経過時間ぶんの負の `animation-delay` を入れて、続きから再生する。**
  * クラスを足し直すだけだと、描き直しのたびに最初から再生して跳ね続ける。
  */
+/*
+ * 「あと1点」の脈の位相（SPEC 9.18.3）。鍵はプレイヤー。
+ *
+ * **無限の動きも、描き直しで0から再生し直す。** 「あと1点」は平均 4.3 ターン続き、
+ * その間ずっと相手の番の描き直しが挟まるので、位相を持ち回らないと
+ * 脈が出かかって止まる絵になる（`attachPulse` は実測で振れ幅の 67% しか出ていない）。
+ */
+const REACH_MS = 1600
+const reachSince: [number | null, number | null] = [null, null]
+
 const POP_MS = 900
 const BURST_MS = 520
 const popHold = new Map<number, { readonly text: string; readonly born: number }>()
@@ -1016,7 +1026,14 @@ function sideView(
 
   const head = el('div', 'side__head')
   head.append(el('span', undefined, id === HUMAN ? '自分' : '相手'))
-  const points = el('span', 'points')
+  /*
+   * 「あと1点」（SPEC 9.18）。2000戦の実測で**全盤面の 20.0%**、
+   * **85.0% の試合**で通る場面なのに、専用の手がかりが1つも無かった。
+   */
+  const reach = player.points === POINTS_TO_WIN - 1
+  if (reach && reachSince[id] === null) reachSince[id] = nowMs()
+  if (!reach) reachSince[id] = null
+  const points = el('span', `points${reach ? ' points--reach' : ''}`)
   for (let i = 0; i < 3; i += 1) {
     /*
      * 点灯は状態から、**光り方は差分から**決める（SPEC 9.4.8）。
@@ -1025,9 +1042,17 @@ function sideView(
      */
     const on = i < player.points
     const gained = on && i >= fx.pointsBefore[id]
-    points.append(
-      el('span', `points__pip${on ? ' points__pip--on' : ''}${gained ? ' points__pip--gain' : ''}`),
-    )
+    const pip = el('span', `points__pip${on ? ' points__pip--on' : ''}${gained ? ' points__pip--gain' : ''}`)
+    /*
+     * 脈は**残っている空の丸**にだけ出す（SPEC 9.18.2）。点いた丸に出すと
+     * `points__pip--gain` と `animation` を取り合う（9.4.13）。
+     * 位相は持ち回る（9.18.3）。作り直した丸でも続きから脈打つ。
+     */
+    const since = reachSince[id]
+    if (reach && !on && since !== null) {
+      pip.style.animationDelay = `-${Math.round((nowMs() - since) % REACH_MS)}ms`
+    }
+    points.append(pip)
   }
   head.append(points)
   /*
