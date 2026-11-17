@@ -475,6 +475,19 @@ const END_REASON: Readonly<Record<string, string>> = {
   turnLimit: 'ターン上限',
 }
 
+/**
+ * 決着の理由を画面の言葉で返す（SPEC 9.27.2）。
+ *
+ * **語は `END_REASON` から読む。書き写さない。** 書き写すと 9.15 が直した
+ * 「内部の言い方が画面に出る」割れが、別の場所で再発する
+ * （姫神演義も 9.8.2 で同じ形にしてある）。
+ */
+export function endReasonLabel(state: GameState): string {
+  const reason = state.endReason
+  if (reason === null || reason === undefined) return ''
+  return END_REASON[reason] ?? reason
+}
+
 /** 決着の行かどうか。`end` は手札上限にも使われているので文面で見分ける（9.14.1） */
 function isFinishRow(kind: string, detail: string): boolean {
   return kind === 'end' && /勝ち|引き分け/.test(detail)
