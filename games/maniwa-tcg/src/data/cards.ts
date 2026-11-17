@@ -1157,6 +1157,33 @@ const LIGHT: readonly CreatureCard[] = [
         ] },
     ],
   },
+  {
+    /*
+     * 2026-11-17 実測。姫神101体を数えたところ、**系統×レアリティで最も薄いのは
+     * norse の R で2体**（f003 スルト / t004 トール。他の系統は3〜5体）。
+     * 属性の R も **light が2体**で最少だった。**その両方を埋める。**
+     * norse の light は `l004 バルドル`（C）の1体しか無く、そこも薄い。
+     *
+     * **`a023 ギャラルホルン`（norse/SR の道標）の持ち主**がプールに居なかった。
+     * 角笛を吹く者を置くと、札どうしが噛み合う（2026-09-23 の d008/e011 と同じ考え方）。
+     *
+     * 百里の先を見る神なので、2つ目のワザに `searchCreature` を載せた。
+     * 総合力 110 + 30.00×3 + 58×0.6 = 234.8（R は 225〜255）。
+     */
+    id: 'l012', name: 'ヘイムダル', kind: 'creature',
+    flavor: '九人の母から生まれた白き神。百里の先を見、草の伸びる音を聞くので、橋を渡る者は誰ひとり見逃されない。',
+    origin: 'norse', rarity: 'rare',
+    type: 'light', hp: 110, ex: false, retreatCost: 1, stage: 0,
+    attacks: [
+      { name: '遠見', ruby: 'とおみ', cost: ['light'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 30 }] },
+      { name: '角笛を吹く', ruby: 'つのぶえをふく', cost: ['light', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 50 },
+          { type: 'searchCreature' },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 闇
@@ -1315,6 +1342,39 @@ const DARK: readonly CreatureCard[] = [
         effects: [
           { type: 'damage', target: 'opponentActive', value: 100 },
           { type: 'discardEnergy', target: 'opponentActive', value: 1 },
+        ] },
+    ],
+  },
+  {
+    /*
+     * もう1体は **EX（UR）**。理由は2つある。
+     *
+     * 1. **絶技の種を増やすため。** 2026-11-15 に数えたとき、絶技を付けられる姫神は
+     *    `t011` と `w012` の2体しか残っておらず、**その2体は PR #95 が押さえている**
+     *    （`u029` / `u030`）。EX は全員が最強ワザ コスト3 なので、1体足せば
+     *    **次の絶技の夜が PR #95 の決着を待たずに済む**
+     * 2. 薄いところ: UR はレアリティの中で最少（19体。C33 / R26 / SR23）、
+     *    mesopotamia の dark は `d005 ネルガル`（R）の1体だけ、dark の UR も2体だった
+     *
+     * **`a016 イシュタルの門`（mesopotamia の道標）の主**がプールに居なかった。
+     * 七つの門をくぐるたびに身につけたものを奪われる話なので、
+     * 2つ目のワザは**自分も削れる**形にした（`selfDamage` は姫神のワザでは薄い）。
+     *
+     * 総合力 170 + 30.00×3 + 90×0.6 = 314.0（UR は 300以上。既存は 308.0〜387.0）。
+     * 最強ワザは「冥界下り」（評価値90・コスト3）なので、
+     * **次の絶技の帯は効率 31.5〜39.0（評価値 94.5〜117）**になる。
+     */
+    id: 'd012', name: 'イシュタルEX', kind: 'creature',
+    flavor: '七つの門をくぐるたび、身につけたものをひとつずつ奪われた女神。最後の門を抜けたとき、冥界そのものが揺れた。',
+    origin: 'mesopotamia', rarity: 'ultra',
+    type: 'dark', hp: 170, ex: true, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '金星の眼', ruby: 'きんせいのめ', cost: ['dark', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
+      { name: '冥界下り', ruby: 'めいかいくだり', cost: ['dark', 'dark', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 110 },
+          { type: 'selfDamage', value: 20 },
         ] },
     ],
   },
