@@ -13,7 +13,7 @@ import { DECKS } from '../data/decks.ts'
 import { greedyPolicy } from '../../tools/ai.ts'
 import type { CardId, Deck, GameState, PlayerId } from '../core/types.ts'
 import { HAND_LIMIT } from '../core/types.ts'
-import { lastEvent, renderDuel } from './view.ts'
+import { endReasonLabel, lastEvent, renderDuel } from './view.ts'
 import type { ViewHandlers, ViewModel } from './view.ts'
 import { load, save } from './storage.ts'
 import type { SaveData } from './storage.ts'
@@ -254,7 +254,19 @@ function buildViewModel(): ViewModel {
   let msg = message
 
   if (isOver(state)) {
-    msg = state.winner === HUMAN ? '勝ち！' : state.winner === null ? '引き分け' : '負け…'
+    /*
+     * 決着後に残るのは勝敗の4文字だけだった（SPEC 9.27）。
+     * **決着の理由も通算成績も手元にあるのに出していなかった。**
+     * 画面は増やさず、説明の行に足す。
+     *
+     * 理由の語は view.ts の END_REASON を読む（書き写すと 9.15 の割れが再発する）。
+     * 通算は recordResultOnce() が render() の先頭で走ったあとなので、
+     * **この対戦ぶんを含んだ数字**になる。
+     */
+    const outcome = state.winner === HUMAN ? '勝ち！' : state.winner === null ? '引き分け' : '負け…'
+    const reason = endReasonLabel(state)
+    const rec = saveData.record
+    msg = `${outcome}${reason === '' ? '' : `　${reason}`}　通算 ${rec.wins}勝 ${rec.losses}敗 ${rec.draws}分`
     buttons.push({ label: 'もう一度', onTap: () => showTitle() })
   } else if (state.priority !== HUMAN) {
     /*
