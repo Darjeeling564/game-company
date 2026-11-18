@@ -104,6 +104,8 @@ export function cardNode(cardId: CardId, opts: {
   const art = el('div', 'card__art')
   const url = artUrl(cardId, opts.lp === undefined ? 'normal' : artStage(opts.lp))
   if (url !== null) art.style.backgroundImage = `url(${url})`
+  // 絵がまだ無い札は、空き板に見えないよう織り目を敷く（SPEC 9.28。姫神演義 9.20 と同じ）
+  else art.classList.add('card__art--noart')
   // 効果を持つ姫神の印（SPEC 19.6）。小さい札では効果文が読めないため。
   // **レベル星と属性のバッジは消さない**ので、絵の角に重ねる
   if (monster !== null && (monster.onSummon !== undefined || monster.onDestroyed !== undefined)) {
