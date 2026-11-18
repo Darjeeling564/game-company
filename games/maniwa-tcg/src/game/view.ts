@@ -891,6 +891,9 @@ function creatureCard(
   if (url !== null) {
     body.classList.add('card__body--art')
     body.style.backgroundImage = `url(${JSON.stringify(url)})`
+  } else {
+    // 絵がまだ無い札は、空き板に見えないよう織り目を敷く（SPEC 9.20）
+    body.classList.add('card__body--noart')
   }
   body.append(typeBadge(card.type))
   body.append(el('span', 'card__name', displayName(card.name, card.ex)))
@@ -1191,6 +1194,9 @@ function handView(state: GameState, handlers: Handlers, drawn: ReadonlySet<numbe
     if (url !== null) {
       body.classList.add('card__body--art')
       body.style.backgroundImage = `url(${JSON.stringify(url)})`
+    } else {
+      // 手札も同じ（SPEC 9.20）
+      body.classList.add('card__body--noart')
     }
     body.append(card.kind === 'creature' ? typeBadge(card.type) : kindBadge(card.kind))
     body.append(el('span', 'card__name', displayName(card.name, card.kind === 'creature' && card.ex)))
