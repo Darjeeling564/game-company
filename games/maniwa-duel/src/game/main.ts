@@ -37,6 +37,12 @@ let selectedHand: number | null = null
 let selectedMonster: number | null = null
 let message = ''
 let cpuTimer: number | null = null
+/**
+ * ドローフェイズを自動で進める待ち（SPEC 9.29）。**必ず変数で持つ。**
+ * `render()` のたびに `setTimeout` を足すと、300ms の窓に触った回数ぶん
+ * `draw` が並び、2件目以降が「その操作はできません」として差し戻される。
+ */
+let drawTimer: number | null = null
 /** 相手の番の待ち時間を飛ばす（SPEC 8.1） */
 let fast = false
 /** デッキの主の姫神。立ち絵に使う（SPEC 8.1） */
@@ -382,7 +388,13 @@ function render(): void {
   message = ''
   // ドローフェイズは選択肢が1つしかないので自動で進める
   if (!isOver(state) && state.priority === HUMAN && state.phase === 'draw') {
-    window.setTimeout(() => apply({ type: 'draw' }), fast ? 40 : 300)
+    // 待ちは1本だけ。積み増すと身に覚えのない拒否が出る（SPEC 9.29）
+    if (drawTimer === null) {
+      drawTimer = window.setTimeout(() => {
+        drawTimer = null
+        apply({ type: 'draw' })
+      }, fast ? 40 : 300)
+    }
     return
   }
   scheduleCpu()
@@ -429,6 +441,8 @@ function startDuel(myDeck: Deck, foeDeck: Deck): void {
   selectedHand = null
   selectedMonster = null
   recorded = false
+  // 前の対戦のドロー待ちを新しい盤に落とさない（SPEC 9.29）
+  if (drawTimer !== null) { window.clearTimeout(drawTimer); drawTimer = null }
   message = first === HUMAN ? 'あなたの先攻です' : '相手の先攻です'
   playSfx('start')
   render()
@@ -447,9 +461,10 @@ const deps: ScreenDeps = {
   showTitle: (): void => showTitle(),
 }
 
-/** 対戦から抜けるときは、開いている詳細とCPUの待ちを必ず片付ける */
+/** 対戦から抜けるときは、開いている詳細と待ち（CPU・ドロー）を必ず片付ける */
 function showTitle(): void {
   if (cpuTimer !== null) window.clearTimeout(cpuTimer)
+  if (drawTimer !== null) { window.clearTimeout(drawTimer); drawTimer = null }
   closeDetail()
   showHome(deps)
 }

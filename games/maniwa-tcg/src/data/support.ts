@@ -438,6 +438,47 @@ export const ITEMS: readonly ItemCard[] = [
       { type: 'switchOpponent' },
     ],
   },
+  {
+    /*
+     * 2026-11-19 追加。系統 × レアリティで **india と cthulhu のコモンが0種**だった
+     * （どちらも神具は4種で最少。他の6系統は5種ずつ）。この2枚で両方を埋める。
+     *
+     * `damagePerHeads` は神具での使用が2件しかない薄い効果（i018 が 20×2、
+     * i031 が 30×3）。**10×2 の版は無い**ので、コモンの持ち点に収まる形で足す。
+     * 多腕・多矢の神話は india に多いので、系統とも噛み合う。
+     *
+     * スダルシャナ（i032・india の UR）はヴィシュヌの円盤なので、
+     * **同じ射手の道具**を下の帯に置く形にした。
+     */
+    id: 'i039', name: 'アルジュナの箭筒', ruby: 'アルジュナのやづつ', kind: 'item',
+    origin: 'india', rarity: 'common',
+    flavor: '汲んでも尽きぬ矢を蓄えた箭筒。番えた数だけ、狙いは分かれて飛ぶ。',
+    effects: [
+      { type: 'damagePerHeads', target: 'opponentActive', value: 10, count: 2 },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    /*
+     * 2026-11-19 追加。cthulhu のコモンを埋める（上と同じ理由）。
+     *
+     * `coinFlip` は神具では **china の2種（i015 亀甲の卜 / i017 筊杯）だけ**が
+     * 使っていて、「占い＝china」に寄っていた。**運否天賦は cthulhu の芯**なので、
+     * ここで帯を広げる。
+     *
+     * 当たりの中身は素のダメージ1つだけにして、i015 / i017（エネルギーと引き）
+     * とは別方向にする。
+     */
+    id: 'i040', name: 'ユゴスの黒石', ruby: 'ユゴスのこくせき', kind: 'item',
+    origin: 'cthulhu', rarity: 'common',
+    flavor: '星間を越えて届いた黒い石。覗き込んで呼べば、ときどき何かが応える。',
+    effects: [
+      {
+        type: 'coinFlip', count: 1, min: 1,
+        then: [{ type: 'damage', target: 'opponentActive', value: 30 }],
+      },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
