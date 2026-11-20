@@ -867,7 +867,10 @@ function cpuShouldMove(): boolean {
 let finishShown = false
 
 function render(): void {
-  clearTimer()
+  // **無条件に消さない**（SPEC 9.21）。毎回消して作り直すと、描き直しのたびに
+  // 450ms が振り出しに戻り、連打しているあいだ相手が1手も動けなくなる。
+  // 消すのは「相手がもう動かない」とき（決着・自分の番・入れ替えが自分に回った）だけ。
+  if (!cpuShouldMove()) clearTimer()
 
   if (isOver(state)) {
     if (finishShown) {
@@ -908,8 +911,11 @@ function render(): void {
 
   if (overlay !== null) overlay()
 
-  if (cpuShouldMove()) {
+  // 待ちが既にあるなら作り直さない（SPEC 9.21）
+  if (cpuShouldMove() && cpuTimer === null) {
     cpuTimer = window.setTimeout(() => {
+      // 条件付きの clearTimer() では後始末されないので、発火時に自分で戻す（SPEC 9.21）
+      cpuTimer = null
       // 初期配置は両者が同時に動けるので、CPU の手だけを選ばせる
       const chosen = greedyPolicy(state, cpuRng, CPU)
       if (chosen === null) return // CPU に打つ手が無い局面
