@@ -346,9 +346,21 @@ body {
 .board {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  /*
+   * **`safe` を外さない**（SPEC 9.30）。画面が低いと `.board__table` は縮まないので
+   * 素の `center` では上下に均等にはみ出し、下側が手札の上に描かれる。
+   * `safe` は入りきらないときだけ先頭寄せに落ちるので、上が掴めなくなるのも防ぐ。
+   */
+  justify-content: safe center;
   flex: 1 1 auto;
   min-height: 0;
+  /* 入りきらないぶんは盤の中で送る（姫神演義 SPEC 9.3.1 と同じ形） */
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.board::-webkit-scrollbar {
+  display: none;
 }
 
 /* 卓の面。枠が宙に浮かず、1枚の板の上に並んでいるように見せる */
