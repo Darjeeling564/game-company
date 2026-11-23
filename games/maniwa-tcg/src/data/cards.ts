@@ -650,6 +650,35 @@ const EARTH: readonly CreatureCard[] = [
           { type: 'damage', target: 'opponentBenchAll', value: 20 },
         ] },
     ],
+  },  {
+    /*
+     * 2026-11-23 追加。**今夜は絶技の番だが、空いている姫神が1体しか無かった**ので、
+     * 2枚目をここに回した（支援側 u033 の注記を参照）。
+     *
+     * 薄いところをその場で数えて選んだ。**系統は greece が12体で最少（japan と同数）で
+     * UR は2体、属性は earth が11体で最少（forest / wind / thunder と同数）で UR は2体**。
+     * **どちらもその軸の最小**である。しかも **greece × earth の UR は空**で、
+     * 居たのは `e001 デメテル`（SR）だけだった。
+     *
+     * **EX にすると次の絶技の種になる**（最強ワザがコスト3）。いま種が4体とも
+     * 未マージの PR に押さえられているので、**空いた種を1つ足しておく**意味もある。
+     *
+     * 総合力 = 170 + 35×3 + 105×0.6 = **338.0**（UR は300以上。既存は 308.0〜387.0 の中ほど）。
+     * 次の絶技の帯は 効率 36.75〜45.5（コスト3なら評価値 110.25〜136.5）になる。
+     */
+    id: 'e012', name: 'ガイアEX', kind: 'creature',
+    flavor: '混沌から最初に生まれ、すべてを腹に抱いた大地そのもの。怒れば山が動き、海が退く。',
+    origin: 'greece', rarity: 'ultra',
+    type: 'earth', hp: 170, ex: true, retreatCost: 3, stage: 0,
+    attacks: [
+      { name: '万物の母', ruby: 'ばんぶつのはは', cost: ['earth', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
+      { name: '地鳴り', ruby: 'じなり', cost: ['earth', 'earth', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 90 },
+          { type: 'damage', target: 'opponentBenchAll', value: 10 },
+        ] },
+    ],
   },
 ]
 
