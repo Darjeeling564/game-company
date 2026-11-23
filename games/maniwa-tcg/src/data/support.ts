@@ -1489,5 +1489,32 @@ export const ULTIMATES: readonly UltimateCard[] = [
       { type: 'damage', target: 'opponentActive', value: 110 },
       { type: 'discardEnergy', target: 'opponentActive', value: 2 },
     ],
+  },  {
+    /*
+     * 2026-11-23 追加。**絶技を付けられる姫神は5体あるが、4体は未マージの夜間ブランチが
+     * 押さえている**（#95 が w012 / t011、#103 が f012 / s011）。
+     * **空いているのは d012 イシュタルEX だけ**なので、今夜の絶技は1枚だけにした
+     * （2枚目は姫神に回した。e012 ガイアEX）。
+     * 押さえられている4体に重ねて作ると、あの2本の PR が**二重の絶技**を抱えて
+     * マージできなくなる。
+     *
+     * 効率の比（SPEC 16.5.1）。d012 の最強ワザ「冥界下り」は
+     * `damage 110` ＋ `selfDamage 20` で評価値 90、コスト3なので効率 30.00。
+     * 許される帯は 1.05〜1.30 倍 ＝ 効率 31.5〜39.0、コスト3なら評価値 94.5〜117。
+     * こちらは `damage 95` ＋ `damage opponentBenchRandom 30` で
+     * 評価値 95 + 15 = 110、効率 36.67、**比 1.222**。
+     *
+     * 冥界から戻るには**身代わりが要る**という話なので、
+     * **前の1体を討ちつつ、控えの誰かが無作為に連れていかれる**形にした。
+     * `opponentBenchRandom` を使う絶技は**これが初**である（既存26種はどれも使っていない）。
+     */
+    id: 'u033', name: '身代わりの掟', ruby: 'みがわりのおきて', kind: 'ultimate',
+    origin: 'mesopotamia', rarity: 'ultra', requires: 'd012',
+    flavor: '冥界から戻る者は、代わりを置いていかねばならない。誰が選ばれるかは誰にも分からない。',
+    cost: ['dark', 'dark', 'colorless'],
+    effects: [
+      { type: 'damage', target: 'opponentActive', value: 95 },
+      { type: 'damage', target: 'opponentBenchRandom', value: 30 },
+    ],
   },
 ]
