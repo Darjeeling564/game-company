@@ -346,6 +346,21 @@ const FOREST: readonly CreatureCard[] = [
         ] },
     ],
   },
+  {
+    id: 's012', name: 'ミ＝ゴ', kind: 'creature',
+    flavor: 'ユゴスから翼で虚空を渡ってくる菌類の種族。鉱を掘り、気に入った頭だけを筒に移して持ち帰る。',
+    origin: 'cthulhu', rarity: 'superRare',
+    type: 'forest', hp: 120, ex: false, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '菌糸の囁き', ruby: 'きんしのささやき', cost: ['forest', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 50 }] },
+      { name: '胞子の霧', ruby: 'ほうしのきり', cost: ['forest', 'forest', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 80 },
+          { type: 'applyStatus', target: 'opponentActive', status: 'poisoned' },
+        ] },
+    ],
+  },
 ]
 
 // ------------------------------------------------ 風
@@ -506,6 +521,21 @@ const WIND: readonly CreatureCard[] = [
         effects: [
           { type: 'damage', target: 'opponentActive', value: 60 },
           { type: 'switchOpponent' },
+        ] },
+    ],
+  },
+  {
+    id: 'k012', name: 'フウジンEX', kind: 'creature',
+    flavor: '雷神と並んで天を駆ける風の神。背に負うた袋の口を緩めるだけで、季節がひとつ飛ぶ。',
+    origin: 'japan', rarity: 'ultra',
+    type: 'wind', hp: 170, ex: true, retreatCost: 2, stage: 0,
+    attacks: [
+      { name: '野分', ruby: 'のわき', cost: ['wind', 'colorless'],
+        effects: [{ type: 'damage', target: 'opponentActive', value: 60 }] },
+      { name: '風袋を解く', ruby: 'ふうたいをとく', cost: ['wind', 'wind', 'colorless'],
+        effects: [
+          { type: 'damage', target: 'opponentActive', value: 95 },
+          { type: 'damage', target: 'opponentBenchAll', value: 10 },
         ] },
     ],
   },
