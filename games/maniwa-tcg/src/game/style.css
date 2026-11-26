@@ -1461,6 +1461,26 @@ body {
   filter: drop-shadow(0 1px 0 var(--card-edge)) drop-shadow(0 -1px 0 var(--card-edge));
 }
 
+/*
+ * 絵の上の虹の名前だけ、非UR と同じ6層にそろえる（SPEC 9.27）。
+ *
+ * 上の `filter` は `text-shadow` の「置き換え」として置かれたが、
+ * **6層のうち上下の1pxしか訳されていなかった**（左右の1pxと 3px / 6px のぼかしが落ちていた）。
+ * 絵の上の名前だけに絞るのは、非UR の6層も `.card__body--art .card__name` に
+ * 置かれているためである（詳細の幕は地が無地なので足す必要が無い）。
+ *
+ * **上の2層は消さない。** ここは足すだけで、`drop-shadow` は連なると順に重なる。
+ */
+.is-gradient-text .card__body--art .card__name {
+  filter:
+    drop-shadow(0 1px 0 var(--card-edge))
+    drop-shadow(0 -1px 0 var(--card-edge))
+    drop-shadow(1px 0 0 var(--card-edge))
+    drop-shadow(-1px 0 0 var(--card-edge))
+    drop-shadow(0 0 3px var(--card-edge))
+    drop-shadow(0 0 6px var(--card-edge));
+}
+
 /* 数値も名前と同じく、収まらないときは親を広げずに切り詰める */
 .card__hp {
   display: block;
