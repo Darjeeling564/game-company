@@ -479,6 +479,21 @@ export const ITEMS: readonly ItemCard[] = [
       },
     ],
   },
+  {
+    id: 'i041', name: '霊芝', ruby: 'れいし', kind: 'item', origin: 'china', rarity: 'common',
+    flavor: '仙境の岩陰にだけ生える瑞草。欠片を分け合えば、控えの者まで息を吹き返す。',
+    // 控え全体を癒す神具は i012 豊穣の壺 に次いで2枚目。ownBenchAll は神具40種で2件しか無かった
+    effects: [
+      { type: 'heal', target: 'ownBenchAll', value: 20 },
+      { type: 'draw', value: 1 },
+    ],
+  },
+  {
+    id: 'i042', name: 'アペプの吐息', ruby: 'アペプのといき', kind: 'item', origin: 'egypt', rarity: 'common',
+    flavor: '日輪を呑む大蛇が闇の底で吐く息。触れた者は陽の下に戻っても毒が抜けない。',
+    // d010 アペプ と対にした札。どくを与える神具は i013（R）と i034（SR）だけで、common は初
+    effects: [{ type: 'applyStatus', target: 'opponentActive', status: 'poisoned' }],
+  },
 ]
 
 // ------------------------------------------------ 行動（1ターンに1枚）
